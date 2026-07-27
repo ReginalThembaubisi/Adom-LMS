@@ -1,0 +1,23 @@
+# Uploaded learner files (keep folder, ignore uploads)
+uploads/*
+!uploads/.gitkeep
+
+# Build Output
+target/
+build/
+.mvn/
+*.class
+*.jar
+*.war
+
+# IDE & Editor files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS Temp Files
+.DS_Store
+Thumbs.db

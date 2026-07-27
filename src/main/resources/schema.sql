@@ -1,0 +1,155 @@
+-- DROP TABLE IF EXISTS module_files;
+-- DROP TABLE IF EXISTS submissions;
+-- DROP TABLE IF EXISTS submission_sessions;
+-- DROP TABLE IF EXISTS assignments;
+-- DROP TABLE IF EXISTS learner_modules;
+-- DROP TABLE IF EXISTS modules;
+-- DROP TABLE IF EXISTS categories;
+-- DROP TABLE IF EXISTS learners;
+-- DROP TABLE IF EXISTS learnerships;
+-- DROP TABLE IF EXISTS lecturers;
+-- DROP TABLE IF EXISTS admins;
+
+-- Sequence tracking table for learner_code generation
+CREATE TABLE IF NOT EXISTS learner_code_sequences (
+    year_val INT PRIMARY KEY,
+    last_seq INT NOT NULL
+);
+
+-- 1. Admins Table (Spring Security Admin Accounts)
+CREATE TABLE IF NOT EXISTS admins (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 1.5 Learnerships Table
+CREATE TABLE IF NOT EXISTS learnerships (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    qualification_code VARCHAR(100) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 2. Learners Table
+CREATE TABLE IF NOT EXISTS learners (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    learner_code VARCHAR(64) NOT NULL UNIQUE,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(150) NULL,
+    id_number VARCHAR(30) NULL,
+    phone_number VARCHAR(30) NULL,
+    cohort VARCHAR(100) NULL,
+    learnership_id BIGINT NULL,
+    password_hash VARCHAR(255) NULL,
+    reset_code VARCHAR(6) NULL,
+    reset_code_expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_learner_learnership FOREIGN KEY (learnership_id) REFERENCES learnerships(id) ON DELETE SET NULL
+);
+
+-- 2.1 Lecturers Table (Now supports Auth)
+CREATE TABLE IF NOT EXISTS lecturers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
+    username VARCHAR(255) NULL UNIQUE,
+    password_hash VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 2.1.2 Categories Table
+CREATE TABLE IF NOT EXISTS categories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category_type VARCHAR(50) NOT NULL,
+    lecturer_id BIGINT NULL,
+    learnership_id BIGINT NULL,
+    CONSTRAINT fk_category_lecturer FOREIGN KEY (lecturer_id) REFERENCES lecturers(id) ON DELETE SET NULL,
+    CONSTRAINT fk_category_learnership FOREIGN KEY (learnership_id) REFERENCES learnerships(id) ON DELETE CASCADE
+);
+
+-- 2.2 Modules Table
+CREATE TABLE IF NOT EXISTS modules (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    module_name VARCHAR(255) NOT NULL,
+    module_code VARCHAR(100) NULL,
+    category_id BIGINT NULL,
+    file_path VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_module_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+);
+
+-- 2.3 Learner Modules Join Table
+CREATE TABLE IF NOT EXISTS learner_modules (
+    learner_id BIGINT NOT NULL,
+    module_id BIGINT NOT NULL,
+    PRIMARY KEY (learner_id, module_id),
+    CONSTRAINT fk_lm_learner FOREIGN KEY (learner_id) REFERENCES learners(id) ON DELETE CASCADE,
+    CONSTRAINT fk_lm_module FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE
+);
+
+-- 3. Assignments Table
+CREATE TABLE IF NOT EXISTS assignments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    due_date DATETIME NOT NULL,
+    module_id BIGINT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_assignment_module FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE SET NULL
+);
+
+-- 4. Submission Sessions Table
+CREATE TABLE IF NOT EXISTS submission_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_name VARCHAR(255) NOT NULL,
+    assignment_id BIGINT NOT NULL,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
+    task_file_path VARCHAR(500) NULL,
+    task_file_name VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_session_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE
+);
+
+-- 5. Submissions Table
+CREATE TABLE IF NOT EXISTS submissions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    learner_id BIGINT NOT NULL,
+    session_id BIGINT NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED',
+    grade INT NULL,
+    feedback TEXT NULL,
+    graded_at TIMESTAMP NULL,
+    graded_file_path VARCHAR(500) NULL,
+    graded_original_filename VARCHAR(255) NULL,
+    CONSTRAINT fk_submission_learner FOREIGN KEY (learner_id) REFERENCES learners(id) ON DELETE CASCADE,
+    CONSTRAINT fk_submission_session FOREIGN KEY (session_id) REFERENCES submission_sessions(id) ON DELETE CASCADE
+);
+
+-- 6. Module Files Table
+CREATE TABLE IF NOT EXISTS module_files (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    module_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_module_file_module FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE
+);
+
+-- 7. System Settings Table
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL
+);
+
+INSERT INTO system_settings (setting_key, setting_value)
+SELECT 'REGISTRATION_OPEN', 'true'
+WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'REGISTRATION_OPEN');
