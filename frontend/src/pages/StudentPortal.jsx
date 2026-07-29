@@ -232,553 +232,515 @@ const StudentPortal = () => {
         } finally {
             setUploading(false);
         }
-    };    // File upload state
-    const [attachedFile, setAttachedFile] = useState(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef(null);
-
-    // Fetch initial data
-    useEffect(() => {
-        if (studentNumber) {
-            fetchModules();
-            fetchTimeline();
-            fetchHistory();
-        }
-    }, [studentNumber]);
-
-    const checkStudentResponse = (res) => {
-        if (res.status === 401 || res.status === 404) {
-            logoutStudent();
-            navigate('/login');
-            return false;
-        }
-        return true;
-    };
-
-    const fetchModules = async () => {
-        setLoadingModules(true);
-        try {
-            const res = await fetch(`/api/learners/${studentNumber}/modules`);
-            if (!checkStudentResponse(res)) return;
-            if (res.ok) {
-                const data = await res.json();
-                setModules(data);
-            }
-        } catch (e) {
-            console.error('Failed to load modules', e);
-        } finally {
-            setLoadingModules(false);
-        }
-    };
-
-    const fetchTimeline = async () => {
-        try {
-            const res = await fetch(`/api/learners/${studentNumber}/timeline`);
-            if (!checkStudentResponse(res)) return;
-            if (res.ok) {
-                const data = await res.json();
-                setTimeline(data);
-            }
-        } catch (e) {
-            console.error('Failed to load timeline', e);
-        }
-    };
-
-    const fetchHistory = async () => {
-        try {
-            const res = await fetch(`/api/learners/${studentNumber}/submissions`);
-            if (!checkStudentResponse(res)) return;
-            if (res.ok) {
-                const data = await res.json();
-                setHistory(data);
-            }
-        } catch (e) {
-            console.error('Failed to load history', e);
-        }
-    };
-
-    const openModuleDetails = async (moduleId) => {
-        try {
-            const res = await fetch(`/api/learners/${studentNumber}/modules/${moduleId}`);
-            if (!checkStudentResponse(res)) return;
-            if (res.ok) {
-                const data = await res.json();
-                setSelectedModule(data);
-            }
-        } catch (e) {
-            console.error('Failed to load module details', e);
-        }
-    };
-
-    const handleInlineFileChange = (e, sessionId) => {
-        if (e.target.files && e.target.files[0]) {
-            setInlineFile(e.target.files[0]);
-            setInlineAlerts(prev => ({ ...prev, [sessionId]: null }));
-        }
-    };
-
-    const handleInlineSubmit = async (e, sessionId) => {
-        e.preventDefault();
-        if (!inlineFile) {
-            setInlineAlerts(prev => ({
-                ...prev,
-                [sessionId]: { type: 'error', message: 'Please select a file to submit.' }
-            }));
-            return;
-        }
-
-        setUploading(true);
-        setInlineAlerts(prev => ({
-            ...prev,
-            [sessionId]: { type: 'info', message: 'Uploading submission...' }
-        }));
-
-        try {
-            const formData = new FormData();
-            formData.append('file', inlineFile);
-            formData.append('learnerCode', studentNumber);
-
-            const res = await fetch(`/api/submissions/upload/${sessionId}`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!checkStudentResponse(res)) return;
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.message || 'Server rejected file upload.');
-            }
-
-            const data = await res.json();
-            
-            setInlineAlerts(prev => ({
-                ...prev,
-                [sessionId]: { type: 'success', message: 'Submission uploaded successfully!' }
-            }));
-            
-            const slot = selectedModule && selectedModule.slots ? selectedModule.slots.find(s => s.id === sessionId) : null;
-            const slotTitle = slot ? slot.title : 'Assignment';
-            const sessionName = slot ? slot.sessionName : 'Session';
-
-            setLastSubmission({
-                fileName: data.originalFilename || inlineFile.name,
-                slotName: `${selectedModule ? selectedModule.moduleName : 'Module'} — ${slotTitle} (${sessionName})`,
-                submittedAt: new Date(data.submittedAt || new Date()).toLocaleString(),
-                sessionId: sessionId
-            });
-            
-            fetchHistory();
-            if (selectedModule) {
-                openModuleDetails(selectedModule.id);
-            }
-            fetchModules();
-
-            setTimeout(() => {
-                setActiveUploadSessionId(null);
-                setInlineFile(null);
-            }, 1500);
-
-        } catch (err) {
-            setInlineAlerts(prev => ({
-                ...prev,
-                [sessionId]: { type: 'error', message: err.message || 'Connection failed.' }
-            }));
-        } finally {
-            setUploading(false);
-        }
     };
 
     return (
-        <div className="portal-wrapper">
-            {/* Header */}
-            <header className="portal-header">
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>Welcome back, {learner.fullName}!</h1>
-                </div>
-                <button onClick={logoutStudent} className="signout-btn" style={{ fontWeight: 'bold' }}>Sign Out</button>
-            </header>
-
-            {/* Student Info Card Block */}
-            <div className="portal-card" style={{ padding: '1.15rem 1.5rem', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.9rem' }}>
-                <div style={{ flex: '1', minWidth: '140px' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>Student Number</span>
-                    <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{studentNumber}</strong>
-                </div>
-                <div style={{ flex: '1', minWidth: '140px' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>Cohort</span>
-                    <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{learner.cohort || '2026 Intake'}</strong>
-                </div>
-                <div style={{ flex: '2', minWidth: '220px' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>Learnership Program</span>
-                    <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{learner.learnershipName || 'Unassigned'}</strong>
-                </div>
-            </div>
-
-            {/* Tab Bar */}
-            <nav className="tab-bar">
-                <button 
-                    className={`tab-btn ${activeTab === 'modules' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('modules')}
-                    style={{ fontWeight: 'bold' }}
-                >
-                    My Modules
-                </button>
-                <button 
-                    className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('history')}
-                    style={{ fontWeight: 'bold' }}
-                >
-                    My Submissions
-                </button>
-            </nav>
-
-            {lastSubmission && (
-                <div className="portal-card" style={{ border: '1px solid var(--success)', background: 'rgba(22, 163, 74, 0.05)', margin: '1rem 0', padding: '1.25rem', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                                Submission Successful!
-                            </h3>
-                            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', color: 'var(--text-body)' }}>
-                                <strong>File Submitted:</strong> {lastSubmission.fileName}
-                            </p>
-                            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', color: 'var(--text-body)' }}>
-                                <strong>Assignment Slot:</strong> {lastSubmission.slotName}
-                            </p>
-                            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: 'var(--text-body)' }}>
-                                <strong>Submitted At:</strong> {lastSubmission.submittedAt}
-                            </p>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                You can check this anytime under <strong>My Submissions</strong>.
+        <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                
+                {/* Header Strip or Dark Banner */}
+                {selectedModule ? (
+                    /* Cohesive Header Strip */
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <button 
+                                className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-lg transition-colors flex items-center gap-1.5"
+                                onClick={() => setSelectedModule(null)}
+                            >
+                                ← Back to Modules
+                            </button>
+                            <span className="text-slate-300 hidden sm:inline">|</span>
+                            <span className="text-sm font-extrabold text-slate-900">
+                                Code {selectedModule.moduleCode || 'N/A'}: {selectedModule.moduleName}
                             </span>
                         </div>
-                        <button 
-                            onClick={() => setLastSubmission(null)} 
-                            className="signout-btn" 
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginTop: 0, fontWeight: 'bold' }}
-                        >
-                            Dismiss
-                        </button>
+                        <div className="text-xs text-slate-500 font-semibold sm:text-right">
+                            Faculty: <span className="text-slate-800 font-bold">{selectedModule.lecturerName || 'Unassigned'}</span>
+                        </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    /* Top Dark Hero Welcome Banner */
+                    <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-white/10 hover:bg-white/20 transition-all rounded-full flex items-center justify-center font-bold text-lg text-white border border-white/20 shadow-xs flex-shrink-0">
+                                {learner.fullName ? learner.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'S'}
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight">Welcome back, {learner.fullName}! 👋</h1>
+                                <p className="text-sm text-slate-300">Here is your academic overview for this term.</p>
+                            </div>
+                        </div>
+                        <button onClick={logoutStudent} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 text-white transition-all shadow-xs">
+                            Sign Out
+                        </button>
+                    </header>
+                )}
 
-            {/* Alert Banner */}
-            {alert.message && (
-                <div className={`alert-banner ${alert.type}`} style={{ fontWeight: 'bold' }}>
-                    {alert.message}
-                </div>
-            )}
+                {/* Alert Banner */}
+                {alert.message && (
+                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border ${
+                        alert.type === 'error' 
+                            ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                            : 'bg-blue-50 border-blue-200 text-blue-800'
+                    }`}>
+                        {alert.message}
+                    </div>
+                )}
 
-            {/* TAB 1: My Modules */}
-            {activeTab === 'modules' && (
-                <div className="tab-content active">
-                    <div className="portal-card">
-                        {!selectedModule ? (
-                            <div id="modules-list-view">
-                                <div className="card-header-row">
-                                    <h2>My Active Modules</h2>
-                                    <p>Select your modules to see active courses, learning materials, and grades.</p>
+                {/* Student Info Card Block */}
+                {!selectedModule && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Student Number</span>
+                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{studentNumber}</strong>
+                        </div>
+                        <div>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cohort</span>
+                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{learner.cohort || '2026 Intake'}</strong>
+                        </div>
+                        <div>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Learnership Program</span>
+                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{learner.learnershipName || 'Unassigned'}</strong>
+                        </div>
+                    </div>
+                )}
+
+                {/* Tab Bar */}
+                {!selectedModule && (
+                    <nav className="bg-slate-100 p-1 rounded-xl inline-flex gap-1 mb-6">
+                        <button 
+                            className={activeTab === 'modules' 
+                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
+                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                            }
+                            onClick={() => handleTabChange('modules')}
+                        >
+                            My Modules
+                        </button>
+                        <button 
+                            className={activeTab === 'history' 
+                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
+                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                            }
+                            onClick={() => handleTabChange('history')}
+                        >
+                            My Submissions
+                        </button>
+                    </nav>
+                )}
+
+                {lastSubmission && (
+                    <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 shadow-sm space-y-3 mb-6">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
+                                    <span>✓</span> Submission Successful!
+                                </h3>
+                                <div className="text-xs text-emerald-700 mt-2 space-y-1">
+                                    <p><strong>File Submitted:</strong> {lastSubmission.fileName}</p>
+                                    <p><strong>Assignment Slot:</strong> {lastSubmission.slotName}</p>
+                                    <p><strong>Submitted At:</strong> {lastSubmission.submittedAt}</p>
                                 </div>
+                                <p className="text-[11px] text-slate-500 mt-3">
+                                    You can check this anytime under <strong>My Submissions</strong>.
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setLastSubmission(null)} 
+                                className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded transition-colors"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                                {loadingModules ? (
-                                    <p style={{ color: 'var(--text-muted)' }}>Loading active modules...</p>
-                                ) : modules.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '3rem 1.5rem', border: '2px dashed rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-                                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>You are not enrolled in any modules yet.</p>
+                {/* TAB 1: My Modules */}
+                {activeTab === 'modules' && (
+                    <div className="space-y-6">
+                        {!selectedModule ? (
+                            <div id="modules-list-view" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                {/* Left Area (Active Modules - 8 Columns) */}
+                                <div className="lg:col-span-8 space-y-6">
+                                    <div className="border-b border-slate-300 pb-3">
+                                        <h2 className="text-lg font-bold text-slate-900">My Active Modules</h2>
+                                        <p className="text-xs text-slate-500">Select a module to see active courses, learning materials, and grades.</p>
                                     </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                        {Array.from(new Set(modules.map(m => m.moduleType || 'General'))).map(type => {
-                                            const typeModules = modules.filter(m => (m.moduleType || 'General') === type);
-                                            if (typeModules.length === 0) return null;
-                                            return (
-                                                <div key={type}>
-                                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.25rem', color: 'var(--text-muted)' }}>
-                                                        {type} Modules
-                                                    </h3>
-                                                    <div className="modules-grid" style={{ marginBottom: '1rem' }}>
-                                                        {typeModules.map((m) => (
-                                                            <div 
-                                                                key={m.id} 
-                                                                className="module-item-card"
-                                                                onClick={() => openModuleDetails(m.id)}
-                                                            >
-                                                                <div className="module-meta-info">
-                                                                    <span className="module-title-label">{m.moduleName}</span>
-                                                                    <span className="module-lecturer-label">Lecturer: {m.lecturerName} • Code: {m.moduleCode || 'N/A'}</span>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    )}
 
-                                {/* Timeline Upcoming Deadlines list */}
-                                <div className="timeline-section">
-                                    <h2>Upcoming Deadlines</h2>
-                                    {timeline.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '2rem 0', border: '2px dashed rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
-                                            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.95rem' }}>No upcoming activities require action</p>
+                                    {loadingModules ? (
+                                        <p className="text-sm text-slate-500">Loading active modules...</p>
+                                    ) : modules.length === 0 ? (
+                                        <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
+                                            <p className="text-sm text-slate-400">You are not enrolled in any modules yet.</p>
                                         </div>
                                     ) : (
-                                        <div className="timeline-list">
-                                            {timeline.map((item, idx) => (
-                                                <div 
-                                                    key={idx} 
-                                                    className="timeline-item"
-                                                    onClick={() => {
-                                                        openModuleDetails(item.moduleId);
-                                                        setActiveUploadSessionId(item.sessionId);
-                                                    }}
-                                                >
-                                                    <div className="timeline-info">
-                                                        <strong>{item.moduleName} — {item.slotTitle}</strong>
+                                        <div className="space-y-8">
+                                            {Array.from(new Set(modules.map(m => m.moduleType || 'General'))).map(type => {
+                                                const typeModules = modules.filter(m => (m.moduleType || 'General') === type);
+                                                if (typeModules.length === 0) return null;
+                                                return (
+                                                    <div key={type} className="space-y-4">
+                                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-300 pb-2">
+                                                            {type} Modules
+                                                        </h3>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {typeModules.map((m) => (
+                                                                <div 
+                                                                    key={m.id} 
+                                                                    className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-blue-500 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full"
+                                                                    onClick={() => openModuleDetails(m.id)}
+                                                                >
+                                                                    <div className="space-y-3">
+                                                                        <div className="flex justify-between items-start gap-2">
+                                                                            <span className="font-bold text-slate-800 text-lg block leading-snug">{m.moduleName}</span>
+                                                                            <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
+                                                                                Code: {m.moduleCode || 'N/A'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
+                                                                            <span className="text-[14px]">👨‍🏫</span>
+                                                                            <span className="text-slate-500">Lecturer: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                    <div className="timeline-deadline" style={{ fontWeight: 'bold' }}>
-                                                        Closes {new Date(item.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right Area (Upcoming Deadlines - 4 Columns) */}
+                                <div className="lg:col-span-4 space-y-6">
+                                    <div className="border-b border-slate-300 pb-3">
+                                        <h2 className="text-lg font-bold text-slate-900">Upcoming Deadlines</h2>
+                                        <p className="text-xs text-slate-500">Keep track of your upcoming submissions.</p>
+                                    </div>
+
+                                    {timeline.length === 0 ? (
+                                        <div className="text-center py-8 border border-dashed border-slate-300 rounded-xl">
+                                            <p className="text-xs text-slate-400">No upcoming activities require action</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {timeline.map((item, idx) => {
+                                                const closesAt = new Date(item.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                return (
+                                                    <div 
+                                                        key={idx} 
+                                                        className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-amber-400 transition-all duration-200 cursor-pointer p-4 space-y-3 relative overflow-hidden group"
+                                                        onClick={() => {
+                                                            openModuleDetails(item.moduleId);
+                                                            setActiveUploadSessionId(item.sessionId);
+                                                        }}
+                                                    >
+                                                        {/* Left warning line indicator */}
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
+
+                                                        <div className="flex justify-between items-start gap-2 pl-2">
+                                                            <div className="space-y-1">
+                                                                <h4 className="text-xs font-bold text-slate-800 leading-tight group-hover:text-amber-700 transition-colors">
+                                                                    {item.moduleName}
+                                                                </h4>
+                                                                <p className="text-[11px] font-medium text-slate-500">
+                                                                    Slot: {item.slotTitle}
+                                                                </p>
+                                                            </div>
+                                                            <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex-shrink-0 flex items-center gap-1">
+                                                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                                                                Due Soon
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-amber-800 bg-amber-50/50 border border-amber-100 rounded-lg p-2 font-semibold flex items-center gap-1.5 pl-3">
+                                                            <span>⏰</span> Closes {closesAt}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
                             </div>
                         ) : (
-                            <div id="module-detail-view">
-                                <button className="back-btn" onClick={() => setSelectedModule(null)} style={{ fontWeight: 'bold' }}>
-                                    Back to Modules List
-                                </button>
-                                <div className="module-detail-card" style={{ gap: '1.25rem' }}>
-                                    {/* Module Detail Header Card Box */}
-                                    <div className="portal-card" style={{ padding: '1.5rem', marginBottom: 0 }}>
-                                        <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: 'bold' }}>{selectedModule.moduleName}</h2>
-                                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.95rem' }}>Faculty Lecturer: <strong>{selectedModule.lecturerName}</strong> • Code: <strong>{selectedModule.moduleCode || 'N/A'}</strong></p>
-                                    </div>
-
-                                    {/* Learning Material Card Box */}
-                                    <div className="portal-card" style={{ marginBottom: 0 }}>
-                                        <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1.25rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem', color: 'var(--text-main)', fontWeight: 'bold' }}>Module Course Materials</h3>
-                                        {(!selectedModule.files || selectedModule.files.length === 0) ? (
-                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No learning materials uploaded for this module yet.</p>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                                {Object.entries(
-                                                    selectedModule.files.reduce((acc, f) => {
-                                                        const cat = f.fileType || 'Other';
-                                                        if (!acc[cat]) acc[cat] = [];
-                                                        acc[cat].push(f);
-                                                        return acc;
-                                                    }, {})
-                                                ).sort((a, b) => {
-                                                    const getPriority = (cat) => {
-                                                        const c = cat.toLowerCase();
-                                                        if (c === 'learner guide') return 0;
-                                                        if (c.includes('assessment') || c.includes('poe') || c.includes('instrument')) return 1;
-                                                        if (c === 'facilitator guide') return 2;
-                                                        if (c === 'assessor guide') return 3;
-                                                        if (c === 'moderator guide') return 4;
-                                                        if (c === 'programme strategy') return 5;
-                                                        return 6;
-                                                    };
-                                                    return getPriority(a[0]) - getPriority(b[0]);
-                                                }).map(([category, categoryFiles]) => (
-                                                    <div key={category}>
-                                                        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 'bold' }}>{category}</h4>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                            {categoryFiles.map(file => (
-                                                                <div key={file.id} className="syllabus-section" style={{ margin: 0, padding: '1rem' }}>
-                                                                    <div className="syllabus-info">
-                                                                        <div>
-                                                                            <p style={{ margin: 0, fontWeight: 700 }}>{file.title || 'Untitled Material'}</p>
-                                                                            <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{file.fileType}</span>
+                            <div id="module-detail-view" className="space-y-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                    {/* Left Area (Course Materials - 7 Columns) */}
+                                    <div className="lg:col-span-7 space-y-6">
+                                        {/* Learning Material Card Box */}
+                                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4">
+                                            <h3 className="text-base font-bold text-slate-900 border-b border-slate-300 pb-3">Module Course Materials</h3>
+                                            {(!selectedModule.files || selectedModule.files.length === 0) ? (
+                                                <p className="text-xs text-slate-500">No learning materials uploaded for this module yet.</p>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {Object.entries(
+                                                        selectedModule.files.reduce((acc, f) => {
+                                                            const cat = f.fileType || 'Other';
+                                                            if (!acc[cat]) acc[cat] = [];
+                                                            acc[cat].push(f);
+                                                            return acc;
+                                                        }, {})
+                                                    ).sort((a, b) => {
+                                                        const getPriority = (cat) => {
+                                                            const c = cat.toLowerCase();
+                                                            if (c === 'learner guide') return 0;
+                                                            if (c.includes('assessment') || c.includes('poe') || c.includes('instrument')) return 1;
+                                                            if (c === 'facilitator guide') return 2;
+                                                            if (c === 'assessor guide') return 3;
+                                                            if (c === 'moderator guide') return 4;
+                                                            if (c === 'programme strategy') return 5;
+                                                            return 6;
+                                                        };
+                                                        return getPriority(a[0]) - getPriority(b[0]);
+                                                    }).map(([category, categoryFiles]) => (
+                                                        <div key={category} className="bg-slate-50/30 border border-slate-200/80 rounded-2xl p-5 space-y-3">
+                                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{category}</h4>
+                                                            <div className="space-y-2">
+                                                                {categoryFiles.map(file => (
+                                                                    <div key={file.id} className="p-4 bg-slate-50/50 border border-slate-200/80 rounded-xl flex justify-between items-center gap-4 hover:bg-slate-100/50 hover:shadow-xs transition-all">
+                                                                        <div className="space-y-1">
+                                                                            <p className="text-xs font-bold text-slate-800">{file.title || 'Untitled Material'}</p>
+                                                                            <span className="text-[10px] font-medium text-slate-400">{file.fileType}</span>
                                                                         </div>
+                                                                        <a 
+                                                                            href={file.filePath} 
+                                                                            download 
+                                                                            className="text-xs font-bold text-slate-700 bg-white border border-slate-300 px-3.5 py-2 rounded-lg shadow-2xs hover:shadow-xs hover:bg-slate-50 transition-all flex-shrink-0"
+                                                                        >
+                                                                            Download
+                                                                        </a>
                                                                     </div>
-                                                                    <a href={file.filePath} download className="syllabus-download-link" style={{ fontWeight: 'bold' }}>Download</a>
-                                                                </div>
-                                                            ))}
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Assignment Slots Card Box */}
-                                    <div className="portal-card" style={{ marginBottom: 0 }}>
-                                        <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1.25rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem', color: 'var(--text-main)', fontWeight: 'bold' }}>Assignment Slots</h3>
-                                        {(!selectedModule.slots || selectedModule.slots.length === 0) ? (
-                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>No active submission slots open for this module.</p>
-                                        ) : (
-                                            <div className="slots-list">
-                                                {selectedModule.slots.map((s) => {
-                                                    const deadline = new Date(s.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                                                    const isSubmitted = s.submitted || s.isSubmitted;
-                                                    const statusBadge = isSubmitted
-                                                        ? <span className="status-badge submitted">✓ Submitted</span>
-                                                        : s.status === 'CLOSED'
-                                                            ? <span className="status-badge late">Closed</span>
-                                                            : <span className="status-badge graded" style={{ background: 'rgba(251, 191, 36, 0.15)', border: '1px solid #fbbf24', color: '#fbbf24' }}>Pending</span>;
+                                    {/* Right Area (Assignment Slots - 5 Columns) */}
+                                    <div className="lg:col-span-5 space-y-6">
+                                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4">
+                                            <h3 className="text-base font-bold text-slate-900 border-b border-slate-300 pb-3">Assignment Slots</h3>
+                                            {(!selectedModule.slots || selectedModule.slots.length === 0) ? (
+                                                <p className="text-xs text-slate-500">No active submission slots open for this module.</p>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {selectedModule.slots.map((s) => {
+                                                        const deadline = new Date(s.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                        const isSubmitted = s.submitted || s.isSubmitted;
+                                                        const statusBadge = isSubmitted
+                                                            ? <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>Submitted</span>
+                                                            : s.status === 'CLOSED'
+                                                                ? <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>Closed</span>
+                                                                : <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Pending</span>;
 
-                                                    return (
-                                                        <div key={s.id} className="slot-card">
-                                                            <div className="slot-header">
-                                                                <h4 className="slot-title">{selectedModule.moduleName} — {s.title}</h4>
-                                                                {statusBadge}
-                                                            </div>
-                                                            <p className="slot-timeline">Session Name: {s.sessionName} • Deadline: <strong>{deadline}</strong></p>
-                                                            <p className="slot-desc">{s.description || 'No instructions provided.'}</p>
-                                                            
-                                                            {s.taskFilePath && (
-                                                                <div style={{ marginBottom: '1rem' }}>
-                                                                    <a 
-                                                                        href={s.taskFilePath} 
-                                                                        download 
-                                                                        className="syllabus-download-link"
-                                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: '#f1f5f9', border: '1px solid var(--card-border)', color: 'var(--text-main)', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold' }}
-                                                                    >
-                                                                        Download Task File ({s.taskFileName || 'Attachment'})
-                                                                    </a>
+                                                        return (
+                                                            <div key={s.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 flex flex-col gap-4">
+                                                                {/* Slot Header with Badge */}
+                                                                <div className="flex justify-between items-start border-b border-slate-300 pb-3 w-full gap-2">
+                                                                    <div>
+                                                                        <h4 className="text-xs font-bold text-slate-800 leading-tight">{s.title}</h4>
+                                                                        <p className="text-[10px] text-slate-400 mt-1">
+                                                                            Session: <strong className="text-slate-600 font-semibold">{s.sessionName}</strong>
+                                                                        </p>
+                                                                    </div>
+                                                                    {statusBadge}
                                                                 </div>
-                                                            )}
- 
-                                                             {!isSubmitted && s.status === 'OPEN' && (
-                                                                 <div>
-                                                                     {activeUploadSessionId === s.id ? (
-                                                                         <form onSubmit={(e) => handleInlineSubmit(e, s.id)} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--card-border)', marginTop: '0.75rem' }}>
-                                                                             <div style={{ marginBottom: '1rem', padding: '0.5rem', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                                                                                 <strong>Submitting to:</strong> {selectedModule.moduleName} — {s.title} ({s.sessionName})
-                                                                             </div>
-                                                                             <div className="form-group" style={{ margin: 0 }}>
-                                                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose Assignment File (.pdf, .doc, .docx - max 20MB) *</label>
-                                                                                 <div style={{ marginTop: '0.5rem' }}>
-                                                                                     <input 
-                                                                                         type="file" 
-                                                                                         id={`file-input-${s.id}`}
-                                                                                         onChange={e => handleInlineFileChange(e, s.id)} 
-                                                                                         style={{ display: 'none' }} 
-                                                                                         required 
-                                                                                     />
-                                                                                     <button 
-                                                                                         type="button" 
-                                                                                         onClick={() => document.getElementById(`file-input-${s.id}`).click()} 
-                                                                                         className="inline-submit-btn" 
-                                                                                         style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', border: '1px solid var(--card-border)', color: 'var(--text-main)', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 'bold' }}
-                                                                                     >
-                                                                                         Browse File...
-                                                                                     </button>
-                                                                                     <span style={{ marginLeft: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                                                         {inlineFile ? inlineFile.name : 'No file selected'}
-                                                                                     </span>
-                                                                                 </div>
-                                                                             </div>
-                                                                             {inlineAlerts[s.id] && (
-                                                                                 <div style={{ color: inlineAlerts[s.id].type === 'success' ? 'var(--success)' : 'var(--error)', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: 'bold' }}>
-                                                                                     {inlineAlerts[s.id].message}
-                                                                                 </div>
-                                                                             )}
-                                                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                                                                 <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.35rem 1rem', fontSize: '0.85rem', marginTop: 0, fontWeight: 'bold' }} disabled={uploading}>
-                                                                                     {uploading ? 'Submitting...' : 'Submit Assignment'}
-                                                                                 </button>
-                                                                                 <button type="button" onClick={() => { setActiveUploadSessionId(null); setInlineFile(null); }} className="signout-btn" style={{ padding: '0.35rem 1rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                                                                     Cancel
-                                                                                 </button>
-                                                                             </div>
-                                                                         </form>
-                                                                     ) : (
-                                                                         <button 
-                                                                             className="inline-submit-btn"
-                                                                             onClick={() => { setActiveUploadSessionId(s.id); setInlineAlerts({}); }}
-                                                                             style={{ display: 'inline-flex', alignItems: 'center', width: 'auto', gap: '0.25rem', marginTop: '0.5rem', fontWeight: 'bold' }}
-                                                                         >
-                                                                             Submit Assignment
-                                                                         </button>
-                                                                     )}
-                                                                 </div>
-                                                             )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
+
+                                                                <div className="text-[11px] text-slate-500 space-y-1">
+                                                                    <p className="font-semibold text-amber-600">Deadline: {deadline}</p>
+                                                                    <p>{s.description || 'No instructions provided.'}</p>
+                                                                </div>
+
+                                                                {/* Instructor Brief Download */}
+                                                                {s.taskFilePath && (
+                                                                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-300/80 w-full gap-2">
+                                                                        <span className="text-[10px] font-semibold text-slate-600 truncate flex-shrink min-w-0">{s.taskFileName || 'Brief Attachment'}</span>
+                                                                        <a 
+                                                                            href={s.taskFilePath}
+                                                                            download
+                                                                            className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-[10px] py-1 px-2.5 rounded transition-colors flex-shrink-0"
+                                                                        >
+                                                                            Download Brief
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Student Submission Receipt */}
+                                                                {isSubmitted && activeUploadSessionId !== s.id && (
+                                                                    <div className="pt-1 flex justify-between items-center text-[10px] w-full">
+                                                                        <span className="text-slate-400">File uploaded on system.</span>
+                                                                        {s.status === 'OPEN' && (
+                                                                            <button 
+                                                                                onClick={() => { setActiveUploadSessionId(s.id); setInlineFile(null); setInlineAlerts({}); }}
+                                                                                className="font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                                                                            >
+                                                                                Replace File
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Inline Resubmit / Submit Form */}
+                                                                {s.status === 'OPEN' && activeUploadSessionId === s.id && (
+                                                                    <div className="pt-1 w-full">
+                                                                        <form onSubmit={(e) => handleInlineSubmit(e, s.id)} className="p-3 bg-slate-50 border border-slate-300 rounded-lg space-y-3 w-full">
+                                                                            <div className="space-y-1.5">
+                                                                                <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Choose Assignment File (max 20MB) *</label>
+                                                                                <div className="flex items-center space-x-2">
+                                                                                    <input 
+                                                                                        type="file" 
+                                                                                        id={`file-input-${s.id}`}
+                                                                                        onChange={e => handleInlineFileChange(e, s.id)} 
+                                                                                        className="hidden" 
+                                                                                        required 
+                                                                                    />
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        onClick={() => document.getElementById(`file-input-${s.id}`).click()} 
+                                                                                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-[10px] py-1.5 px-3 rounded transition-colors flex-shrink-0"
+                                                                                    >
+                                                                                        Browse File
+                                                                                    </button>
+                                                                                    <span className="text-[10px] text-slate-500 font-semibold truncate flex-shrink min-w-0">
+                                                                                        {inlineFile ? inlineFile.name : 'No file selected'}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {inlineAlerts[s.id] && (
+                                                                                <div className={`text-[10px] font-bold ${inlineAlerts[s.id].type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                                    {inlineAlerts[s.id].message}
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div className="flex justify-end gap-1.5 pt-1">
+                                                                                <button 
+                                                                                    type="submit" 
+                                                                                    disabled={uploading}
+                                                                                    className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-[10px] py-1.5 px-3.5 rounded-lg shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150 disabled:opacity-50"
+                                                                                >
+                                                                                    {uploading ? 'Uploading...' : 'Submit'}
+                                                                                </button>
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => { setActiveUploadSessionId(null); setInlineFile(null); }} 
+                                                                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-500 font-medium text-[10px] py-1.5 px-3 rounded transition-colors"
+                                                                                >
+                                                                                    Cancel
+                                                                                </button>
+                                                                            </div>
+                                                                        </form>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Initial submit button */}
+                                                                {s.status === 'OPEN' && !isSubmitted && activeUploadSessionId !== s.id && (
+                                                                    <div className="pt-1">
+                                                                        <button 
+                                                                            onClick={() => { setActiveUploadSessionId(s.id); setInlineAlerts({}); }}
+                                                                            className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150 text-center w-full block"
+                                                                        >
+                                                                            Submit Assignment
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* TAB 3: My Submissions */}
-            {activeTab === 'history' && (
-                <div className="tab-content active">
-                    <div className="portal-card">
-                        <div className="card-header-row">
-                            <h2>My Submission History</h2>
-                            <p>View all files you have previously uploaded and check grading status.</p>
+                {/* TAB 3: My Submissions */}
+                {activeTab === 'history' && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6">
+                        <div className="border-b border-slate-300 pb-3">
+                            <h2 className="text-lg font-bold text-slate-900">My Submission History</h2>
+                            <p className="text-xs text-slate-500">View all files you have previously uploaded and check grading status.</p>
                         </div>
-                        <div className="submissions-list">
+                        <div className="space-y-4">
                             {history.length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>You haven't uploaded any assignments yet.</p>
+                                <p className="text-xs text-slate-500 text-center py-6">You haven't uploaded any assignments yet.</p>
                             ) : (
                                 history.map((sub) => (
-                                    <div key={sub.submissionId} className="submission-item" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div className="submission-info">
-                                                <span className="submission-title">{sub.moduleName || 'General'} — {sub.assignmentTitle || 'Assignment'} ({sub.sessionName})</span>
-                                                <span className="submission-file" style={{ color: 'var(--text-body)' }}>{sub.originalFilename}</span>
-                                                <span className="submission-date">Submitted: {new Date(sub.submittedAt).toLocaleString()}</span>
-                                            </div>
-                                            <span className={`status-badge ${sub.status ? sub.status.toLowerCase() : 'submitted'}`}>{sub.status || 'SUBMITTED'}</span>
+                                    <div key={sub.submissionId} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4 bg-slate-50/10">
+                                        <div className="space-y-1">
+                                            <h4 className="text-sm font-bold text-slate-800">{sub.moduleName || 'General'}</h4>
+                                            <p className="text-xs font-semibold text-slate-600">{sub.assignmentTitle || 'Assignment'} ({sub.sessionName})</p>
+                                            <p className="text-[11px] text-slate-400">File: {sub.originalFilename}</p>
+                                            <p className="text-[10px] text-slate-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                                            <a 
-                                                href={`/api/submissions/${sub.submissionId}/download?learnerCode=${studentNumber}`} 
-                                                className="inline-submit-btn" 
-                                                style={{ width: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid var(--card-border)', textDecoration: 'none', color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'bold' }}
-                                                download
-                                            >
-                                                Download My Submission
-                                            </a>
-                                            {sub.status === 'GRADED' && sub.gradedFilePath && (
+                                        {/* Unified footer container for status, grades, feedback, and files download */}
+                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-center gap-3 ${
+                                            sub.status === 'GRADED'
+                                                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
+                                                : 'bg-slate-50 border-slate-200 text-slate-700'
+                                        }`}>
+                                            {/* Left side: Status badge & Grade & Feedback */}
+                                            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 w-full md:w-auto">
+                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0 ${
+                                                    sub.status === 'GRADED'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                        : 'bg-blue-50 text-blue-700 border-blue-200/60'
+                                                }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                                        sub.status === 'GRADED' ? 'bg-emerald-500' : 'bg-blue-500'
+                                                    }`}></span>
+                                                    {sub.status || 'SUBMITTED'}
+                                                </span>
+                                                <div className="text-xs text-center md:text-left space-y-0.5">
+                                                    {sub.status === 'GRADED' ? (
+                                                        <>
+                                                            <p className="font-extrabold text-emerald-800">Grade: {sub.grade}%</p>
+                                                            <p className="text-slate-600 font-medium italic">
+                                                                {sub.feedback ? `"${sub.feedback}"` : 'No feedback comment provided.'}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-slate-500 font-medium italic">Not yet graded.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Right side: Action Buttons */}
+                                            <div className="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-end">
                                                 <a 
-                                                    href={`/api/submissions/${sub.submissionId}/graded-download?learnerCode=${studentNumber}`} 
-                                                    className="inline-submit-btn" 
-                                                    style={{ width: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: '#ecfdf5', border: '1px solid rgba(16, 185, 129, 0.25)', textDecoration: 'none', color: 'var(--success)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'bold' }}
+                                                    href={`/api/submissions/${sub.submissionId}/download?learnerCode=${studentNumber}`} 
+                                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5"
                                                     download
                                                 >
-                                                    Download Marked Work
+                                                    Download Submission
                                                 </a>
-                                            )}
+                                                {sub.status === 'GRADED' && sub.gradedFilePath && (
+                                                    <a 
+                                                        href={`/api/submissions/${sub.submissionId}/graded-download?learnerCode=${studentNumber}`} 
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                                        download
+                                                    >
+                                                        Download Marked Work
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
-
-                                        {sub.status === 'GRADED' ? (
-                                            <div style={{ background: '#ecfdf5', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '8px', padding: '0.85rem', marginTop: '0.25rem' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                    <strong>Grade: <span style={{ color: 'var(--success)' }}>{sub.grade}%</span></strong>
-                                                </div>
-                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-body)', fontStyle: sub.feedback ? 'normal' : 'italic' }}>
-                                                    {sub.feedback ? `Feedback: "${sub.feedback}"` : 'No feedback comment provided.'}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div style={{ background: '#f8fafc', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '0.65rem', marginTop: '0.25rem', fontSize: '0.825rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
-                                                Not yet graded.
-                                            </div>
-                                        )}
                                     </div>
                                 ))
                             )}
                         </div>
                     </div>
-                </div>
+                )}
+            </div>
         </div>
     );
 };

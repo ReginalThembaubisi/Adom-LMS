@@ -331,211 +331,297 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="portal-wrapper">
-            <header className="portal-header">
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>Admin Dashboard</h1>
-                    <p className="subtitle">System Administration & Lecturer Registrations</p>
-                </div>
-                <button onClick={handleSignout} className="signout-btn" style={{ fontWeight: 'bold' }}>Sign Out</button>
-            </header>
-
-            {alert.message && (
-                <div className={`alert-banner ${alert.type}`} style={{ fontWeight: 'bold' }}>
-                    {alert.message}
-                </div>
-            )}
-
-            {/* Overview Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-                <div className="portal-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Lecturers</h3>
-                    <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-color)' }}>{overview.lecturersCount}</span>
-                </div>
-                <div className="portal-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Active Modules</h3>
-                    <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-color)' }}>{overview.modulesCount}</span>
-                </div>
-                <div className="portal-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Submissions</h3>
-                    <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--success)' }}>{overview.submissionsCount}</span>
-                </div>
-                <div className="portal-card" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Registration Status</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                        <span style={{ 
-                            display: 'inline-block', 
-                            width: '10px', 
-                            height: '10px', 
-                            borderRadius: '50%', 
-                            backgroundColor: registrationOpen ? 'var(--success)' : 'var(--error)',
-                            boxShadow: registrationOpen ? '0 0 8px var(--success)' : '0 0 8px var(--error)'
-                        }}></span>
-                        <strong style={{ fontSize: '1.1rem', color: registrationOpen ? 'var(--success)' : 'var(--error)' }}>
-                            {registrationOpen ? 'OPEN' : 'CLOSED'}
-                        </strong>
+        <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                {/* Hero Header */}
+                <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Admin Console ⚙️</h1>
+                        <p className="text-sm text-slate-300">System Administration & Lecturer Registrations</p>
                     </div>
-                    <button 
-                        onClick={handleToggleRegistration} 
-                        disabled={loadingRegStatus}
-                        className="submit-btn"
-                        style={{ 
-                            fontSize: '0.8rem', 
-                            padding: '0.35rem 0.75rem', 
-                            margin: 0, 
-                            background: registrationOpen ? '#fef2f2' : '#ecfdf5',
-                            color: registrationOpen ? '#dc2626' : '#16a34a',
-                            border: `1px solid ${registrationOpen ? '#dc2626' : '#16a34a'}`,
-                            width: 'auto',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        {loadingRegStatus ? 'Updating...' : registrationOpen ? 'Close Registration' : 'Open Registration'}
+                    <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
+                        Sign Out
                     </button>
-                </div>
-            </div>
+                </header>
 
-            {/* Step 1: Lecturer & Learnership Setup */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-                {/* Register New Lecturer */}
-                <div className="portal-card">
-                    <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>1. Register New Lecturer</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Create lecturer profiles with dedicated dashboard authentication credentials.</p>
-                    <form onSubmit={handleCreateLecturer} className="student-login-form" style={{ gap: '1rem' }}>
-                        <div className="form-group">
-                            <label>Full Name *</label>
-                            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="form-input" required placeholder="e.g. Dr. Jane Smith" />
+                {alert.message && (
+                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border ${
+                        alert.type === 'error' 
+                            ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                            : 'bg-blue-50 border-blue-200 text-blue-800'
+                    }`}>
+                        {alert.message}
+                    </div>
+                )}
+
+                {/* Overview Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lecturers</h3>
+                        <span className="text-3xl font-extrabold text-blue-600 mt-2 block">{overview.lecturersCount}</span>
+                    </div>
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Modules</h3>
+                        <span className="text-3xl font-extrabold text-blue-600 mt-2 block">{overview.modulesCount}</span>
+                    </div>
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Submissions</h3>
+                        <span className="text-3xl font-extrabold text-emerald-600 mt-2 block">{overview.submissionsCount}</span>
+                    </div>
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between space-y-3">
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Registration Status</h3>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className={`w-2.5 h-2.5 rounded-full ${
+                                    registrationOpen ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
+                                }`} />
+                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${
+                                    registrationOpen ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' : 'bg-rose-50 text-rose-700 border-rose-200/60'
+                                }`}>
+                                    {registrationOpen ? 'OPEN' : 'CLOSED'}
+                                </span>
+                            </div>
                         </div>
-                        <div className="form-group">
-                            <label>Email Address</label>
-                            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="form-input" placeholder="e.g. janesmith@example.com" />
-                        </div>
-                        <div className="form-group">
-                            <label>Username *</label>
-                            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="form-input" required placeholder="e.g. janesmith" />
-                        </div>
-                        <div className="form-group">
-                            <label>Initial Password *</label>
-                            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="form-input" required placeholder="••••••••" />
-                        </div>
-                        <button type="submit" className="submit-btn" style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>Register Lecturer</button>
-                    </form>
+                        <button 
+                            onClick={handleToggleRegistration} 
+                            disabled={loadingRegStatus}
+                            className={`w-full text-center text-xs font-semibold py-2 rounded-xl border transition-colors ${
+                                registrationOpen 
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' 
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                            }`}
+                        >
+                            {loadingRegStatus ? 'Updating...' : registrationOpen ? 'Close Registration' : 'Open Registration'}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Create Learnership Form */}
-                <div className="portal-card">
-                    <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>Create Learnership</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Define a new qualification program container.</p>
-                    <form onSubmit={handleCreateLearnership} className="student-login-form" style={{ gap: '1.05rem' }}>
-                        <div className="form-group">
-                            <label>Learnership Name *</label>
-                            <input type="text" value={learnershipName} onChange={e => setLearnershipName(e.target.value)} className="form-input" required placeholder="e.g. IT Systems Support NQF4" />
+                {/* Main Admin Workspace */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left Column: Creation Forms (lg:col-span-7) */}
+                    <div className="lg:col-span-7 space-y-6">
+                        {/* Card A: Register New Lecturer */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">Register New Lecturer</h2>
+                                <p className="text-xs text-slate-500">Create lecturer profiles with dedicated dashboard authentication credentials.</p>
+                            </div>
+                            <form onSubmit={handleCreateLecturer} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Full Name *</label>
+                                        <input 
+                                            type="text" 
+                                            value={fullName} 
+                                            onChange={e => setFullName(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="e.g. Dr. Jane Smith" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+                                        <input 
+                                            type="email" 
+                                            value={email} 
+                                            onChange={e => setEmail(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            placeholder="e.g. janesmith@example.com" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Username *</label>
+                                        <input 
+                                            type="text" 
+                                            value={username} 
+                                            onChange={e => setUsername(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="e.g. janesmith" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Initial Password *</label>
+                                        <input 
+                                            type="password" 
+                                            value={password} 
+                                            onChange={e => setPassword(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="••••••••" 
+                                        />
+                                    </div>
+                                </div>
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
+                                    Register Lecturer
+                                </button>
+                            </form>
                         </div>
-                        <div className="form-group">
-                            <label>Qualification Code</label>
-                            <input type="text" value={qualificationCode} onChange={e => setQualificationCode(e.target.value)} className="form-input" placeholder="e.g. 48220" />
-                        </div>
-                        <button type="submit" className="submit-btn" style={{ marginTop: '2.5rem', fontWeight: 'bold' }}>Create Learnership</button>
-                    </form>
-                </div>
-            </div>
 
-            {/* Step 2: Categories Definition */}
-            <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>Add Category under Learnership</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Define new grouping tags (e.g. Fundamental, Practical) for the selected learnership.</p>
-                <form onSubmit={handleCreateCategory} className="student-login-form">
-                    <div className="grid-form">
-                        <div className="form-group">
-                            <label>Select Learnership *</label>
-                            <select 
-                                value={selectedLearnershipId} 
-                                onChange={e => setSelectedLearnershipId(e.target.value)} 
-                                className="form-input" 
-                                required
-                                style={{ background: 'var(--input-bg)', color: 'var(--text-main)' }}
-                            >
-                                <option value="">-- Choose Learnership --</option>
-                                {learnerships.map(l => (
-                                    <option key={l.id} value={l.id}>{l.name} ({l.qualificationCode || 'No Code'})</option>
-                                ))}
-                            </select>
+                        {/* Card B1: Create Learnership Program */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">Create Learnership Program</h2>
+                                <p className="text-xs text-slate-500">Define a new qualification container for modules.</p>
+                            </div>
+                            <form onSubmit={handleCreateLearnership} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Learnership Name *</label>
+                                        <input 
+                                            type="text" 
+                                            value={learnershipName} 
+                                            onChange={e => setLearnershipName(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="e.g. IT Systems Support NQF4" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Qualification Code</label>
+                                        <input 
+                                            type="text" 
+                                            value={qualificationCode} 
+                                            onChange={e => setQualificationCode(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            placeholder="e.g. 48220" 
+                                        />
+                                    </div>
+                                </div>
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
+                                    Create Learnership
+                                </button>
+                            </form>
                         </div>
-                        <div className="form-group">
-                            <label>Category Name *</label>
-                            <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="form-input" required placeholder="e.g. Fundamental, Elective, Practical" />
+
+                        {/* Card B2: Add Category under Learnership */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">Add Category under Learnership</h2>
+                                <p className="text-xs text-slate-500">Define new grouping tags (e.g. Fundamental, Practical) for a learnership.</p>
+                            </div>
+                            <form onSubmit={handleCreateCategory} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Select Learnership *</label>
+                                        <select 
+                                            value={selectedLearnershipId} 
+                                            onChange={e => setSelectedLearnershipId(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required
+                                        >
+                                            <option value="">-- Choose Learnership --</option>
+                                            {learnerships.map(l => (
+                                                <option key={l.id} value={l.id}>{l.name} ({l.qualificationCode || 'No Code'})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Category Name *</label>
+                                        <input 
+                                            type="text" 
+                                            value={newCategoryName} 
+                                            onChange={e => setNewCategoryName(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="e.g. Fundamental, Elective, Practical" 
+                                        />
+                                    </div>
+                                </div>
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150" disabled={!selectedLearnershipId}>
+                                    Add Category
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem', marginTop: '1rem', fontWeight: 'bold' }} disabled={!selectedLearnershipId}>Add Category</button>
-                </form>
-            </div>
 
-            {/* Step 3: Category Lecturer Assignment */}
-            <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>3. Category Lecturer Assignment</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                    SETA learnership module ownership is assigned by Category per Learnership.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                    {categories.map(c => {
-                        const learnership = learnerships.find(l => l.id === c.learnershipId);
-                        const learnershipNameText = learnership ? `${learnership.name}` : 'Unknown Learnership';
-                        return (
-                            <div key={c.id} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
-                                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--primary-color)', fontWeight: 600 }}>{learnershipNameText}</span>
-                                <h3 style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: 'bold' }}>{c.categoryType} Category</h3>
-                                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
-                                    Currently: <strong style={{ color: 'var(--primary-color)' }}>{c.lecturerName || 'Unassigned'}</strong>
-                                </p>
-                                <div>
-                                    <select 
-                                        value={c.lecturerId || ''} 
-                                        onChange={e => handleAssignLecturer(c.id, e.target.value)} 
-                                        className="form-input" 
-                                        style={{ background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.85rem', padding: '0.35rem 0.5rem' }}
-                                    >
-                                        <option value="">-- Assign Lecturer --</option>
-                                        {lecturers.map(l => (
-                                            <option key={l.id} value={l.id}>{l.fullName} ({l.username})</option>
-                                        ))}
-                                    </select>
-                                </div>
+                    {/* Right Column: Management & Assignments (lg:col-span-5) */}
+                    <div className="lg:col-span-5 space-y-6">
+                        {/* Card C: Category Lecturer Assignment */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">Category Lecturer Assignment</h2>
+                                <p className="text-xs text-slate-500">SETA learnership module ownership is assigned by Category per Learnership.</p>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+                            <div className="space-y-4">
+                                {categories.map(c => {
+                                    const learnership = learnerships.find(l => l.id === c.learnershipId);
+                                    const learnershipNameText = learnership ? `${learnership.name}` : 'Unknown Learnership';
+                                    return (
+                                        <div key={c.id} className="bg-slate-50/50 border border-slate-200 rounded-xl p-4 space-y-2">
+                                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">{learnershipNameText}</span>
+                                            <h3 className="text-sm font-bold text-slate-800">{c.categoryType} Category</h3>
+                                            <p className="text-xs text-slate-600">
+                                                Currently: <strong className="text-blue-600 font-semibold">{c.lecturerName || 'Unassigned'}</strong>
+                                            </p>
+                                            <div className="pt-2">
+                                                <select 
+                                                    value={c.lecturerId || ''} 
+                                                    onChange={e => handleAssignLecturer(c.id, e.target.value)} 
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                                >
+                                                    <option value="">-- Assign Lecturer --</option>
+                                                    {lecturers.map(l => (
+                                                        <option key={l.id} value={l.id}>{l.fullName} ({l.username})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-            {/* Lists Section */}
-            <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>All Modules & Lecturers</h2>
-                <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid var(--card-border)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Module Code</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Module Name</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Lecturer</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Syllabus File</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {modules.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No modules created yet.</td>
-                                </tr>
-                            ) : (
-                                modules.map(m => (
-                                    <tr key={m.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                        <td style={{ padding: '0.75rem' }}><strong>{m.moduleCode || 'N/A'}</strong></td>
-                                        <td style={{ padding: '0.75rem' }}>{m.moduleName}</td>
-                                        <td style={{ padding: '0.75rem', color: 'var(--text-body)' }}>{m.lecturerName}</td>
-                                        <td style={{ padding: '0.75rem' }}>{m.filePath ? <a href={m.filePath} style={{ color: 'var(--success)', textDecoration: 'none', fontWeight: 'bold' }} download>Download</a> : <span style={{ color: 'var(--text-muted)' }}>None</span>}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                        {/* Card D: All Modules Overview Table */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 overflow-hidden space-y-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">All Modules Overview</h2>
+                                <p className="text-xs text-slate-500">Review created modules, code mapping, assigned lecturers, and syllabus files.</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
+                                            <th className="p-3 text-left rounded-l-lg">Code</th>
+                                            <th className="p-3 text-left">Module</th>
+                                            <th className="p-3 text-left">Lecturer</th>
+                                            <th className="p-3 text-right rounded-r-lg">Syllabus</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {modules.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="text-center py-4 text-slate-400">No modules created yet.</td>
+                                            </tr>
+                                        ) : (
+                                            modules.map(m => (
+                                                <tr key={m.id} className="hover:bg-blue-50/50 transition-colors cursor-pointer">
+                                                    <td className="p-3 font-bold text-slate-700">
+                                                        <span className="bg-slate-200/60 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                                            Code: {m.moduleCode || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3 font-semibold text-slate-900">{m.moduleName}</td>
+                                                    <td className="p-3 text-slate-500">{m.lecturerName || 'Unassigned'}</td>
+                                                    <td className="p-3 text-right text-blue-600 hover:text-blue-800">
+                                                        {m.filePath ? (
+                                                            <a href={m.filePath} className="font-bold" download>
+                                                                Download
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-slate-400 italic">None</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

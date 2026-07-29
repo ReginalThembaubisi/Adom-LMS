@@ -381,416 +381,505 @@ const LecturerDashboard = () => {
     const mySessions = sessions;
 
     return (
-        <div className="portal-wrapper">
-            <header className="portal-header">
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>{profile ? `Welcome, ${profile.fullName}!` : 'Lecturer Portal'}</h1>
-                    <p className="subtitle">
-                        {profile ? (
-                            profile.assignedCategories && profile.assignedCategories.length > 0 ? (
-                                `You are assigned to: ${profile.assignedCategories.join(', ')}`
+        <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                {/* Header */}
+                <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">{profile ? `Welcome, ${profile.fullName}! 👋` : 'Lecturer Portal'}</h1>
+                        <p className="text-sm text-slate-300">
+                            {profile ? (
+                                profile.assignedCategories && profile.assignedCategories.length > 0 ? (
+                                    `You are assigned to: ${profile.assignedCategories.join(', ')}`
+                                ) : (
+                                    "No category assigned yet — contact your administrator"
+                                )
                             ) : (
-                                "No category assigned yet — contact your administrator"
-                            )
-                        ) : (
-                            'Manage Course Syllabus Documents & Assignment Submissions'
-                        )}
-                    </p>
-                </div>
-                <button onClick={handleSignout} className="signout-btn" style={{ fontWeight: 'bold' }}>Sign Out</button>
-            </header>
-
-            {alert.message && (
-                <div className={`alert-banner ${alert.type}`} style={{ fontWeight: 'bold' }}>
-                    {alert.message}
-                </div>
-            )}
-
-            {/* Step 1: Create Module Section */}
-            <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>1. Create Module</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Add a new module under one of your assigned categories.</p>
-                <form onSubmit={handleCreateModule} className="student-login-form">
-                    <div className="grid-form">
-                        <div className="form-group">
-                            <label>Module Name *</label>
-                            <input 
-                                type="text" 
-                                value={moduleName} 
-                                onChange={e => setModuleName(e.target.value)} 
-                                className="form-input" 
-                                required 
-                                placeholder="e.g. System Analysis & Design" 
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Module Code</label>
-                            <input 
-                                type="text" 
-                                value={moduleCode} 
-                                onChange={e => setModuleCode(e.target.value)} 
-                                className="form-input" 
-                                placeholder="e.g. SAD2026" 
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Category *</label>
-                            <select 
-                                value={categoryId} 
-                                onChange={e => setCategoryId(e.target.value)} 
-                                className="form-input" 
-                                required 
-                                style={{ background: 'var(--input-bg)', color: 'var(--text-main)' }}
-                            >
-                                <option value="">-- Choose Category --</option>
-                                {categories.map(c => (
-                                    <option key={c.id} value={c.id}>{c.categoryType}</option>
-                                ))}
-                            </select>
-                        </div>
+                                'Manage Course Syllabus Documents & Assignment Submissions'
+                            )}
+                        </p>
                     </div>
-                    <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem', marginTop: '1rem', fontWeight: 'bold' }}>
-                        Create Module
+                    <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
+                        Sign Out
                     </button>
-                </form>
-            </div>
+                </header>
 
-            {modules.length === 0 ? (
-                /* Prominent "Create your first module to get started" welcome message */
-                <div className="portal-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', marginBottom: '2rem' }}>
-                    <h2 style={{ margin: '1rem 0 0.5rem 0', fontSize: '1.4rem', color: 'var(--text-main)', fontWeight: 'bold' }}>Create your first module to get started</h2>
-                    <p style={{ color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                        Once you register your first module above under an assigned category, you'll be able to upload learning materials (Syllabus, Slides, Guides) and schedule submission sessions for your students.
-                    </p>
-                </div>
-            ) : (
-                <>
-                    {/* Step 2: My Assigned Modules */}
-                    <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                        <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>2. My Assigned Modules</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            {Array.from(new Set(modules.map(m => m.moduleType || 'CORE'))).map(type => {
-                                const typeModules = modules.filter(m => (m.moduleType || 'CORE') === type);
-                                if (typeModules.length === 0) return null;
-                                return (
-                                    <div key={type}>
-                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.25rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
-                                            {type} Modules
-                                        </h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-                                            {typeModules.map(m => (
-                                                <div key={m.id} style={{ background: '#ffffff', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '1.25rem' }}>
-                                                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 'bold' }}>{m.moduleName}</h4>
-                                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>Code: <strong>{m.moduleCode || 'N/A'}</strong></p>
-                                                    
-                                                     <div style={{ marginBottom: '1.25rem' }}>
-                                                        <h5 style={{ fontSize: '0.85rem', margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontWeight: 'bold' }}>Uploaded Files:</h5>
-                                                        {(!m.files || m.files.length === 0) ? (
-                                                            <p style={{ fontSize: '0.8rem', color: 'var(--error)', margin: 0, fontStyle: 'italic' }}>No files uploaded yet.</p>
-                                                        ) : (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                                                {m.files.map(file => (
-                                                                    <div key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid var(--card-border)' }}>
-                                                                        <span style={{ color: 'var(--text-body)' }}><strong>{file.title || 'Untitled'}</strong> ({file.fileType}): <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{file.originalFilename}</span></span>
-                                                                        <a href={file.filePath} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }} download>Download</a>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
- 
-                                                     {uploadingModuleId === m.id ? (
-                                                        <form onSubmit={(e) => handleUploadModuleFile(e, m.id)} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
-                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '60px' }}>Title *:</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={uploadFileTitle} 
-                                                                    onChange={e => setUploadFileTitle(e.target.value)} 
-                                                                    placeholder="e.g. Week 3 Lecture Slides" 
-                                                                    className="form-input" 
-                                                                    style={{ padding: '0.25rem', fontSize: '0.8rem', flex: 1, margin: 0, background: 'var(--input-bg)', color: 'var(--text-main)' }} 
-                                                                    required 
-                                                                />
-                                                            </div>
-                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '60px' }}>Category *:</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={uploadFileType} 
-                                                                    onChange={e => setUploadFileType(e.target.value)} 
-                                                                    placeholder="e.g. Lecture Slides, Notes" 
-                                                                    className="form-input" 
-                                                                    style={{ padding: '0.25rem', fontSize: '0.8rem', flex: 1, margin: 0, background: 'var(--input-bg)', color: 'var(--text-main)' }} 
-                                                                    required 
-                                                                />
-                                                            </div>
-                                                            <input type="file" onChange={e => setUploadFile(e.target.files[0])} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} required />
-                                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                                <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.25rem 0.75rem', fontSize: '0.8rem', marginTop: 0, fontWeight: 'bold' }}>Upload File</button>
-                                                                <button type="button" onClick={() => { setUploadingModuleId(null); setUploadFile(null); setUploadFileTitle(''); }} className="signout-btn" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', fontWeight: 'bold' }}>Cancel</button>
-                                                            </div>
-                                                        </form>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => { setUploadingModuleId(m.id); setUploadFileType(''); setUploadFileTitle(''); }} 
-                                                            className="submit-btn" 
-                                                            style={{ width: '100%', padding: '0.35rem 0.75rem', fontSize: '0.8rem', marginTop: 0, fontWeight: 'bold' }}
-                                                        >
-                                                            Upload Module File
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
+                {alert.message && (
+                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border ${
+                        alert.type === 'error' 
+                            ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                            : 'bg-blue-50 border-blue-200 text-blue-800'
+                    }`}>
+                        {alert.message}
+                    </div>
+                )}
+
+                {modules.length === 0 ? (
+                    /* Prominent "Create your first module to get started" welcome message */
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-8 text-center max-w-xl mx-auto space-y-4">
+                        <h2 className="text-xl font-bold text-slate-900">Create your first module to get started</h2>
+                        <p className="text-sm text-slate-500 leading-relaxed">
+                            Once you register your first module above under an assigned category, you'll be able to upload learning materials (Syllabus, Slides, Guides) and schedule submission sessions for your students.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        {/* Left Column: Action Forms (lg:col-span-7) */}
+                        <div className="lg:col-span-7 flex flex-col gap-6">
+                            {/* Step 1: Create Module Section */}
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">1. Create Module</h2>
+                                    <p className="text-xs text-slate-500">Add a new module under one of your assigned categories.</p>
+                                </div>
+                                <form onSubmit={handleCreateModule} className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Name *</label>
+                                            <input 
+                                                type="text" 
+                                                value={moduleName} 
+                                                onChange={e => setModuleName(e.target.value)} 
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                required 
+                                                placeholder="e.g. System Analysis & Design" 
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Code</label>
+                                            <input 
+                                                type="text" 
+                                                value={moduleCode} 
+                                                onChange={e => setModuleCode(e.target.value)} 
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                placeholder="e.g. SAD2026" 
+                                            />
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
- 
-                     {/* Step 3: Schedule Intake Session */}
-                    <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                        <h2 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>3. Schedule Intake Session</h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Open a timing slot where students can upload files for their module assignments.</p>
-                        <form onSubmit={handleCreateSession} className="student-login-form">
-                            <div className="grid-form">
-                                <div className="form-group">
-                                    <label>Session Name *</label>
-                                    <input type="text" value={sessionName} onChange={e => setSessionName(e.target.value)} className="form-input" required placeholder="e.g. Research Methodology - Java OOP Assignment" />
-                                </div>
-                                <div className="form-group">
-                                    <label>Which of your modules is this for? *</label>
-                                    <select value={selectedModuleId} onChange={e => setSelectedModuleId(e.target.value)} className="form-input" required style={{ background: 'var(--input-bg)', color: 'var(--text-main)' }}>
-                                        <option value="">-- Choose Module --</option>
-                                        {modules.map(m => (
-                                            <option key={m.id} value={m.id}>{m.moduleName} ({m.moduleCode || 'N/A'})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Description / Instructions</label>
-                                    <textarea 
-                                        value={sessionDescription} 
-                                        onChange={e => setSessionDescription(e.target.value)} 
-                                        className="form-input" 
-                                        placeholder="Instructions for students..."
-                                        style={{ background: 'var(--input-bg)', color: 'var(--text-main)', minHeight: '80px', resize: 'vertical' }}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Task File Attachment (Optional)</label>
-                                    <input 
-                                        id="task-file-input"
-                                        type="file" 
-                                        onChange={e => setSessionTaskFile(e.target.files[0])} 
-                                        style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }} 
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Opens *</label>
-                                    <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} className="form-input" required />
-                                </div>
-                                <div className="form-group">
-                                    <label>Closes *</label>
-                                    <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} className="form-input" required />
-                                </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Category *</label>
+                                        <select 
+                                            value={categoryId} 
+                                            onChange={e => setCategoryId(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required
+                                        >
+                                            <option value="">-- Choose Category --</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.categoryType}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
+                                        Create Module
+                                    </button>
+                                </form>
                             </div>
-                            <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.75rem 2rem', fontWeight: 'bold' }}>Open Session Window</button>
-                        </form>
-                    </div>
 
-                    {/* Step 4: Active Intake Windows */}
-                    <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                        <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem', fontWeight: 'bold' }}>4. Active Intake Windows</h2>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid var(--card-border)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Session Name</th>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Assignment</th>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Status</th>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Deadline</th>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {mySessions.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No submission sessions mapped to your modules.</td>
-                                        </tr>
-                                    ) : (
-                                        mySessions.map(s => (
-                                            <tr key={s.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                                <td style={{ padding: '0.75rem' }}><strong>{s.sessionName}</strong></td>
-                                                <td style={{ padding: '0.75rem' }}>{s.assignmentTitle}</td>
-                                                <td style={{ padding: '0.75rem' }}>
-                                                    <span className={`status-badge ${s.status.toLowerCase()}`}>{s.status}</span>
-                                                </td>
-                                                <td style={{ padding: '0.75rem' }}>{new Date(s.endTime).toLocaleString()}</td>
-                                                <td style={{ padding: '0.75rem', display: 'flex', gap: '0.75rem' }}>
-                                                    <button 
-                                                        onClick={() => toggleSessionClose(s.id, s.status === 'CLOSED')} 
-                                                        className="btn" 
-                                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: s.status === 'CLOSED' ? 'var(--success)' : 'var(--error)', fontWeight: 'bold' }}
-                                                    >
-                                                        {s.status === 'CLOSED' ? 'Open' : 'Close'}
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => inspectSubmissions(s.id)} 
-                                                        className="btn" 
-                                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid var(--card-border)', color: 'var(--text-main)', fontWeight: 'bold' }}
-                                                    >
-                                                        Inspect Files
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                            {/* Step 3: Schedule Intake Session */}
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">3. Schedule Intake Session</h2>
+                                    <p className="text-xs text-slate-500">Open a timing slot where students can upload files for their module assignments.</p>
+                                </div>
+                                <form onSubmit={handleCreateSession} className="bg-slate-50/50 p-5 rounded-xl border border-slate-200/60 space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Session Name *</label>
+                                        <input 
+                                            type="text" 
+                                            value={sessionName} 
+                                            onChange={e => setSessionName(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required 
+                                            placeholder="e.g. Research Methodology - Java OOP Assignment" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Which of your modules is this for? *</label>
+                                        <select 
+                                            value={selectedModuleId} 
+                                            onChange={e => setSelectedModuleId(e.target.value)} 
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                            required
+                                        >
+                                            <option value="">-- Choose Module --</option>
+                                            {modules.map(m => (
+                                                <option key={m.id} value={m.id}>{m.moduleName} ({m.moduleCode || 'N/A'})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Description / Instructions</label>
+                                        <textarea 
+                                            value={sessionDescription} 
+                                            onChange={e => setSessionDescription(e.target.value)} 
+                                            className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 transition-colors min-h-[80px] resize-y" 
+                                            placeholder="Instructions for students..."
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Task File Attachment (Optional)</label>
+                                        <div 
+                                            onClick={() => document.getElementById('task-file-input').click()}
+                                            className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-4 text-center cursor-pointer bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-1"
+                                        >
+                                            <span className="text-xs font-bold text-slate-500">
+                                                {sessionTaskFile ? sessionTaskFile.name : 'Select or drop a Brief File (Optional)'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">Click to browse files</span>
+                                            <input 
+                                                id="task-file-input"
+                                                type="file" 
+                                                onChange={e => setSessionTaskFile(e.target.files[0])} 
+                                                className="hidden"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Opens *</label>
+                                            <input 
+                                                type="datetime-local" 
+                                                value={startTime} 
+                                                onChange={e => setStartTime(e.target.value)} 
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                required 
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Closes *</label>
+                                            <input 
+                                                type="datetime-local" 
+                                                value={endTime} 
+                                                onChange={e => setEndTime(e.target.value)} 
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                required 
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Action Bar */}
+                                    <div className="border-t border-slate-200 pt-4 mt-4 flex justify-end">
+                                        <button type="submit" className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg shadow-xs transition-colors">
+                                            Open Session Window
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    </div>
-                </>
-            )}
 
-            {/* Submission file list overlay/section */}
-            {activeSessionId && (
-                <div className="portal-card" style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-                        <h2 style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>Student Submissions Audit</h2>
-                        <button onClick={() => inspectSubmissions('')} className="signout-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 'bold' }}>Close Audit</button>
-                    </div>
+                        {/* Right Column: Active Data & Management (lg:col-span-5) */}
+                        <div className="lg:col-span-5 flex flex-col gap-6">
+                            {/* Step 2: My Assigned Modules */}
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">2. My Assigned Modules</h2>
+                                    <p className="text-xs text-slate-500">Manage course documents for each module.</p>
+                                </div>
+                                <div className="space-y-6">
+                                    {Array.from(new Set(modules.map(m => m.moduleType || 'CORE'))).map(type => {
+                                        const typeModules = modules.filter(m => (m.moduleType || 'CORE') === type);
+                                        if (typeModules.length === 0) return null;
+                                        return (
+                                            <div key={type} className="space-y-4">
+                                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-300 pb-2">
+                                                    {type} Modules
+                                                </h3>
+                                                <div className="space-y-4">
+                                                    {typeModules.map(m => (
+                                                        <div key={m.id} className="bg-slate-50/50 border border-slate-300 rounded-xl p-4 space-y-3">
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <h4 className="font-bold text-slate-800 text-sm leading-snug">{m.moduleName}</h4>
+                                                                <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                                                    Code: {m.moduleCode || 'N/A'}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            <div className="space-y-1.5">
+                                                                <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uploaded Files:</h5>
+                                                                {(!m.files || m.files.length === 0) ? (
+                                                                    <p className="text-xs text-rose-500 font-medium italic">No files uploaded yet.</p>
+                                                                ) : (
+                                                                    <div className="space-y-1.5">
+                                                                        {m.files.map(file => (
+                                                                            <div key={file.id} className="flex justify-between items-center bg-white border border-slate-300 p-2.5 rounded-lg text-xs hover:shadow-2xs transition-shadow">
+                                                                                <div className="space-y-0.5 pr-2 truncate">
+                                                                                    <span className="font-semibold text-slate-700 block truncate">{file.title || 'Untitled'}</span>
+                                                                                    <span className="text-[10px] text-slate-400 block truncate">{file.fileType} • {file.originalFilename}</span>
+                                                                                </div>
+                                                                                <a 
+                                                                                    href={file.filePath} 
+                                                                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-slate-50 border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-slate-100 transition-colors flex-shrink-0" 
+                                                                                    download
+                                                                                >
+                                                                                    Download
+                                                                                </a>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
 
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--card-border)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Student Name</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Student Number</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>File Name</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Uploaded At</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Status</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Grade & Feedback</th>
-                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {inspectedSubmissions.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No student files submitted for this session yet.</td>
-                                    </tr>
-                                ) : (
-                                    inspectedSubmissions.map(sub => (
-                                        <React.Fragment key={sub.submissionId}>
-                                            <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                                <td style={{ padding: '0.75rem' }}><strong>{sub.fullName || sub.learnerName || 'Student'}</strong></td>
-                                                <td style={{ padding: '0.75rem' }}>{sub.learnerCode || 'N/A'}</td>
-                                                <td style={{ padding: '0.75rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>{sub.originalFilename}</td>
-                                                <td style={{ padding: '0.75rem' }}>{new Date(sub.submittedAt).toLocaleString()}</td>
-                                                <td style={{ padding: '0.75rem' }}>
-                                                    <span className={`status-badge ${sub.status ? sub.status.toLowerCase() : 'submitted'}`}>
-                                                        {sub.status || 'SUBMITTED'}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '0.75rem' }}>
-                                                    {sub.status === 'GRADED' ? (
-                                                        <div>
-                                                            <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>Grade: {sub.grade}%</div>
-                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>{sub.feedback || 'No feedback provided.'}</div>
-                                                            {sub.gradedFilePath && (
-                                                                <div style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>
-                                                                    <a 
-                                                                        href="#" 
-                                                                        onClick={(e) => downloadSubmissionFile(e, sub.submissionId, sub.gradedOriginalFilename, true)} 
-                                                                        style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}
-                                                                    >
-                                                                        Graded File: {sub.gradedOriginalFilename}
-                                                                    </a>
-                                                                </div>
+                                                            {uploadingModuleId === m.id ? (
+                                                                <form onSubmit={(e) => handleUploadModuleFile(e, m.id)} className="space-y-3 p-3 bg-white border border-slate-300 rounded-xl">
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">File Title *</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={uploadFileTitle} 
+                                                                            onChange={e => setUploadFileTitle(e.target.value)} 
+                                                                            placeholder="e.g. Week 3 Lecture Slides" 
+                                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                                            required 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">File Category *</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={uploadFileType} 
+                                                                            onChange={e => setUploadFileType(e.target.value)} 
+                                                                            placeholder="e.g. Lecture Slides, Notes" 
+                                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
+                                                                            required 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Syllabus File *</label>
+                                                                        <input 
+                                                                            type="file" 
+                                                                            onChange={e => setUploadFile(e.target.files[0])} 
+                                                                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                                                                            required 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex gap-1.5 justify-end">
+                                                                        <button type="submit" className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg shadow-xs transition-colors">Upload File</button>
+                                                                        <button type="button" onClick={() => { setUploadingModuleId(null); setUploadFile(null); setUploadFileTitle(''); }} className="text-[10px] font-bold text-slate-500 bg-white border border-slate-300 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">Cancel</button>
+                                                                    </div>
+                                                                </form>
+                                                            ) : (
+                                                                <button 
+                                                                    onClick={() => { setUploadingModuleId(m.id); setUploadFileType(''); setUploadFileTitle(''); }} 
+                                                                    className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 py-2 rounded-lg text-center w-full block transition-colors shadow-2xs"
+                                                                >
+                                                                    Upload Module File
+                                                                </button>
                                                             )}
                                                         </div>
-                                                    ) : (
-                                                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Pending Grade</span>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                     <a 
-                                                         href="#" 
-                                                         onClick={(e) => downloadSubmissionFile(e, sub.submissionId, sub.originalFilename, false)} 
-                                                         style={{ color: 'var(--success)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' }}
-                                                     >
-                                                         Download
-                                                     </a>
-                                                    {gradingSubId !== sub.submissionId && (
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Step 4: Active Intake Windows */}
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">4. Active Intake Windows</h2>
+                                    <p className="text-xs text-slate-500">Manage ongoing submission slots.</p>
+                                </div>
+                                <div className="space-y-4">
+                                    {mySessions.length === 0 ? (
+                                        <p className="text-xs text-slate-500 text-center py-6">No submission sessions mapped to your modules.</p>
+                                    ) : (
+                                        mySessions.map(s => {
+                                            const closesAt = new Date(s.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                            return (
+                                                <div key={s.id} className="bg-slate-50/50 border border-slate-300 rounded-xl p-4 space-y-3 relative overflow-hidden">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="space-y-1">
+                                                            <h4 className="text-xs font-bold text-slate-800 leading-tight">{s.sessionName}</h4>
+                                                            <p className="text-[10px] text-slate-500">Assignment: <strong className="font-medium text-slate-700">{s.assignmentTitle || 'General'}</strong></p>
+                                                        </div>
+                                                        <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${
+                                                            s.status === 'CLOSED'
+                                                                ? 'bg-rose-50 text-rose-700 border-rose-200/60'
+                                                                : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                        }`}>
+                                                            {s.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-600 bg-white border border-slate-300 rounded-lg p-2 font-medium flex justify-between items-center">
+                                                        <span>⏰ Closes: <strong>{closesAt}</strong></span>
+                                                    </div>
+                                                    <div className="flex gap-2 pt-1">
                                                         <button 
-                                                            onClick={() => {
-                                                                setGradingSubId(sub.submissionId);
-                                                                setEditGrade(sub.grade !== null && sub.grade !== undefined ? sub.grade.toString() : '');
-                                                                setEditFeedback(sub.feedback || '');
-                                                            }}
-                                                            className="submit-btn"
-                                                            style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem', marginTop: 0, fontWeight: 'bold' }}
+                                                            onClick={() => toggleSessionClose(s.id, s.status === 'CLOSED')} 
+                                                            className={`font-medium text-[10px] py-1.5 px-3 rounded-lg border transition-colors flex-1 text-center ${
+                                                                s.status === 'CLOSED'
+                                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                                                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                                                            }`}
                                                         >
-                                                            {sub.status === 'GRADED' ? 'Edit' : 'Grade'}
+                                                            {s.status === 'CLOSED' ? 'Open' : 'Close'}
                                                         </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                            {gradingSubId === sub.submissionId && (
-                                                <tr style={{ background: '#f8fafc' }}>
-                                                    <td colSpan="7" style={{ padding: '1rem' }}>
-                                                        <form onSubmit={(e) => handleSaveGrade(e, sub.submissionId)} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                                                <div className="form-group" style={{ margin: 0, width: '120px' }}>
-                                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Grade (0-100) *</label>
-                                                                    <input 
-                                                                        type="number" 
-                                                                        value={editGrade} 
-                                                                        onChange={e => setEditGrade(e.target.value)} 
-                                                                        className="form-input" 
-                                                                        style={{ padding: '0.35rem' }}
-                                                                        min="0" 
-                                                                        max="100" 
-                                                                        required 
-                                                                    />
-                                                                </div>
-                                                                <div className="form-group" style={{ margin: 0, flex: 1 }}>
-                                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Feedback Comments</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={editFeedback} 
-                                                                        onChange={e => setEditFeedback(e.target.value)} 
-                                                                        className="form-input" 
-                                                                        style={{ padding: '0.35rem' }} 
-                                                                        placeholder="Add comments for the learner..." 
-                                                                    />
-                                                                </div>
-                                                                <div className="form-group" style={{ margin: 0, width: '220px' }}>
-                                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Returned File (optional)</label>
-                                                                    <input 
-                                                                        type="file" 
-                                                                        onChange={e => setMarkedFile(e.target.files[0])} 
-                                                                        style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} 
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'flex-end' }}>
-                                                                <button type="submit" className="submit-btn" style={{ width: 'auto', padding: '0.35rem 1rem', fontSize: '0.8rem', marginTop: 0 }}>Save Grade</button>
-                                                                <button type="button" onClick={() => setGradingSubId(null)} className="signout-btn" style={{ padding: '0.35rem 1rem', fontSize: '0.8rem' }}>Cancel</button>
-                                                            </div>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                                        <button 
+                                                            onClick={() => inspectSubmissions(s.id)} 
+                                                            className={`font-medium text-[10px] py-1.5 px-3 rounded-lg border transition-colors flex-1 text-center ${
+                                                                activeSessionId === s.id
+                                                                    ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                                                                    : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200/80'
+                                                            }`}
+                                                        >
+                                                            Inspect Files
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* Submission file list overlay/section */}
+                {activeSessionId && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 mt-8 space-y-6">
+                        <div className="flex justify-between items-center border-b border-slate-300 pb-3">
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-bold text-slate-900">Student Submissions Audit</h2>
+                                <p className="text-xs text-slate-500">Grade student work, download submitted files, and add feedback comments.</p>
+                            </div>
+                            <button 
+                                onClick={() => inspectSubmissions('')} 
+                                className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-lg transition-colors"
+                            >
+                                Close Audit
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {inspectedSubmissions.length === 0 ? (
+                                <p className="text-xs text-slate-500 text-center py-6">No student files submitted for this session yet.</p>
+                            ) : (
+                                inspectedSubmissions.map(sub => (
+                                    <div key={sub.submissionId} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-4 space-y-4 bg-slate-50/10 hover:border-slate-300">
+                                        <div className="flex justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
+                                            <div className="space-y-1 min-w-0 flex-1">
+                                                <h4 className="text-sm font-bold text-slate-800 truncate">{sub.fullName || sub.learnerName || 'Student'}</h4>
+                                                <p className="text-xs font-semibold text-slate-500">Student Number: <span className="text-slate-700">{sub.learnerCode || 'N/A'}</span></p>
+                                                <p className="text-xs text-blue-600 font-bold break-all">File: {sub.originalFilename}</p>
+                                                <p className="text-[10px] text-slate-400">Uploaded: {new Date(sub.submittedAt).toLocaleString()}</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${
+                                                    sub.status === 'GRADED'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                        : 'bg-blue-50 text-blue-700 border-blue-200/60'
+                                                }`}>
+                                                    {sub.status || 'SUBMITTED'}
+                                                </span>
+                                                {sub.status === 'GRADED' && (
+                                                    <span className="text-sm font-bold text-emerald-600">Grade: {sub.grade}%</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {sub.status === 'GRADED' && (
+                                            <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 space-y-2">
+                                                <p className="font-semibold italic">Feedback: "{sub.feedback || 'No comments provided.'}"</p>
+                                                {sub.gradedFilePath && (
+                                                    <div className="pt-1.5 border-t border-slate-300 flex items-center justify-between">
+                                                        <span className="text-[10px] text-slate-400">Returned marked file: {sub.gradedOriginalFilename}</span>
+                                                        <a 
+                                                            href="#" 
+                                                            onClick={(e) => downloadSubmissionFile(e, sub.submissionId, sub.gradedOriginalFilename, true)} 
+                                                            className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900"
+                                                        >
+                                                            Download Marked File
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <a 
+                                                href="#" 
+                                                onClick={(e) => downloadSubmissionFile(e, sub.submissionId, sub.originalFilename, false)} 
+                                                className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                            >
+                                                Download Student File
+                                            </a>
+                                            {gradingSubId !== sub.submissionId && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setGradingSubId(sub.submissionId);
+                                                        setEditGrade(sub.grade !== null && sub.grade !== undefined ? sub.grade.toString() : '');
+                                                        setEditFeedback(sub.feedback || '');
+                                                    }}
+                                                    className="bg-blue-50 border border-blue-200 hover:bg-blue-100/80 text-blue-700 font-medium text-xs py-2 px-3.5 rounded-lg transition-colors"
+                                                >
+                                                    {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade Submission'}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {gradingSubId === sub.submissionId && (
+                                            <form onSubmit={(e) => handleSaveGrade(e, sub.submissionId)} className="bg-slate-50/50 border border-slate-200 rounded-xl p-4 space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Grade (0-100) *</label>
+                                                        <input 
+                                                            type="number" 
+                                                            value={editGrade} 
+                                                            onChange={e => setEditGrade(e.target.value)} 
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                                            min="0" 
+                                                            max="100" 
+                                                            required 
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5 md:col-span-2">
+                                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Feedback Comments</label>
+                                                        <input 
+                                                            type="text" 
+                                                            value={editFeedback} 
+                                                            onChange={e => setEditFeedback(e.target.value)} 
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                                            placeholder="e.g. Excellent presentation of analytical models." 
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Return Graded File (Optional)</label>
+                                                    <input 
+                                                        type="file" 
+                                                        onChange={e => setMarkedFile(e.target.files[0])} 
+                                                        className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                                                    />
+                                                </div>
+
+                                                <div className="flex justify-end gap-2">
+                                                    <button 
+                                                        type="submit" 
+                                                        className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150"
+                                                    >
+                                                        Save Grade
+                                                    </button>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setGradingSubId(null)} 
+                                                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-500 font-medium text-xs py-2 px-4 rounded-lg transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

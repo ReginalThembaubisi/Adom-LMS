@@ -108,26 +108,30 @@ const Register = () => {
     };
 
     return (
-        <div className="landing-container">
-            <div className="landing-card" style={{ maxWidth: '550px' }}>
-                <div className="landing-header">
-                    <h2>New Student Registration</h2>
+        <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased flex flex-col justify-center items-center p-4 relative overflow-hidden">
+            {/* Ambient background blobs */}
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
+
+            <div className="max-w-xl w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
+                <div className="text-center space-y-1">
+                    <h2 className="text-xl font-extrabold text-slate-900">New Student Registration</h2>
                     {!registrationOpen ? (
-                        <p style={{ color: 'var(--error)', fontWeight: 'bold' }}>Registration is currently closed by the administrator.</p>
+                        <p className="text-xs font-bold text-rose-600">Registration is currently closed by the administrator.</p>
                     ) : (
-                        <p>Provide your personal details to register and receive a Student Number</p>
+                        <p className="text-xs text-slate-500">Provide your personal details to register and receive a Student Number</p>
                     )}
                 </div>
 
                 {!registrationOpen ? (
-                    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontWeight: 'bold' }}>
+                    <div className="text-center py-6 space-y-4">
+                        <p className="text-sm font-semibold text-slate-600 leading-relaxed">
                             We are not accepting new student registrations at this time. Please contact your system administrator or facilitator for assistance.
                         </p>
                         <button 
                             onClick={() => navigate('/')} 
-                            className="submit-btn"
-                            style={{ fontWeight: 'bold' }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150"
                         >
                             Back to Entry
                         </button>
@@ -135,152 +139,157 @@ const Register = () => {
                 ) : (
                     <>
                         {error && (
-                            <div className="alert-banner error" style={{ display: 'block', marginBottom: '1.25rem', fontWeight: 'bold' }}>
+                            <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-rose-50 border-rose-200 text-rose-800 text-center">
                                 {error}
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="student-login-form" style={{ gap: '1rem' }}>
-                    <div className="form-group">
-                        <label>Full Name *</label>
-                        <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => {
-                                setFullName(e.target.value);
-                                if (fieldErrors.fullName) setFieldErrors(prev => ({ ...prev, fullName: null }));
-                            }}
-                            className="form-input"
-                            required
-                            placeholder="e.g. Sipho Ndlovu"
-                            disabled={loading}
-                        />
-                        {fieldErrors.fullName && <span style={{ color: 'var(--error)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block', fontWeight: 'bold' }}>{fieldErrors.fullName}</span>}
-                    </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Full Name *</label>
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => {
+                                            setFullName(e.target.value);
+                                            if (fieldErrors.fullName) setFieldErrors(prev => ({ ...prev, fullName: null }));
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        required
+                                        placeholder="e.g. Sipho Ndlovu"
+                                        disabled={loading}
+                                    />
+                                    {fieldErrors.fullName && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.fullName}</span>}
+                                </div>
 
-                    <div className="form-group">
-                        <label>Email Address</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => {
-                                setEmail(e.target.value);
-                                if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: null }));
-                            }}
-                            className="form-input"
-                            placeholder="e.g. sipho@example.com"
-                            disabled={loading}
-                        />
-                        {fieldErrors.email && <span style={{ color: 'var(--error)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block', fontWeight: 'bold' }}>{fieldErrors.email}</span>}
-                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => {
+                                            setEmail(e.target.value);
+                                            if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: null }));
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        placeholder="e.g. sipho@example.com"
+                                        disabled={loading}
+                                    />
+                                    {fieldErrors.email && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.email}</span>}
+                                </div>
+                            </div>
 
-                    <div className="form-group">
-                        <label>ID / Passport Number</label>
-                        <input
-                            type="text"
-                            value={idNumber}
-                            onChange={(e) => setIdNumber(e.target.value)}
-                            className="form-input"
-                            placeholder="e.g. 9801155029087"
-                            disabled={loading}
-                        />
-                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">ID / Passport Number</label>
+                                    <input
+                                        type="text"
+                                        value={idNumber}
+                                        onChange={(e) => setIdNumber(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        placeholder="e.g. 9801155029087"
+                                        disabled={loading}
+                                    />
+                                </div>
 
-                    <div className="form-group">
-                        <label>Phone Number</label>
-                        <input
-                            type="text"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            className="form-input"
-                            placeholder="e.g. +27821234567"
-                            disabled={loading}
-                        />
-                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Phone Number</label>
+                                    <input
+                                        type="text"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        placeholder="e.g. +27821234567"
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="form-group">
-                        <label>Learnership Qualification *</label>
-                        <select
-                            value={learnershipId}
-                            onChange={(e) => setLearnershipId(e.target.value)}
-                            className="form-input"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)' }}
-                            disabled={loading}
-                            required
-                        >
-                            <option value="">-- Select Learnership --</option>
-                            {learnerships.map(l => (
-                                <option key={l.id} value={l.id}>{l.name} ({l.qualificationCode || 'No Code'})</option>
-                            ))}
-                        </select>
-                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Learnership Qualification *</label>
+                                    <select
+                                        value={learnershipId}
+                                        onChange={(e) => setLearnershipId(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        disabled={loading}
+                                        required
+                                    >
+                                        <option value="">-- Select Learnership --</option>
+                                        {learnerships.map(l => (
+                                            <option key={l.id} value={l.id}>{l.name} ({l.qualificationCode || 'No Code'})</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                    <div className="form-group">
-                        <label>Intake Cohort</label>
-                        <select
-                            value={cohort}
-                            onChange={(e) => setCohort(e.target.value)}
-                            className="form-input"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)' }}
-                            disabled={loading}
-                        >
-                            <option value="2026 Intake A">2026 Intake A</option>
-                            <option value="2026 Intake B">2026 Intake B</option>
-                        </select>
-                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Intake Cohort</label>
+                                    <select
+                                        value={cohort}
+                                        onChange={(e) => setCohort(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        disabled={loading}
+                                    >
+                                        <option value="2026 Intake A">2026 Intake A</option>
+                                        <option value="2026 Intake B">2026 Intake B</option>
+                                    </select>
+                                </div>
+                            </div>
 
-                    <div className="form-group">
-                        <label>Password *</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: null }));
-                            }}
-                            className="form-input"
-                            required
-                            placeholder="••••••••"
-                            disabled={loading}
-                        />
-                        {fieldErrors.password && <span style={{ color: 'var(--error)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block', fontWeight: 'bold' }}>{fieldErrors.password}</span>}
-                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Password *</label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => {
+                                            setPassword(e.target.value);
+                                            if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: null }));
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        required
+                                        placeholder="••••••••"
+                                        disabled={loading}
+                                    />
+                                    {fieldErrors.password && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.password}</span>}
+                                </div>
 
-                    <div className="form-group">
-                        <label>Confirm Password *</label>
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => {
-                                setConfirmPassword(e.target.value);
-                                if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: null }));
-                            }}
-                            className="form-input"
-                            required
-                            placeholder="••••••••"
-                            disabled={loading}
-                        />
-                        {fieldErrors.confirmPassword && <span style={{ color: 'var(--error)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block', fontWeight: 'bold' }}>{fieldErrors.confirmPassword}</span>}
-                    </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Confirm Password *</label>
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => {
+                                            setConfirmPassword(e.target.value);
+                                            if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: null }));
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        required
+                                        placeholder="••••••••"
+                                        disabled={loading}
+                                    />
+                                    {fieldErrors.confirmPassword && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.confirmPassword}</span>}
+                                </div>
+                            </div>
 
-                    <button 
-                        type="submit" 
-                        className="submit-btn" 
-                        disabled={loading}
-                        style={{ marginTop: '0.75rem', fontWeight: 'bold' }}
-                    >
-                        {loading ? 'Registering...' : 'Register & Log In'}
-                    </button>
-                </form>
+                            <button 
+                                type="submit" 
+                                className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150"
+                                disabled={loading}
+                            >
+                                {loading ? 'Registering...' : 'Register & Log In'}
+                            </button>
+                        </form>
                     </>
                 )}
 
-                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                <div className="text-center pt-2 border-t border-slate-100">
                     <button 
                         onClick={() => navigate('/')} 
-                        style={{ background: 'transparent', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-1 mt-4 w-full"
                     >
-                        Back to Entry
+                        ← Back to Main Entry
                     </button>
                 </div>
             </div>
