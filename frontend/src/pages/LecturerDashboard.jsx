@@ -414,15 +414,6 @@ const LecturerDashboard = () => {
                     </div>
                 )}
 
-                {modules.length === 0 ? (
-                    /* Prominent "Create your first module to get started" welcome message */
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-8 text-center max-w-xl mx-auto space-y-4">
-                        <h2 className="text-xl font-bold text-slate-900">Create your first module to get started</h2>
-                        <p className="text-sm text-slate-500 leading-relaxed">
-                            Once you register your first module above under an assigned category, you'll be able to upload learning materials (Syllabus, Slides, Guides) and schedule submission sessions for your students.
-                        </p>
-                    </div>
-                ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                         {/* Left Column: Action Forms (lg:col-span-7) */}
                         <div className="lg:col-span-7 flex flex-col gap-6">
@@ -482,7 +473,12 @@ const LecturerDashboard = () => {
                                     <h2 className="text-lg font-bold text-slate-900">3. Schedule Intake Session</h2>
                                     <p className="text-xs text-slate-500">Open a timing slot where students can upload files for their module assignments.</p>
                                 </div>
-                                <form onSubmit={handleCreateSession} className="bg-slate-50/50 p-5 rounded-xl border border-slate-200/60 space-y-4">
+                                {modules.length === 0 ? (
+                                    <div className="bg-slate-50/50 p-5 rounded-xl border border-slate-200/60 text-center py-8 text-xs text-slate-500 font-medium">
+                                        Create a module first using the form above to schedule intake sessions.
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleCreateSession} className="bg-slate-50/50 p-5 rounded-xl border border-slate-200/60 space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Session Name *</label>
                                         <input 
@@ -565,6 +561,7 @@ const LecturerDashboard = () => {
                                         </button>
                                     </div>
                                 </form>
+                                )}
                             </div>
                         </div>
 
@@ -577,7 +574,9 @@ const LecturerDashboard = () => {
                                     <p className="text-xs text-slate-500">Manage course documents for each module.</p>
                                 </div>
                                 <div className="space-y-6">
-                                    {Array.from(new Set(modules.map(m => m.moduleType || 'CORE'))).map(type => {
+                                    {modules.length === 0 ? (
+                                        <p className="text-xs text-slate-500 text-center py-6 font-medium">You have no modules created yet.</p>
+                                    ) : Array.from(new Set(modules.map(m => m.moduleType || 'CORE'))).map(type => {
                                         const typeModules = modules.filter(m => (m.moduleType || 'CORE') === type);
                                         if (typeModules.length === 0) return null;
                                         return (
@@ -735,7 +734,6 @@ const LecturerDashboard = () => {
                             </div>
                         </div>
                     </div>
-                )}
 
                 {/* Submission file list overlay/section */}
                 {activeSessionId && (
