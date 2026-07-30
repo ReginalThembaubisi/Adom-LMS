@@ -414,4 +414,98 @@ public class LecturerController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PutMapping("/modules/{id}")
+    public ResponseEntity<?> updateModule(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateModuleRequest request,
+            Authentication auth) {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        Module module = moduleRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Module not found"));
+
+        if (module.getCategory() == null || module.getCategory().getLecturer() == null ||
+            !module.getCategory().getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not own this module");
+        }
+
+        if (request.getCategoryId() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Category ID is required");
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Category not found"));
+
+        if (category.getLecturer() == null || !category.getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You are not assigned to this category");
+        }
+
+        module.setModuleName(request.getModuleName());
+        module.setModuleCode(request.getModuleCode());
+        module.setCategory(category);
+        Module saved = moduleRepository.save(module);
+
+        AdminModuleResponse response = AdminModuleResponse.builder()
+                .id(saved.getId())
+                .moduleName(saved.getModuleName())
+                .moduleCode(saved.getModuleCode())
+                .lecturerId(lecturer.getId())
+                .lecturerName(lecturer.getFullName())
+                .filePath(saved.getFilePath())
+                .moduleType(category.getCategoryType())
+                .files(saved.getFiles() != null ? saved.getFiles().stream()
+                        .map(f -> com.example.learnerassignments.dto.ModuleFileDto.builder()
+                                .id(f.getId())
+                                .title(f.getTitle())
+                                .filePath(f.getFilePath())
+                                .originalFilename(f.getOriginalFilename())
+                                .fileType(f.getFileType())
+                                .build())
+                        .collect(Collectors.toList()) : java.util.Collections.emptyList())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/modules/{id}")
+    public ResponseEntity<?> deleteModule(@PathVariable Long id, Authentication auth) {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        Module module = moduleRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Module not found"));
+
+        if (module.getCategory() == null || module.getCategory().getLecturer() == null ||
+            !module.getCategory().getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not own this module");
+        }
+
+        moduleRepository.delete(module);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/files/{id}")
+    public ResponseEntity<?> deleteModuleFile(@PathVariable Long id, Authentication auth) {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        ModuleFile file = moduleFileRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("File not found"));
+
+        Module module = file.getModule();
+        if (module == null || module.getCategory() == null || module.getCategory().getLecturer() == null ||
+            !module.getCategory().getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not own the module this file belongs to");
+        }
+
+        // Delete physical file on disk if it exists
+        if (file.getFilePath() != null) {
+            try {
+                String relativePath = file.getFilePath().startsWith("/") ? file.getFilePath().substring(1) : file.getFilePath();
+                Path path = Paths.get(relativePath);
+                Files.deleteIfExists(path);
+            } catch (Exception e) {
+                // Log and continue, do not block database delete if file delete fails
+            }
+        }
+
+        moduleFileRepository.delete(file);
+        return ResponseEntity.ok().build();
+    }
 }

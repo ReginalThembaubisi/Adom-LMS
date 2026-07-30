@@ -28,6 +28,12 @@ const LecturerDashboard = () => {
     const [moduleCode, setModuleCode] = useState('');
     const [categoryId, setCategoryId] = useState('');
 
+    // Module Edit form
+    const [editingModuleId, setEditingModuleId] = useState(null);
+    const [editModuleName, setEditModuleName] = useState('');
+    const [editModuleCode, setEditModuleCode] = useState('');
+    const [editCategoryId, setEditCategoryId] = useState('');
+
     // Syllabus file upload
     const [uploadingModuleId, setUploadingModuleId] = useState(null);
     const [uploadFile, setUploadFile] = useState(null);
@@ -159,6 +165,86 @@ const LecturerDashboard = () => {
             }
         } catch (err) {
             showMsg('error', 'Connection failed.');
+        }
+    };
+
+    const startEditModule = (m) => {
+        setEditingModuleId(m.id);
+        setEditModuleName(m.moduleName);
+        setEditModuleCode(m.moduleCode || '');
+        const cat = categories.find(c => c.categoryType === m.moduleType);
+        setEditCategoryId(cat ? cat.id.toString() : '');
+    };
+
+    const handleUpdateModule = async (e, moduleId) => {
+        e.preventDefault();
+        if (!editModuleName.trim()) return;
+        try {
+            const res = await fetch(`/api/lecturer/modules/${moduleId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({
+                    moduleName: editModuleName,
+                    moduleCode: editModuleCode,
+                    categoryId: editCategoryId ? parseInt(editCategoryId) : null
+                })
+            });
+            if (!checkAuthResponse(res)) return;
+
+            if (res.ok) {
+                showMsg('success', 'Module updated successfully!');
+                setEditingModuleId(null);
+                fetchModules();
+            } else {
+                const text = await res.text();
+                showMsg('error', text || 'Failed to update module.');
+            }
+        } catch (err) {
+            showMsg('error', 'Connection error.');
+        }
+    };
+
+    const handleDeleteModule = async (moduleId) => {
+        if (!window.confirm("Are you sure you want to delete this module? This will also delete all files uploaded to it and cannot be undone.")) return;
+        try {
+            const res = await fetch(`/api/lecturer/modules/${moduleId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+
+            if (res.ok) {
+                showMsg('success', 'Module deleted successfully!');
+                fetchModules();
+            } else {
+                const text = await res.text();
+                showMsg('error', text || 'Failed to delete module.');
+            }
+        } catch (err) {
+            showMsg('error', 'Connection error.');
+        }
+    };
+
+    const handleDeleteFile = async (fileId) => {
+        if (!window.confirm("Are you sure you want to delete this file? This action cannot be undone.")) return;
+        try {
+            const res = await fetch(`/api/lecturer/files/${fileId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+
+            if (res.ok) {
+                showMsg('success', 'File deleted successfully!');
+                fetchModules();
+            } else {
+                showMsg('error', 'Failed to delete file.');
+            }
+        } catch (err) {
+            showMsg('error', 'Connection error.');
         }
     };
 
@@ -587,37 +673,107 @@ const LecturerDashboard = () => {
                                                 <div className="space-y-4">
                                                     {typeModules.map(m => (
                                                         <div key={m.id} className="bg-slate-50/50 border border-slate-300 rounded-xl p-4 space-y-3">
-                                                            <div className="flex justify-between items-start gap-2">
-                                                                <h4 className="font-bold text-slate-800 text-sm leading-snug">{m.moduleName}</h4>
-                                                                <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
-                                                                    Code: {m.moduleCode || 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            <div className="space-y-1.5">
-                                                                <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uploaded Files:</h5>
-                                                                {(!m.files || m.files.length === 0) ? (
-                                                                    <p className="text-xs text-rose-500 font-medium italic">No files uploaded yet.</p>
-                                                                ) : (
-                                                                    <div className="space-y-1.5">
-                                                                        {m.files.map(file => (
-                                                                            <div key={file.id} className="flex justify-between items-center bg-white border border-slate-300 p-2.5 rounded-lg text-xs hover:shadow-2xs transition-shadow">
-                                                                                <div className="space-y-0.5 pr-2 truncate">
-                                                                                    <span className="font-semibold text-slate-700 block truncate">{file.title || 'Untitled'}</span>
-                                                                                    <span className="text-[10px] text-slate-400 block truncate">{file.fileType} • {file.originalFilename}</span>
-                                                                                </div>
-                                                                                <a 
-                                                                                    href={file.filePath} 
-                                                                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-slate-50 border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-slate-100 transition-colors flex-shrink-0" 
-                                                                                    download
-                                                                                >
-                                                                                    Download
-                                                                                </a>
-                                                                            </div>
-                                                                        ))}
+                                                            {editingModuleId === m.id ? (
+                                                                <form onSubmit={(e) => handleUpdateModule(e, m.id)} className="space-y-3 p-3 bg-white border border-slate-200 rounded-xl w-full">
+                                                                    <div className="space-y-2">
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Module Name *</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={editModuleName}
+                                                                                onChange={e => setEditModuleName(e.target.value)}
+                                                                                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                                                                required
+                                                                            />
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Module Code</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={editModuleCode}
+                                                                                onChange={e => setEditModuleCode(e.target.value)}
+                                                                                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                                                            />
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Category *</label>
+                                                                            <select
+                                                                                value={editCategoryId}
+                                                                                onChange={e => setEditCategoryId(e.target.value)}
+                                                                                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                                                                required
+                                                                            >
+                                                                                <option value="">-- Choose Category --</option>
+                                                                                {categories.map(c => (
+                                                                                    <option key={c.id} value={c.id}>{c.categoryType}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                            </div>
+                                                                    <div className="flex gap-1.5 justify-end">
+                                                                        <button type="submit" className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg shadow-xs transition-colors">Save</button>
+                                                                        <button type="button" onClick={() => setEditingModuleId(null)} className="text-[10px] font-bold text-slate-500 bg-white border border-slate-300 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">Cancel</button>
+                                                                    </div>
+                                                                </form>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="flex justify-between items-start gap-2">
+                                                                        <div className="space-y-1 pr-2">
+                                                                            <h4 className="font-bold text-slate-800 text-sm leading-snug">{m.moduleName}</h4>
+                                                                            <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] inline-block">
+                                                                                Code: {m.moduleCode || 'N/A'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex gap-1 flex-shrink-0">
+                                                                            <button 
+                                                                                onClick={() => startEditModule(m)} 
+                                                                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-slate-50 transition-all"
+                                                                            >
+                                                                                Edit
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => handleDeleteModule(m.id)} 
+                                                                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 bg-white border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-slate-50 transition-all"
+                                                                            >
+                                                                                Delete
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="space-y-1.5">
+                                                                        <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uploaded Files:</h5>
+                                                                        {(!m.files || m.files.length === 0) ? (
+                                                                            <p className="text-xs text-rose-500 font-medium italic">No files uploaded yet.</p>
+                                                                        ) : (
+                                                                            <div className="space-y-1.5">
+                                                                                {m.files.map(file => (
+                                                                                    <div key={file.id} className="flex justify-between items-center bg-white border border-slate-300 p-2.5 rounded-lg text-xs hover:shadow-2xs transition-shadow">
+                                                                                        <div className="space-y-0.5 pr-2 truncate">
+                                                                                            <span className="font-semibold text-slate-700 block truncate">{file.title || 'Untitled'}</span>
+                                                                                            <span className="text-[10px] text-slate-400 block truncate">{file.fileType} • {file.originalFilename}</span>
+                                                                                        </div>
+                                                                                        <div className="flex gap-1.5 items-center flex-shrink-0">
+                                                                                            <a 
+                                                                                                href={file.filePath} 
+                                                                                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-slate-50 border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-slate-100 transition-colors" 
+                                                                                                download
+                                                                                            >
+                                                                                                Download
+                                                                                            </a>
+                                                                                            <button 
+                                                                                                onClick={() => handleDeleteFile(file.id)} 
+                                                                                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 bg-slate-50 border border-slate-300 px-2 py-1 rounded shadow-2xs hover:bg-rose-100 transition-colors"
+                                                                                            >
+                                                                                                Delete
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            )}
 
                                                             {uploadingModuleId === m.id ? (
                                                                 <form onSubmit={(e) => handleUploadModuleFile(e, m.id)} className="space-y-3 p-3 bg-white border border-slate-300 rounded-xl">
