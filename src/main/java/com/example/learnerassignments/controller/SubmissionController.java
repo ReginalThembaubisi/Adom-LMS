@@ -66,19 +66,24 @@ public class SubmissionController {
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> downloadSubmissionFile(
+    public ResponseEntity<?> downloadSubmissionFile(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
             Authentication auth) {
         
-        Map.Entry<Submission, Resource> entry = submissionService.loadSubmissionResource(id);
-        Submission submission = entry.getKey();
-        Resource resource = entry.getValue();
-
+        Submission submission = submissionService.getSubmission(id);
         if (!checkAccess(submission, learnerCode, auth)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
+        String pathStr = submission.getFilePath();
+        if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, pathStr)
+                    .build();
+        }
+
+        Resource resource = submissionService.loadLocalResource(pathStr);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + submission.getOriginalFilename() + "\"")
@@ -86,14 +91,12 @@ public class SubmissionController {
     }
 
     @GetMapping("/{id}/graded-download")
-    public ResponseEntity<Resource> downloadGradedSubmissionFile(
+    public ResponseEntity<?> downloadGradedSubmissionFile(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
             Authentication auth) throws IOException {
         
-        Map.Entry<Submission, Resource> entry = submissionService.loadSubmissionResource(id);
-        Submission submission = entry.getKey();
-
+        Submission submission = submissionService.getSubmission(id);
         if (!checkAccess(submission, learnerCode, auth)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -103,6 +106,12 @@ public class SubmissionController {
         }
 
         String pathStr = submission.getGradedFilePath();
+        if (pathStr.startsWith("http://") || pathStr.startsWith("https://")) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, pathStr)
+                    .build();
+        }
+
         if (pathStr.startsWith("/")) {
             pathStr = pathStr.substring(1);
         }

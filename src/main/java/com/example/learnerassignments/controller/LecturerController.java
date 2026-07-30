@@ -6,6 +6,7 @@ import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.*;
 import com.example.learnerassignments.service.SubmissionSessionService;
 import com.example.learnerassignments.service.SubmissionService;
+import com.example.learnerassignments.service.CloudinaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,7 @@ public class LecturerController {
     private final ModuleFileRepository moduleFileRepository;
     private final SubmissionSessionService sessionService;
     private final SubmissionService submissionService;
+    private final CloudinaryService cloudinaryService;
 
     private static final String UPLOAD_DIR = "uploads/";
 
@@ -115,21 +117,26 @@ public class LecturerController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        // Save file
-        File dir = new File(UPLOAD_DIR);
-        if (!dir.exists()) dir.mkdirs();
+        // Save file (Cloudinary if configured, otherwise local disk fallback)
+        String fileUrl;
+        if (cloudinaryService.isConfigured()) {
+            fileUrl = cloudinaryService.uploadFile(file);
+        } else {
+            File dir = new File(UPLOAD_DIR);
+            if (!dir.exists()) dir.mkdirs();
 
-        String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
-        Files.copy(file.getInputStream(), filePath);
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
+            Files.copy(file.getInputStream(), filePath);
 
-        String relativePath = "/" + UPLOAD_DIR + uniqueFilename;
+            fileUrl = "/" + UPLOAD_DIR + uniqueFilename;
+        }
 
         // Save new ModuleFile record
         ModuleFile moduleFile = ModuleFile.builder()
                 .module(module)
                 .title(title)
-                .filePath(relativePath)
+                .filePath(fileUrl)
                 .originalFilename(file.getOriginalFilename())
                 .fileType(fileType)
                 .build();
@@ -137,7 +144,7 @@ public class LecturerController {
 
         // Keep updating legacy filePath for "Syllabus" files
         if ("Syllabus".equalsIgnoreCase(fileType)) {
-            module.setFilePath(relativePath);
+            module.setFilePath(fileUrl);
             moduleRepository.save(module);
         }
 
@@ -200,14 +207,18 @@ public class LecturerController {
         String relativePath = null;
         String originalFilename = null;
         if (file != null && !file.isEmpty()) {
-            File dir = new File(UPLOAD_DIR);
-            if (!dir.exists()) dir.mkdirs();
+            if (cloudinaryService.isConfigured()) {
+                relativePath = cloudinaryService.uploadFile(file);
+            } else {
+                File dir = new File(UPLOAD_DIR);
+                if (!dir.exists()) dir.mkdirs();
 
-            String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
-            Files.copy(file.getInputStream(), filePath);
+                String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
+                Files.copy(file.getInputStream(), filePath);
 
-            relativePath = "/" + UPLOAD_DIR + uniqueFilename;
+                relativePath = "/" + UPLOAD_DIR + uniqueFilename;
+            }
             originalFilename = file.getOriginalFilename();
         }
 
@@ -327,14 +338,21 @@ public class LecturerController {
 
         // Handle optional marked-up file upload
         if (file != null && !file.isEmpty()) {
-            File dir = new File(UPLOAD_DIR);
-            if (!dir.exists()) dir.mkdirs();
+            String gradedUrl;
+            if (cloudinaryService.isConfigured()) {
+                gradedUrl = cloudinaryService.uploadFile(file);
+            } else {
+                File dir = new File(UPLOAD_DIR);
+                if (!dir.exists()) dir.mkdirs();
 
-            String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
-            Files.copy(file.getInputStream(), filePath);
+                String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
+                Files.copy(file.getInputStream(), filePath);
 
-            submission.setGradedFilePath("/" + UPLOAD_DIR + uniqueFilename);
+                gradedUrl = "/" + UPLOAD_DIR + uniqueFilename;
+            }
+
+            submission.setGradedFilePath(gradedUrl);
             submission.setGradedOriginalFilename(file.getOriginalFilename());
         }
 

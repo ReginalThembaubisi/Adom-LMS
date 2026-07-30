@@ -8,6 +8,7 @@ import com.example.learnerassignments.repository.AssignmentRepository;
 import com.example.learnerassignments.repository.LearnerRepository;
 import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.repository.SubmissionSessionRepository;
+import com.example.learnerassignments.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -33,6 +34,7 @@ public class SubmissionService {
     private final SubmissionSessionRepository sessionRepository;
     private final LearnerRepository learnerRepository;
     private final AssignmentRepository assignmentRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -70,21 +72,29 @@ public class SubmissionService {
             throw new InvalidFileException("Invalid file format. Only PDF, DOC, and DOCX files are accepted.");
         }
 
-        // 5. Save File to Disk
-        String storedFilename = String.format("%s_%d_%s", learnerCode, sessionId, originalFilename);
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-
-        try {
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
+        // 5. Save File (Cloudinary if configured, otherwise local disk fallback)
+        String filePathString;
+        if (cloudinaryService.isConfigured()) {
+            try {
+                filePathString = cloudinaryService.uploadFile(file);
+            } catch (IOException e) {
+                throw new RuntimeException("Could not upload file to Cloudinary. Please try again!", e);
             }
-
-            Path targetLocation = uploadPath.resolve(storedFilename);
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        } else {
+            String storedFilename = String.format("%s_%d_%s", learnerCode, sessionId, originalFilename);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            try {
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+                Path targetLocation = uploadPath.resolve(storedFilename);
+                try (InputStream inputStream = file.getInputStream()) {
+                    Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+                }
+                filePathString = targetLocation.toString();
+            } catch (IOException e) {
+                throw new RuntimeException("Could not store file " + storedFilename + ". Please try again!", e);
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Could not store file " + storedFilename + ". Please try again!", e);
         }
 
         // 6. Calculate Submission Status (LATE if after assignment due date)
@@ -97,7 +107,7 @@ public class SubmissionService {
         Submission submission = Submission.builder()
                 .learner(learner)
                 .session(session)
-                .filePath(uploadPath.resolve(storedFilename).toString())
+                .filePath(filePathString)
                 .originalFilename(originalFilename)
                 .submittedAt(now)
                 .status(status)
@@ -281,6 +291,26 @@ public class SubmissionService {
             }
         } catch (MalformedURLException ex) {
             throw new ResourceNotFoundException("File path invalid for submission id: " + submissionId);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Submission getSubmission(Long id) {
+        return submissionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + id));
+    }
+
+    public Resource loadLocalResource(String pathStr) {
+        try {
+            Path path = Paths.get(pathStr).normalize();
+            Resource resource = new UrlResource(path.toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return resource;
+            } else {
+                throw new ResourceNotFoundException("Could not read file at path: " + pathStr);
+            }
+        } catch (MalformedURLException ex) {
+            throw new ResourceNotFoundException("Invalid file path: " + pathStr);
         }
     }
 
