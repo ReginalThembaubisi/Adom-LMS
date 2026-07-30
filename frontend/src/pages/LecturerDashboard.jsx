@@ -728,7 +728,7 @@ const LecturerDashboard = () => {
                                                                 <>
                                                                     <div className="flex justify-between items-start gap-2">
                                                                         <div className="space-y-1 pr-2">
-                                                                            <h4 className="font-bold text-slate-800 text-sm leading-snug">{m.moduleName}</h4>
+                                                                            <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2" title={m.moduleName}>{m.moduleName}</h4>
                                                                             <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] inline-block">
                                                                                 Code: {m.moduleCode || 'N/A'}
                                                                             </span>

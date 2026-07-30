@@ -392,7 +392,7 @@ const StudentPortal = () => {
                                                                 >
                                                                     <div className="space-y-3">
                                                                         <div className="flex justify-between items-start gap-2">
-                                                                            <span className="font-bold text-slate-800 text-lg block leading-snug">{m.moduleName}</span>
+                                                                            <span className="font-bold text-slate-800 text-base block leading-snug line-clamp-2" title={m.moduleName}>{m.moduleName}</span>
                                                                             <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
                                                                                 Code: {m.moduleCode || 'N/A'}
                                                                             </span>
