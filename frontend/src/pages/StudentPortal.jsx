@@ -255,7 +255,7 @@ const StudentPortal = () => {
                             </span>
                         </div>
                         <div className="text-xs text-slate-500 font-semibold sm:text-right">
-                            Faculty: <span className="text-slate-800 font-bold">{selectedModule.lecturerName || 'Unassigned'}</span>
+                            Facilitator: <span className="text-slate-800 font-bold">{selectedModule.lecturerName || 'Unassigned'}</span>
                         </div>
                     </div>
                 ) : (
@@ -399,7 +399,7 @@ const StudentPortal = () => {
                                                                         </div>
                                                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
                                                                             <span className="text-[14px]">👨‍🏫</span>
-                                                                            <span className="text-slate-500">Lecturer: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
+                                                                            <span className="text-slate-500">Facilitator: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
                                                                         </div>
                                                                     </div>
                                                                 </div>

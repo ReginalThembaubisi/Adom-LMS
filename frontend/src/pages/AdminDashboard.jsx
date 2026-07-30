@@ -338,7 +338,7 @@ const AdminDashboard = () => {
                 <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Admin Console ⚙️</h1>
-                        <p className="text-sm text-slate-300">System Administration & Lecturer Registrations</p>
+                        <p className="text-sm text-slate-300">System Administration & Facilitator Registrations</p>
                     </div>
                     <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
                         Sign Out
@@ -358,7 +358,7 @@ const AdminDashboard = () => {
                 {/* Overview Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lecturers</h3>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Facilitators</h3>
                         <span className="text-3xl font-extrabold text-blue-600 mt-2 block">{overview.lecturersCount}</span>
                     </div>
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
@@ -401,11 +401,11 @@ const AdminDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column: Creation Forms (lg:col-span-7) */}
                     <div className="lg:col-span-7 space-y-6">
-                        {/* Card A: Register New Lecturer */}
+                        {/* Card A: Register New Facilitator */}
                         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Register New Lecturer</h2>
-                                <p className="text-xs text-slate-500">Create lecturer profiles with dedicated dashboard authentication credentials.</p>
+                                <h2 className="text-lg font-bold text-slate-900">Register New Facilitator</h2>
+                                <p className="text-xs text-slate-500">Create facilitator profiles with dedicated dashboard authentication credentials.</p>
                             </div>
                             <form onSubmit={handleCreateLecturer} className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -474,7 +474,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                                 <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
-                                    Register Lecturer
+                                    Register Facilitator
                                 </button>
                             </form>
                         </div>
@@ -558,10 +558,10 @@ const AdminDashboard = () => {
 
                     {/* Right Column: Management & Assignments (lg:col-span-5) */}
                     <div className="lg:col-span-5 space-y-6">
-                        {/* Card C: Category Lecturer Assignment */}
+                        {/* Card C: Category Facilitator Assignment */}
                         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Category Lecturer Assignment</h2>
+                                <h2 className="text-lg font-bold text-slate-900">Category Facilitator Assignment</h2>
                                 <p className="text-xs text-slate-500">SETA learnership module ownership is assigned by Category per Learnership.</p>
                             </div>
                             <div className="space-y-4">
@@ -581,7 +581,7 @@ const AdminDashboard = () => {
                                                     onChange={e => handleAssignLecturer(c.id, e.target.value)} 
                                                     className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                                 >
-                                                    <option value="">-- Assign Lecturer --</option>
+                                                    <option value="">-- Assign Facilitator --</option>
                                                     {lecturers.map(l => (
                                                         <option key={l.id} value={l.id}>{l.fullName} ({l.username})</option>
                                                     ))}
@@ -597,7 +597,7 @@ const AdminDashboard = () => {
                         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 overflow-hidden space-y-4">
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">All Modules Overview</h2>
-                                <p className="text-xs text-slate-500">Review created modules, code mapping, assigned lecturers, and syllabus files.</p>
+                                <p className="text-xs text-slate-500">Review created modules, code mapping, assigned facilitators, and syllabus files.</p>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-xs">
@@ -605,7 +605,7 @@ const AdminDashboard = () => {
                                         <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
                                             <th className="p-3 text-left rounded-l-lg">Code</th>
                                             <th className="p-3 text-left">Module</th>
-                                            <th className="p-3 text-left">Lecturer</th>
+                                            <th className="p-3 text-left">Facilitator</th>
                                             <th className="p-3 text-right rounded-r-lg">Syllabus</th>
                                         </tr>
                                     </thead>

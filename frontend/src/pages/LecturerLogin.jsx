@@ -32,7 +32,7 @@ const LecturerLogin = () => {
             });
 
             if (res.status === 401 || res.status === 403) {
-                throw new Error('Invalid lecturer credentials. Please try again.');
+                throw new Error('Invalid facilitator credentials. Please try again.');
             }
 
             if (res.ok) {
@@ -58,8 +58,8 @@ const LecturerLogin = () => {
 
             <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
                 <div className="text-center space-y-1">
-                    <h2 className="text-xl font-extrabold text-slate-900">Lecturer Portal Login</h2>
-                    <p className="text-xs text-slate-500">Enter your lecturer credentials to access course and session management</p>
+                    <h2 className="text-xl font-extrabold text-slate-900">Facilitator Portal Login</h2>
+                    <p className="text-xs text-slate-500">Enter your facilitator credentials to access course and session management</p>
                 </div>
 
                 {error && (
@@ -118,7 +118,7 @@ const LecturerLogin = () => {
                         className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150"
                         disabled={loading}
                     >
-                        {loading ? 'Authenticating...' : 'Sign In as Lecturer'}
+                        {loading ? 'Authenticating...' : 'Sign In as Facilitator'}
                     </button>
                 </form>
 

@@ -73,7 +73,7 @@ const Landing = () => {
                         onClick={() => navigate('/lecturer-login')} 
                         className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-4 rounded-xl transition-all flex-1 text-center"
                     >
-                        Lecturer Portal
+                        Facilitator Portal
                     </button>
                 </div>
             </div>

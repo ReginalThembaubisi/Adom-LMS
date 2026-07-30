@@ -472,7 +472,7 @@ const LecturerDashboard = () => {
                 {/* Header */}
                 <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">{profile ? `Welcome, ${profile.fullName}! 👋` : 'Lecturer Portal'}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">{profile ? `Welcome, ${profile.fullName}! 👋` : 'Facilitator Portal'}</h1>
                         <p className="text-sm text-slate-300">
                             {profile ? (
                                 profile.assignedCategories && profile.assignedCategories.length > 0 ? (
