@@ -297,6 +297,11 @@ const LecturerDashboard = () => {
         e.preventDefault();
         if (!uploadFile) return;
 
+        if (uploadFile.size > 20 * 1024 * 1024) {
+            showMsg('error', 'File size exceeds the 20MB limit. Please choose a smaller file.');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', uploadFile);
         formData.append('fileType', uploadFileType);
@@ -327,6 +332,10 @@ const LecturerDashboard = () => {
 
     const handleCreateSession = async (e) => {
         e.preventDefault();
+        if (sessionTaskFile && sessionTaskFile.size > 20 * 1024 * 1024) {
+            showMsg('error', 'Brief file size exceeds the 20MB limit. Please choose a smaller file.');
+            return;
+        }
         try {
             const formData = new FormData();
             formData.append('sessionName', sessionName);
