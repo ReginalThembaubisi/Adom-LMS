@@ -24,6 +24,7 @@ const AdminDashboard = () => {
     const [alert, setAlert] = useState({ type: '', message: '' });
     const [registrationOpen, setRegistrationOpen] = useState(true);
     const [loadingRegStatus, setLoadingRegStatus] = useState(false);
+    const [learners, setLearners] = useState([]);
 
     // Learnership form
     const [learnershipName, setLearnershipName] = useState('');
@@ -52,6 +53,7 @@ const AdminDashboard = () => {
             fetchCategories();
             fetchLearnerships();
             fetchRegistrationStatus();
+            fetchLearners();
         }
     }, [token]);
 
@@ -163,6 +165,65 @@ const AdminDashboard = () => {
             }
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const fetchLearners = async () => {
+        try {
+            const res = await fetch('/api/admin/learners', {
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                const data = await res.json();
+                setLearners(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleResetPassword = async (learnerId, learnerName) => {
+        const newPassword = prompt(`Enter new password for student ${learnerName}:`);
+        if (newPassword === null) return;
+        if (!newPassword.trim()) {
+            showMsg('error', 'Password cannot be blank.');
+            return;
+        }
+        try {
+            const res = await fetch(`/api/admin/learners/${learnerId}/reset-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({ newPassword: newPassword.trim() })
+            });
+            if (res.ok) {
+                showMsg('success', `Password for ${learnerName} reset successfully!`);
+            } else {
+                showMsg('error', 'Failed to reset password.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error.');
+        }
+    };
+
+    const handleDeleteLearner = async (learnerId, learnerName) => {
+        if (!confirm(`Are you sure you want to delete student ${learnerName}? This action cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/api/admin/learners/${learnerId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (res.ok) {
+                showMsg('success', `Student ${learnerName} deleted successfully.`);
+                fetchLearners();
+            } else {
+                showMsg('error', 'Failed to delete student.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error.');
         }
     };
 
@@ -640,6 +701,61 @@ const AdminDashboard = () => {
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Card E: Registered Students (Full Width) */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900">Registered Students (Learners)</h2>
+                        <p className="text-xs text-slate-500">View registered student credentials, active cohorts, and perform manual password resets or account deletion.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-xs">
+                            <thead>
+                                <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
+                                    <th className="p-3 text-left rounded-l-lg">Student Code</th>
+                                    <th className="p-3 text-left">Full Name</th>
+                                    <th className="p-3 text-left">Email Address</th>
+                                    <th className="p-3 text-left">Phone</th>
+                                    <th className="p-3 text-left">Cohort</th>
+                                    <th className="p-3 text-left">Learnership</th>
+                                    <th className="p-3 text-right rounded-r-lg">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {learners.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="text-center py-4 text-slate-400">No students registered yet.</td>
+                                    </tr>
+                                ) : (
+                                    learners.map(l => (
+                                        <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
+                                            <td className="p-3 font-bold text-blue-600">{l.learnerCode}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{l.fullName}</td>
+                                            <td className="p-3 text-slate-500">{l.email || 'N/A'}</td>
+                                            <td className="p-3 text-slate-500">{l.phoneNumber || 'N/A'}</td>
+                                            <td className="p-3 text-slate-500">{l.cohort || 'N/A'}</td>
+                                            <td className="p-3 text-slate-600 font-medium">{l.learnershipName || 'Unassigned'}</td>
+                                            <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                                                <button 
+                                                    onClick={() => handleResetPassword(l.id, l.fullName)}
+                                                    className="bg-blue-50 text-blue-600 border border-blue-200/50 hover:bg-blue-100 hover:text-blue-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
+                                                >
+                                                    Reset Password
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteLearner(l.id, l.fullName)}
+                                                    className="bg-rose-50 text-rose-600 border border-rose-200/50 hover:bg-rose-100 hover:text-rose-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

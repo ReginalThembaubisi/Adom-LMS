@@ -251,6 +251,26 @@ public class AdminController {
         return ResponseEntity.ok(list);
     }
 
+    @PutMapping("/learners/{id}/reset-password")
+    public ResponseEntity<Void> adminResetPassword(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        com.example.learnerassignments.model.Learner learner = learnerRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found"));
+
+        String newPassword = body.get("newPassword");
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("Password cannot be blank");
+        }
+
+        learner.setPasswordHash(passwordEncoder.encode(newPassword));
+        learner.setResetCode(null);
+        learner.setResetCodeExpiresAt(null);
+        learnerRepository.save(learner);
+
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/learners/{id}")
     public ResponseEntity<Void> deleteLearner(@PathVariable Long id) {
         if (!learnerRepository.existsById(id)) {
