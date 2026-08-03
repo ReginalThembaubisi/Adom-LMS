@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/submissions/*/graded-download").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/submissions/*/graded-download-url").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/registration-status/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
                         .requestMatchers(
                                 "/",
                                 "/index.html",

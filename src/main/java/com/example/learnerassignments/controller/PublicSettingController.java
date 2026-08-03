@@ -27,29 +27,4 @@ public class PublicSettingController {
         return ResponseEntity.ok(Map.of("open", open));
     }
 
-    @GetMapping("/diagnostics")
-    public ResponseEntity<Map<String, Object>> getDiagnostics() {
-        java.util.List<java.util.Map<String, Object>> adminsList = new java.util.ArrayList<>();
-        for (com.example.learnerassignments.model.Admin a : adminRepository.findAll()) {
-            java.util.Map<String, Object> map = new java.util.HashMap<>();
-            map.put("username", a.getUsername());
-            map.put("isDefaultPassword", passwordEncoder.matches("admin123", a.getPasswordHash()));
-            adminsList.add(map);
-        }
-
-        java.util.List<java.util.Map<String, Object>> lecturersList = new java.util.ArrayList<>();
-        for (com.example.learnerassignments.model.Lecturer l : lecturerRepository.findAll()) {
-            java.util.Map<String, Object> map = new java.util.HashMap<>();
-            map.put("username", l.getUsername());
-            map.put("fullName", l.getFullName());
-            map.put("isDefaultPassword", passwordEncoder.matches("password123", l.getPasswordHash()));
-            lecturersList.add(map);
-        }
-
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("admins", adminsList);
-        response.put("lecturers", lecturersList);
-
-        return ResponseEntity.ok(response);
-    }
 }
