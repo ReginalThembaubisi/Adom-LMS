@@ -303,4 +303,23 @@ public class AdminController {
 
         return ResponseEntity.ok(java.util.Map.of("open", nextOpen));
     }
+
+    @DeleteMapping("/lecturers/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<?> deleteLecturer(@PathVariable Long id) {
+        Lecturer lecturer = lecturerRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Lecturer not found"));
+
+        // 1. Unassign lecturer from all categories
+        List<com.example.learnerassignments.model.Category> categories = categoryRepository.findByLecturerId(id);
+        for (com.example.learnerassignments.model.Category category : categories) {
+            category.setLecturer(null);
+            categoryRepository.save(category);
+        }
+
+        // 2. Delete the lecturer
+        lecturerRepository.delete(lecturer);
+
+        return ResponseEntity.ok().build();
+    }
 }

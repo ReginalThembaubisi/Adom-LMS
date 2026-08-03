@@ -227,6 +227,25 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleDeleteLecturer = async (lecturerId, lecturerName) => {
+        if (!confirm(`Are you sure you want to delete facilitator ${lecturerName}? This will unassign them from any active categories. This action cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/api/admin/lecturers/${lecturerId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (res.ok) {
+                showMsg('success', `Facilitator ${lecturerName} deleted successfully.`);
+                fetchLecturers();
+                fetchOverview();
+            } else {
+                showMsg('error', 'Failed to delete facilitator.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error.');
+        }
+    };
+
     const handleAssignLecturer = async (categoryId, lecturerIdVal) => {
         try {
             const res = await fetch(`/api/admin/categories/${categoryId}/assign-lecturer`, {
@@ -701,6 +720,49 @@ const AdminDashboard = () => {
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Card D-2: Registered Facilitators (Full Width) */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900">Registered Facilitators (Lecturers)</h2>
+                        <p className="text-xs text-slate-500">View registered facilitators, their contact details, usernames, and delete accounts.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-xs">
+                            <thead>
+                                <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
+                                    <th className="p-3 text-left rounded-l-lg">Username</th>
+                                    <th className="p-3 text-left">Full Name</th>
+                                    <th className="p-3 text-left">Email Address</th>
+                                    <th className="p-3 text-right rounded-r-lg">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {lecturers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="p-4 text-center text-slate-400 font-medium italic">No facilitators registered in the system.</td>
+                                    </tr>
+                                ) : (
+                                    lecturers.map(l => (
+                                        <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
+                                            <td className="p-3 font-bold text-blue-600">{l.username}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{l.fullName}</td>
+                                            <td className="p-3 text-slate-500">{l.email || 'N/A'}</td>
+                                            <td className="p-3 text-right whitespace-nowrap">
+                                                <button 
+                                                    onClick={() => handleDeleteLecturer(l.id, l.fullName)}
+                                                    className="bg-rose-50 text-rose-600 border border-rose-200/50 hover:bg-rose-100 hover:text-rose-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
