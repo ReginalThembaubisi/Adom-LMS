@@ -80,7 +80,7 @@ public class ChatbotService {
 
             List<Submission> submissions = submissionRepository.findByLearner_LearnerCodeOrderBySubmittedAtDesc(learnerCode);
             List<Submission> graded = submissions.stream()
-                    .filter(s -> s.getGrade() != null && !s.getGrade().isBlank())
+                    .filter(s -> s.getGrade() != null)
                     .toList();
 
             if (graded.isEmpty()) {
@@ -108,7 +108,7 @@ public class ChatbotService {
 
             StringBuilder sb = new StringBuilder("🎓 **Your Enrolled Modules & Facilitators**:\n");
             boolean found = false;
-            for (Module m : student.getModules()) {
+            for (com.example.learnerassignments.model.Module m : student.getModules()) {
                 Category c = m.getCategory();
                 if (c != null && c.getLecturer() != null) {
                     found = true;
