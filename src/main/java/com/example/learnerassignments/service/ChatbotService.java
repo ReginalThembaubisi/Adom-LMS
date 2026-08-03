@@ -49,7 +49,7 @@ public class ChatbotService {
             lowerQuery.contains("when") || lowerQuery.contains("upcoming") || lowerQuery.contains("assignment")) {
             
             List<SubmissionSession> activeSessions = sessionRepository.findAll().stream()
-                    .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()))
+                    .filter(s -> s.getStatus() == SessionStatus.OPEN)
                     .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null)
                     .filter(s -> student.getModules().stream().anyMatch(m -> m.getId().equals(s.getAssignment().getModule().getId())))
                     .toList();

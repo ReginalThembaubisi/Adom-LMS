@@ -37,7 +37,7 @@ public class ReminderScheduler {
         
         // Find all active sessions
         List<SubmissionSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()))
+                .filter(s -> s.getStatus() == com.example.learnerassignments.model.SessionStatus.OPEN)
                 .filter(s -> s.getEndTime() != null)
                 .toList();
 
