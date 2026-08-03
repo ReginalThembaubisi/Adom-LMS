@@ -12,4 +12,6 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
     Optional<Learner> findByLearnerCode(String learnerCode);
 
     boolean existsByLearnerCode(String learnerCode);
+
+    java.util.List<Learner> findByModules_Id(Long moduleId);
 }

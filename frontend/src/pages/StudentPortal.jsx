@@ -35,6 +35,18 @@ const StudentPortal = () => {
     // Submissions history state
     const [history, setHistory] = useState([]);
 
+    // Calendar State
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    // Chatbot State
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatQuery, setChatQuery] = useState('');
+    const [chatMessages, setChatMessages] = useState([
+        { sender: 'bot', text: "Hello! 🤖 I'm your LMS Assistant. Ask me about upcoming deadlines, your grades, or facilitator contacts. Type 'help' to see what I can do!" }
+    ]);
+    const [chatLoading, setChatLoading] = useState(false);
+    const chatEndRef = useRef(null);
+
     // Inline submit slot session state
     const [activeUploadSessionId, setActiveUploadSessionId] = useState(null);
     const [inlineFile, setInlineFile] = useState(null);
@@ -124,6 +136,46 @@ const StudentPortal = () => {
     const handleSignout = () => {
         logoutStudent();
         navigate('/');
+    };
+
+    useEffect(() => {
+        if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [chatMessages, chatOpen]);
+
+    const handleSendChatMessage = async (e) => {
+        e.preventDefault();
+        const msg = chatQuery.trim();
+        if (!msg) return;
+
+        const updatedMessages = [...chatMessages, { sender: 'user', text: msg }];
+        setChatMessages(updatedMessages);
+        setChatQuery('');
+        setChatLoading(true);
+
+        try {
+            const res = await fetch('/api/chatbot/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: msg,
+                    studentNumber: studentNumber
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setChatMessages([...updatedMessages, { sender: 'bot', text: data.response }]);
+            } else {
+                setChatMessages([...updatedMessages, { sender: 'bot', text: "Sorry, I encountered an error. Please try again." }]);
+            }
+        } catch (err) {
+            setChatMessages([...updatedMessages, { sender: 'bot', text: "Network error. Please try again." }]);
+        } finally {
+            setChatLoading(false);
+        }
     };
 
     const triggerAssignmentSelect = (session) => {
@@ -234,6 +286,41 @@ const StudentPortal = () => {
         }
     };
 
+    // Calendar helper variables
+    const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+    const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+
+    const days = [];
+    for (let i = 0; i < firstDay; i++) {
+        days.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        days.push(new Date(year, month, d));
+    }
+
+    const deadlines = [];
+    modules.forEach(m => {
+        if (m.activeSessions) {
+            m.activeSessions.forEach(s => {
+                if (s.endTime) {
+                    deadlines.push({
+                        id: s.id,
+                        title: s.assignmentTitle || s.sessionName,
+                        moduleName: m.moduleName,
+                        moduleCode: m.moduleCode,
+                        moduleId: m.id,
+                        dueDate: new Date(s.endTime)
+                    });
+                }
+            });
+        }
+    });
+
     return (
         <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -316,6 +403,15 @@ const StudentPortal = () => {
                             onClick={() => handleTabChange('modules')}
                         >
                             My Modules
+                        </button>
+                        <button 
+                            className={activeTab === 'calendar' 
+                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
+                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                            }
+                            onClick={() => handleTabChange('calendar')}
+                        >
+                            My Calendar
                         </button>
                         <button 
                             className={activeTab === 'history' 
@@ -662,6 +758,82 @@ const StudentPortal = () => {
                     </div>
                 )}
 
+                {/* TAB 2: My Calendar */}
+                {activeTab === 'calendar' && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 text-slate-800">
+                        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">Assignment Calendar</h2>
+                                <p className="text-xs text-slate-500">Track and manage your upcoming assignment deadlines.</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors"
+                                >
+                                    &larr; Prev
+                                </button>
+                                <span className="text-xs font-bold text-slate-800 px-3 uppercase tracking-wider">
+                                    {currentMonth.toLocaleString('default', { month: 'long' })} {year}
+                                </span>
+                                <button 
+                                    onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors"
+                                >
+                                    Next &rarr;
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Calendar Grid */}
+                        <div className="grid grid-cols-7 gap-2 text-center text-xs">
+                            {/* Days of Week */}
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                <div key={d} className="font-bold text-[10px] uppercase tracking-wider text-slate-400 py-2">{d}</div>
+                            ))}
+                            {/* Days of Month */}
+                            {days.map((day, idx) => {
+                                if (!day) {
+                                    return <div key={`empty-${idx}`} className="bg-slate-50/20 rounded-xl p-3 border border-transparent"></div>;
+                                }
+                                const isToday = day.toDateString() === new Date().toDateString();
+                                const dayDeadlines = deadlines.filter(dl => dl.dueDate.toDateString() === day.toDateString());
+
+                                return (
+                                    <div 
+                                        key={day.toISOString()} 
+                                        className={`relative rounded-xl p-3 border transition-all flex flex-col justify-between items-center min-h-[85px] ${
+                                            isToday 
+                                                ? 'bg-blue-50/50 border-blue-300 text-blue-600 font-bold' 
+                                                : 'bg-slate-50/30 border-slate-200/50 hover:bg-slate-50/80 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        <span className="font-semibold text-slate-700">{day.getDate()}</span>
+                                        {dayDeadlines.length > 0 && (
+                                            <div className="space-y-1 w-full mt-1.5 z-10">
+                                                {dayDeadlines.map(dl => (
+                                                    <button 
+                                                        key={dl.id}
+                                                        onClick={() => {
+                                                            setSelectedModule(null);
+                                                            // Auto navigate to module
+                                                            fetchModuleDetails(dl.moduleId);
+                                                        }}
+                                                        className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate block transition-all"
+                                                        title={`${dl.title} (${dl.moduleName})`}
+                                                    >
+                                                        ⏰ {dl.title}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 {/* TAB 3: My Submissions */}
                 {activeTab === 'history' && (
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6">
@@ -740,6 +912,96 @@ const StudentPortal = () => {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Floating Chatbot Assistant Widget */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+                {/* Chat window */}
+                {chatOpen && (
+                    <div className="w-[360px] h-[480px] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4 text-white animate-fadeIn">
+                        {/* Header */}
+                        <div className="bg-slate-950 p-4 border-b border-slate-700/80 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs font-bold uppercase tracking-wider">LMS Chat Assistant</span>
+                            </div>
+                            <button 
+                                onClick={() => setChatOpen(false)}
+                                className="text-slate-400 hover:text-slate-200 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Messages display area */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-800">
+                            {chatMessages.map((msg, idx) => (
+                                <div 
+                                    key={idx} 
+                                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div 
+                                        className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[11px] leading-relaxed shadow-sm whitespace-pre-line ${
+                                            msg.sender === 'user' 
+                                                ? 'bg-blue-600 text-white rounded-br-none' 
+                                                : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-none'
+                                        }`}
+                                    >
+                                        {msg.text}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-slate-800 text-slate-400 border border-slate-700/50 rounded-2xl rounded-bl-none px-3.5 py-2 text-[11px] flex items-center gap-1">
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce delay-100"></span>
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce delay-200"></span>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        {/* Form input */}
+                        <form onSubmit={handleSendChatMessage} className="bg-slate-950 p-3 border-t border-slate-700/80 flex gap-2">
+                            <input 
+                                type="text"
+                                value={chatQuery}
+                                onChange={e => setChatQuery(e.target.value)}
+                                placeholder="Ask me something..."
+                                className="flex-1 bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                            <button 
+                                type="submit"
+                                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-xl transition-all flex items-center justify-center shadow-md shadow-blue-500/20 active:scale-[0.98]"
+                            >
+                                <svg className="w-4 h-4 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* Collapsed floating button */}
+                <button 
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer relative"
+                    title="Open LMS Chat Assistant"
+                >
+                    {chatOpen ? (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    ) : (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    )}
+                </button>
             </div>
         </div>
     );

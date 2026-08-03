@@ -69,4 +69,31 @@ public class EmailService {
             log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
+
+    @Async
+    public void sendAssignmentReminderEmail(String toEmail, String fullName, String assignmentTitle, String dueDateStr) {
+        if (toEmail == null || toEmail.isBlank()) {
+            log.debug("No email address provided for student {}, skipping reminder email.", fullName);
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
+            message.setFrom(sender);
+            message.setTo(toEmail.trim());
+            message.setSubject("Assignment Deadline Reminder: 1 Hour Remaining");
+            message.setText(String.format(
+                    "Hi %s,\n\nThis is a friendly reminder that your assignment \"%s\" is due in 1 hour!\nDeadline: %s\n\nPlease make sure to submit your work before the submission slot closes.\n\nBest regards,\nLearner Assignments System",
+                    fullName,
+                    assignmentTitle,
+                    dueDateStr
+            ));
+
+            mailSender.send(message);
+            log.info("Successfully dispatched assignment reminder email to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send assignment reminder email to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
 }
