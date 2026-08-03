@@ -421,6 +421,31 @@ const LecturerDashboard = () => {
         }
     };
 
+    const deleteSession = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this submission session? This will also delete ALL student submissions linked to it. This action cannot be undone.")) {
+            return;
+        }
+        try {
+            const res = await fetch(`/api/lecturer/sessions/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                showMsg('success', 'Session and submissions deleted successfully!');
+                fetchSessions();
+                if (activeSessionId === id) {
+                    inspectSubmissions('');
+                }
+            } else {
+                const txt = await res.text();
+                showMsg('error', txt || 'Failed to delete session.');
+            }
+        } catch (e) {
+            showMsg('error', 'Connection issue.');
+        }
+    };
+
     const inspectSubmissions = async (sessionId) => {
         setActiveSessionId(sessionId);
         if (!sessionId) {
@@ -904,7 +929,13 @@ const LecturerDashboard = () => {
                                                                     : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200/80'
                                                             }`}
                                                         >
-                                                            Inspect Files
+                                                            Inspect
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => deleteSession(s.id)} 
+                                                            className="font-medium text-[10px] py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors flex-1 text-center"
+                                                        >
+                                                            Delete
                                                         </button>
                                                     </div>
                                                 </div>

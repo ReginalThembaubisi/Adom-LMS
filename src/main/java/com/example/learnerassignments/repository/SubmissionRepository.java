@@ -14,4 +14,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByLearner_LearnerCodeOrderBySubmittedAtDesc(String learnerCode);
 
     boolean existsByLearnerIdAndSessionId(Long learnerId, Long sessionId);
+
+    void deleteBySessionId(Long sessionId);
 }

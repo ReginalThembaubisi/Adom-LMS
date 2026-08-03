@@ -526,4 +526,28 @@ public class LecturerController {
         moduleFileRepository.delete(file);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/sessions/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<?> deleteSession(@PathVariable Long id, Authentication auth) {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        SubmissionSession session = sessionRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Session not found"));
+
+        // Verify session ownership
+        if (session.getAssignment() == null || session.getAssignment().getModule() == null ||
+            session.getAssignment().getModule().getCategory() == null ||
+            session.getAssignment().getModule().getCategory().getLecturer() == null ||
+            !session.getAssignment().getModule().getCategory().getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not own this session");
+        }
+
+        // 1. Delete all submissions linked to the session
+        submissionRepository.deleteBySessionId(id);
+        
+        // 2. Delete the session itself
+        sessionRepository.delete(session);
+
+        return ResponseEntity.ok().build();
+    }
 }
