@@ -82,24 +82,40 @@ const LecturerDashboard = () => {
 
     const downloadSubmissionFile = async (e, submissionId, filename, isGraded = false) => {
         e.preventDefault();
-        const endpoint = isGraded ? 'graded-download' : 'download';
+        const endpoint = isGraded ? 'graded-download-url' : 'download-url';
         try {
             const res = await fetch(`/api/submissions/${submissionId}/${endpoint}`, {
                 headers: { 'Authorization': `Basic ${token}` }
             });
             if (!checkAuthResponse(res)) return;
             if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
+                const data = await res.json();
+                const downloadUrl = data.url;
+
+                if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
+                    // Open Cloudinary cloud URL directly in a new tab to bypass fetch CORS/Credentials limits
+                    window.open(downloadUrl, '_blank');
+                } else {
+                    // For local files, fetch the stream binary with Authorization header
+                    const fileRes = await fetch(downloadUrl, {
+                        headers: { 'Authorization': `Basic ${token}` }
+                    });
+                    if (fileRes.ok) {
+                        const blob = await fileRes.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    } else {
+                        showMsg('error', 'Failed to download the submission file.');
+                    }
+                }
             } else {
-                showMsg('error', 'Failed to download the submission file.');
+                showMsg('error', 'Failed to retrieve download link.');
             }
         } catch (err) {
             showMsg('error', 'Connection issue during download.');

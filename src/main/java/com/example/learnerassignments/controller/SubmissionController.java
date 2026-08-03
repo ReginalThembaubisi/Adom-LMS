@@ -123,4 +123,52 @@ public class SubmissionController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + submission.getGradedOriginalFilename() + "\"")
                 .body(resource);
     }
+
+    @GetMapping("/{id}/download-url")
+    public ResponseEntity<?> getDownloadUrl(
+            @PathVariable Long id,
+            @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            Authentication auth) {
+        
+        Submission submission = submissionService.getSubmission(id);
+        if (!checkAccess(submission, learnerCode, auth)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        String pathStr = submission.getFilePath();
+        String downloadUrl;
+        if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
+            downloadUrl = pathStr;
+        } else {
+            downloadUrl = "/api/submissions/" + id + "/download?stream=true";
+        }
+
+        return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));
+    }
+
+    @GetMapping("/{id}/graded-download-url")
+    public ResponseEntity<?> getGradedDownloadUrl(
+            @PathVariable Long id,
+            @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            Authentication auth) {
+        
+        Submission submission = submissionService.getSubmission(id);
+        if (!checkAccess(submission, learnerCode, auth)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (submission.getGradedFilePath() == null || submission.getGradedFilePath().isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        String pathStr = submission.getGradedFilePath();
+        String downloadUrl;
+        if (pathStr.startsWith("http://") || pathStr.startsWith("https://")) {
+            downloadUrl = pathStr;
+        } else {
+            downloadUrl = "/api/submissions/" + id + "/graded-download?stream=true";
+        }
+
+        return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));
+    }
 }
