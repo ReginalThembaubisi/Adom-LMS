@@ -29,24 +29,27 @@ public class PublicSettingController {
 
     @GetMapping("/diagnostics")
     public ResponseEntity<Map<String, Object>> getDiagnostics() {
-        java.util.List<Map<String, Object>> adminsList = adminRepository.findAll().stream()
-                .map(a -> Map.of(
-                        "username", a.getUsername(),
-                        "isDefaultPassword", passwordEncoder.matches("admin123", a.getPasswordHash())
-                ))
-                .collect(java.util.stream.Collectors.toList());
+        java.util.List<java.util.Map<String, Object>> adminsList = new java.util.ArrayList<>();
+        for (com.example.learnerassignments.model.Admin a : adminRepository.findAll()) {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("username", a.getUsername());
+            map.put("isDefaultPassword", passwordEncoder.matches("admin123", a.getPasswordHash()));
+            adminsList.add(map);
+        }
 
-        java.util.List<Map<String, Object>> lecturersList = lecturerRepository.findAll().stream()
-                .map(l -> Map.of(
-                        "username", l.getUsername(),
-                        "fullName", l.getFullName(),
-                        "isDefaultPassword", passwordEncoder.matches("password123", l.getPasswordHash())
-                ))
-                .collect(java.util.stream.Collectors.toList());
+        java.util.List<java.util.Map<String, Object>> lecturersList = new java.util.ArrayList<>();
+        for (com.example.learnerassignments.model.Lecturer l : lecturerRepository.findAll()) {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("username", l.getUsername());
+            map.put("fullName", l.getFullName());
+            map.put("isDefaultPassword", passwordEncoder.matches("password123", l.getPasswordHash()));
+            lecturersList.add(map);
+        }
 
-        return ResponseEntity.ok(Map.of(
-                "admins", adminsList,
-                "lecturers", lecturersList
-        ));
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("admins", adminsList);
+        response.put("lecturers", lecturersList);
+
+        return ResponseEntity.ok(response);
     }
 }
