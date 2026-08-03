@@ -55,6 +55,7 @@ const LecturerDashboard = () => {
     const [editFeedback, setEditFeedback] = useState('');
     const [markedFile, setMarkedFile] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [editingProfile, setEditingProfile] = useState(null);
 
     useEffect(() => {
         if (token) {
@@ -535,9 +536,17 @@ const LecturerDashboard = () => {
                             )}
                         </p>
                     </div>
-                    <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
-                        Sign Out
-                    </button>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setEditingProfile({ fullName: profile?.fullName || '', email: profile?.email || '', password: '' })}
+                            className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs"
+                        >
+                            Edit Profile
+                        </button>
+                        <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
+                            Sign Out
+                        </button>
+                    </div>
                 </header>
 
                 {alert.message && (
@@ -1090,6 +1099,96 @@ const LecturerDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {editingProfile && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xl w-full max-w-md space-y-6 relative text-slate-800">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-base font-extrabold text-slate-900">Edit Profile</h3>
+                            <button 
+                                onClick={() => setEditingProfile(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            try {
+                                const res = await fetch(`/api/lecturer/profile`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Basic ${token}`
+                                    },
+                                    body: JSON.stringify({
+                                        fullName: editingProfile.fullName,
+                                        email: editingProfile.email,
+                                        password: editingProfile.password || ''
+                                    })
+                                });
+                                if (res.ok) {
+                                    showMsg('success', 'Profile updated successfully!');
+                                    setEditingProfile(null);
+                                    fetchProfile();
+                                } else {
+                                    showMsg('error', 'Failed to update profile.');
+                                }
+                            } catch (err) {
+                                showMsg('error', 'Network error.');
+                            }
+                        }} className="space-y-4 text-left">
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    value={editingProfile.fullName}
+                                    onChange={e => setEditingProfile({...editingProfile, fullName: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Email Address</label>
+                                <input 
+                                    type="email" 
+                                    value={editingProfile.email}
+                                    onChange={e => setEditingProfile({...editingProfile, email: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Password (Leave blank to keep current)</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="••••••••"
+                                    value={editingProfile.password || ''}
+                                    onChange={e => setEditingProfile({...editingProfile, password: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingProfile(null)}
+                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

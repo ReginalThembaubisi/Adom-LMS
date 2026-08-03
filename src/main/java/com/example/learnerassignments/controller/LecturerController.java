@@ -39,6 +39,7 @@ public class LecturerController {
     private final SubmissionSessionService sessionService;
     private final SubmissionService submissionService;
     private final CloudinaryService cloudinaryService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     private static final String UPLOAD_DIR = "uploads/";
 
@@ -549,5 +550,27 @@ public class LecturerController {
         sessionRepository.delete(session);
 
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody java.util.Map<String, String> payload, Authentication auth) {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        
+        String fullName = payload.get("fullName");
+        String email = payload.get("email");
+        String password = payload.get("password");
+
+        if (fullName != null && !fullName.isBlank()) {
+            lecturer.setFullName(fullName);
+        }
+        if (email != null) {
+            lecturer.setEmail(email);
+        }
+        if (password != null && !password.isBlank()) {
+            lecturer.setPasswordHash(passwordEncoder.encode(password));
+        }
+
+        Lecturer saved = lecturerRepository.save(lecturer);
+        return ResponseEntity.ok(saved);
     }
 }
