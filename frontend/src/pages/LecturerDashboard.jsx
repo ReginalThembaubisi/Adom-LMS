@@ -563,7 +563,7 @@ const LecturerDashboard = () => {
                         {/* Left Column: Action Forms (lg:col-span-7) */}
                         <div className="lg:col-span-7 flex flex-col gap-6">
                             {/* Step 1: Create Module Section */}
-                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900">1. Create Module</h2>
                                     <p className="text-xs text-slate-500">Add a new module under one of your assigned categories.</p>
@@ -613,7 +613,7 @@ const LecturerDashboard = () => {
                             </div>
 
                             {/* Step 3: Schedule Intake Session */}
-                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900">3. Schedule Intake Session</h2>
                                     <p className="text-xs text-slate-500">Open a timing slot where students can upload files for their module assignments.</p>
@@ -713,7 +713,7 @@ const LecturerDashboard = () => {
                         {/* Right Column: Active Data & Management (lg:col-span-5) */}
                         <div className="lg:col-span-5 flex flex-col gap-6">
                             {/* Step 2: My Assigned Modules */}
-                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900">2. My Assigned Modules</h2>
                                     <p className="text-xs text-slate-500">Manage course documents for each module.</p>
@@ -890,7 +890,7 @@ const LecturerDashboard = () => {
                             </div>
 
                             {/* Step 4: Active Intake Windows */}
-                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900">4. Active Intake Windows</h2>
                                     <p className="text-xs text-slate-500">Manage ongoing submission slots.</p>
