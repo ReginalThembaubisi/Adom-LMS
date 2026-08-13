@@ -28,6 +28,7 @@ public class Assignment {
 
     @NotNull(message = "Due date is required")
     @Column(name = "due_date", nullable = false)
+    @Convert(converter = com.example.learnerassignments.converter.SastToUtcConverter.class)
     private LocalDateTime dueDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
