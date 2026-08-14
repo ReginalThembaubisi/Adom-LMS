@@ -85,6 +85,18 @@ public class SubmissionSessionService {
         SubmissionSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
 
+        LocalDateTime now = LocalDateTime.now();
+        if (session.getEndTime() == null || session.getEndTime().isBefore(now)) {
+            LocalDateTime newEndTime = now.plusDays(1);
+            session.setEndTime(newEndTime);
+            if (session.getAssignment() != null) {
+                session.getAssignment().setDueDate(newEndTime);
+            }
+        }
+        if (session.getStartTime() == null || session.getStartTime().isAfter(now)) {
+            session.setStartTime(now);
+        }
+
         session.setStatus(SessionStatus.OPEN);
         SubmissionSession updated = sessionRepository.save(session);
         return mapToResponse(updated);
