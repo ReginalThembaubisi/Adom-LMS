@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Adom Technologies Login</title>
+		<link rel="shortcut icon" href="./logo.png" />
+		<link rel="stylesheet" href="./style.css" />
+		<link rel="stylesheet" href="./Up.css" />
+	</head>
+	<body>
+		<div id="overlay">
+			<div class="spinner"></div>
+		</div>
+		<div class="main aniD">
+			<input type="checkbox" id="chk" aria-hidden="true" />
+			<div class="radio">
+				<input
+					type="radio"
+					id="vehicle1"
+					name="vehicle1"
+					value="Student"
+					class="checks"
+				/>
+				<span>Student</span>
+
+				<input
+					type="radio"
+					id="vehicle1"
+					name="vehicle1"
+					value="Staff"
+					class="checks"
+				/>
+				<span>Staff</span>
+				<input
+					type="radio"
+					id="vehicle1"
+					name="vehicle1"
+					value="Admin"
+					class="checks"
+				/>
+				<span>Admin</span>
+			</div>
+			<div class="signup" id="signup">
+				<form>
+					<label for="chk" aria-hidden="true"> Sign up</label>
+					<div class="mylab">
+						<input
+							id="ipt-file"
+							type="file"
+							accept="image/png,image/jpeg,image/bmp,image/gif"
+						/>
+						<i> !! Upload ID for quick registration</i>
+					</div>
+					<p id="p-loading" style="font-size: 1.5em">
+						Loading Library...
+					</p>
+					<p id="p-reading" style="font-size: 1.5em; display: none">
+						Reading Barcodes...
+					</p>
+					<div
+						id="div-cvs-container"
+						style="
+							width: 98%;
+							height: 40vh;
+
+							margin-top: 20px;
+
+							display: flex;
+							justify-content: center;
+							border: 2px dotted gray;
+							border-radius: 5px;
+						"
+					></div>
+					<div class="mylab">
+						<input
+							type="text"
+							name="txt"
+							id="Name"
+							placeholder="Name"
+							required=""
+						/>
+						<input
+							type="text"
+							name="txt"
+							id="Surname"
+							placeholder="Surname"
+							required=""
+						/>
+					</div>
+					<div class="mylab">
+						<select name="" id="gender">
+							<option value="">Select</option>
+							<option value="M">Male</option>
+							<option value="F">Female</option>
+						</select>
+						<select name="" id="citizen">
+							<option value="">Select</option>
+							<option value="RSA">RSA</option>
+						</select>
+					</div>
+					<div class="mylab">
+						<input
+							type="text"
+							name="txt"
+							id="ID"
+							placeholder="ID Number"
+							required=""
+						/>
+						<input
+							type="text"
+							name="txt"
+							id="birth"
+							placeholder="Date of Birth"
+							required=""
+						/>
+					</div>
+					<div class="mylab">
+						<input
+							type="email"
+							name="email"
+							placeholder="Email"
+							required=""
+						/>
+						<input
+							type="text"
+							name="txt"
+							placeholder="Cell Number"
+							required=""
+						/>
+					</div>
+					<div class="mylab">
+						<input
+							type="password"
+							name="pswd"
+							placeholder="Password"
+							required=""
+						/>
+						<input
+							type="password"
+							name="pswd"
+							placeholder="Confirm Password"
+							required=""
+						/>
+					</div>
+
+					<button>Sign up</button>
+				</form>
+			</div>
+
+			<div class="login">
+				<form>
+					<label for="chk" aria-hidden="true"
+						><img src="logo.png" alt="" /> Login</label
+					>
+					<input
+						type="email"
+						name="email"
+						placeholder="Email"
+						required=""
+						id="username"
+					/>
+					<input
+						type="password"
+						name="pswd"
+						placeholder="Password"
+						required=""
+						id="password"
+					/>
+					<button onclick="login();return false">Login</button> 
+					<a href="resetpassword.html" style="position: relative;margin-left:40%;margin-bottom: 10px;">Reset Password</a>
+				<br><br>
+				</form>
+				
+			</div>
+		</div>
+
+		<!-- partial -->
+		<script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.0.0/dist/dbr.js"></script>
+		<script src="dist.js"></script>
+		<script
+			src="https://kit.fontawesome.com/8f7c71be78.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-storage.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyBf0P2CRv9DUQepQ1hE9pAXL7wc8m8udoI",
+				authDomain: "adom-technologies.firebaseapp.com",
+				projectId: "adom-technologies",
+				storageBucket: "adom-technologies.appspot.com",
+				messagingSenderId: "634322050302",
+				appId: "1:634322050302:web:9575e6b19f42925cacd9af",
+				measurementId: "G-7D600VY2SV",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script>
+			setTimeout(function () {
+				$(".loader_bg").fadeToggle();
+			}, 1500);
+		</script>
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script
+			src="https://kit.fontawesome.com/8f7c71be78.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="https://smtpjs.com/v3/smtp.js"></script>
+		<script src="javascript/spinner.js"></script>
+	</body>
+</html>

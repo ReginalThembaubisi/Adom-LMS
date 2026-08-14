@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Lectures's-bourd</title>
+
+		<link rel="shortcut icon" href="logo/adom-logo.png" />
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+        <link
+        href="https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css"
+        rel="stylesheet"
+    />
+        <link rel="stylesheet" href="css/nowRegAdom.css" />
+        <link rel="stylesheet" href="css/learn.css" />
+		<link rel="stylesheet" href="css/calender.css" />
+		<link rel="stylesheet" href="css/Up.css" />
+	</head>
+	<body>
+        <div id="overlay">
+			<div class="spinner"></div>
+		</div>
+		<div class="loader_bg">
+			<div class="loader"></div>
+		</div>
+        <div class="courseProfile" id="courseProfile">
+            <div class="sidebar2">
+                <div class="logo-details">
+                    <h2>
+                       
+                       &nbsp;&nbsp; Staff Dashboard
+                    </h2>
+                </div>
+                <ul class="nav-links">
+                    <li>
+                        <a href="#" class="btnAll2 btn11 ">
+                            <i class="bx bx-grid-alt"></i>
+                            <span class="links_name"
+                                >Course OverView</span
+                            >
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn12 active">
+                            <i class="bx bxs-user-circle"></i>
+                            <span class="links_name"
+                                >Lecture's Profile</span
+                            >
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn13">
+                            <i class="bx bxs-book"></i>
+                            <span class="links_name"
+                                >Course Notes</span
+                            >
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn14">
+                            <i class="fas fa-pen-square"></i>
+                            <span class="links_name"
+                                >Activities</span
+                            >
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn15">
+                            <i class="bx bx-book-open"></i>
+                            <span class="links_name">Exams</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn16">
+                            <i class="fas fa-address-book"></i>
+                            <span class="links_name">Marks</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn17">
+                            <i class="fas fa-laptop"></i>
+                            <span class="links_name"
+                                >Online Learning</span
+                            >
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn18">
+                            <i class="fas fa-user-friends"></i>
+                            <span class="links_name">Groups</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btnAll2 btn19">
+                            <i class="bx bx-list-check"></i>
+                            <span class="links_name"
+                                >Mark Enquiries</span
+                            >
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <section class="home-section">
+                <div class="title22 ">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <h3>Welcome To System Development</h3>
+
+                            <p>
+                                Date/Time:
+                                <span id="datetime"></span>
+                            </p>
+                            <script>
+                                var dt = new Date();
+                                document.getElementById(
+                                    "datetime"
+                                ).innerHTML = dt.toLocaleString();
+                            </script>
+                        </div>
+                    </nav>
+                    <div class="welcome-img">
+                        <img
+                            src="img/background/codec.jpg"
+                            alt=""
+                        />
+                        <div class="about">
+                            <h2>
+                                About <br />
+                                Software Development
+                            </h2>
+                        </div>
+                    </div>
+                    <div class="table bbtable">
+                        <table style="width: 100%; border: 1px">
+                            <thead>
+                                <tr>
+                                    <th>Brief Description</th>
+                                    <th>NQF Level</th>
+                                    <th>Duration</th>
+                                    <th>Companies hiring</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <p>
+                                            A systems developer is a
+                                            type of software
+                                            developer. They develop
+                                            and implement
+                                            applications and
+                                            programs for the backend
+                                            processing systems used
+                                            in businesses and
+                                            organisations. Backend
+                                            processing systems are
+                                            the behind-the-scenes
+                                            parts of software that
+                                            don’t have a user
+                                            interface, except for
+                                            administration purposes.
+                                            They are used a lot in
+                                            online banking and HR
+                                            systems, for example.
+                                        </p>
+                                        <p>
+                                            Typical responsibilities
+                                            of a systems developer
+                                            include:
+                                        </p>
+                                        <ul>
+                                            <li>
+                                                discussing the
+                                                client’s
+                                                requirements and the
+                                                proposed solution
+                                                with a senior
+                                                developer (for
+                                                developers at
+                                                mid-skill level and
+                                                below)
+                                            </li>
+                                            <li>
+                                                using development
+                                                tools to write and
+                                                test code to develop
+                                                these solutions
+                                            </li>
+                                            <li>
+                                                writing
+                                                documentation and
+                                                operating manuals
+                                            </li>
+                                            <li>
+                                                testing and
+                                                modifying systems to
+                                                ensure that they
+                                                operate reliably
+                                            </li>
+
+                                            <li>
+                                                fault finding,
+                                                diagnosing and
+                                                fixing bugs
+                                            </li>
+                                        </ul>
+                                    </td>
+                                    <td>4</td>
+                                    <td id="statusAppli">
+                                        <span>12 months</span>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li>
+                                                Specialist software
+                                                development
+                                                companies
+                                            </li>
+                                            <li>
+                                                Financial services
+                                                firms
+                                            </li>
+                                            <li>Banks</li>
+                                            <li>
+                                                Technology
+                                                consultancies
+                                            </li>
+                                            <li>
+                                                Telecommunications
+                                                companies
+                                            </li>
+                                            <li>
+                                                Public sector
+                                                organisations
+                                            </li>
+                                            <li>Law firms</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <br />
+                            </tbody>
+                        </table>
+                    </div>
+                    <h2 class="proTitle">
+                        #Example of products produced by Software
+                        Developers
+                    </h2>
+                    <div class="example-products">
+                        <div class="row">
+                            <div class="one col-md-4 col-6">
+                                <h4>Whastapp</h4>
+                                <img
+                                    src="img/background/WhatsApp_icon.png"
+                                    alt=""
+                                />
+                            </div>
+                            <div class="two col-md-4 col-6">
+                                <p>
+                                    More than 2 billion people in
+                                    over 180 countries use WhatsApp1
+                                    to stay in touch with friends
+                                    and family, anytime and
+                                    anywhere. WhatsApp is free2 and
+                                    offers simple, secure, reliable
+                                    messaging and calling, available
+                                    on phones all over the world.
+                                </p>
+                                <p>
+                                    WhatsApp was founded by Jan Koum
+                                    and Brian Acton who had
+                                    previously spent 20 years
+                                    combined at Yahoo. WhatsApp
+                                    joined Facebook in 2014, but
+                                    continues to operate as a
+                                    separate app with a laser focus
+                                    on building a messaging service
+                                    that works fast and reliably
+                                    anywhere in the world.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="one col-md-4 col-6">
+                                <h4>Amazon</h4>
+                                <img
+                                    src="img/background/Amazon_icon.png"
+                                    alt=""
+                                />
+                            </div>
+                            <div class="two col-md-4 col-6">
+                                <p>
+                                    Amazon.com, Inc. is an American
+                                    multinational technology company
+                                    which focuses on e-commerce,
+                                    cloud computing, digital
+                                    streaming, and artificial
+                                    intelligence. It has been
+                                    referred to as "one of the most
+                                    influential economic and
+                                    cultural forces in the world",
+                                    and is one of the world's most
+                                    valuable brands
+                                </p>
+                                <p>
+                                    Amazon was founded by Jeff Bezos
+                                    from his garage in Bellevue,
+                                    Washington, on July 5, 1994.
+                                    Initially an online marketplace
+                                    for books
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="one col-md-4 col-6">
+                                <h4>PayPal</h4>
+                                <img
+                                    src="img/background/Paypal_2014_logo.png"
+                                    alt=""
+                                />
+                            </div>
+                            <div class="two col-md-4 col-6">
+                                <p>
+                                    PayPal Holdings, Inc. is an
+                                    American multinational financial
+                                    technology company operating an
+                                    online payments system in the
+                                    majority of countries that
+                                    support online money transfers,
+                                    and serves as an electronic
+                                    alternative to traditional paper
+                                    methods such as checks and money
+                                    orders.
+                                </p>
+                                <p>
+                                    PayPal has quickly become a
+                                    global leader in online payment
+                                    solutions with more than 325
+                                    million accounts worldwide.
+                                    Available in 202 countries and
+                                    25 currencies around the world,
+                                    PayPal enables global ecommerce
+                                    by making payments possible
+                                    across different locations,
+                                    currencies, and languages.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="title22 active">
+                    <div class="account-container Lecture-div">
+                        <div class="container2">
+                            <div class="account-container">
+                                <div class="top-main back-img">
+                                    <img src="img/learn-bourd/background/1.jpg" alt="" />
+                                </div>
+                                <div class="profile-img">
+                                    <div class="img-container">
+                                        <img src="img/dfault/learn-user.jpg" alt="" />
+                                    </div>
+                                    <div class="edit-profile">
+                                        <i class="fas fa-camera"></i>
+                                    </div>
+                                    <h2 id="NameInit2"></h2>
+                                </div>
+                                <div class="login-out">
+                                    <div class="one">
+                                        <br> 
+                                        <h4>Enrolled to Lecture: <span id="enrolled-course"></span></h4>
+                                        <br />
+                                        <button>Update Personal Details</button> &nbsp;
+                                    
+                                        &nbsp;<button data-bs-toggle="modal" data-bs-target="#exampleModal">Post Announcement</button> &nbsp;&nbsp;
+                                        &nbsp;<button  data-bs-toggle="modal" data-bs-target="#exampleModalNotes">Post Notes</button> &nbsp;&nbsp;
+                                        &nbsp;<button data-bs-toggle="modal" data-bs-target="#exampleModalActivity">Post An Activity</button> &nbsp;&nbsp;
+                                        &nbsp;<button  data-bs-toggle="modal" data-bs-target="#exampleModalExam">Post An Exam</button> &nbsp;&nbsp;
+                                        &nbsp;<button data-bs-toggle="modal" data-bs-target="#exampleModalOnline">Create Online Class</button> &nbsp;&nbsp;
+                                    </div>
+                                    <div class="two">
+                                        <h3>
+                                            <span class="logout_profiletop"
+                                                ><i class="fas fa-sign-out-alt"></i> </span
+                                            >
+                                        </h3>
+                                    </div>
+                
+                                    <!-- Button trigger modal -->
+                
+                  <!-- Modal -->
+               
+                  
+                                </div>
+                                <div class="row details-account details-account2">
+                                    <div class="col-6 left-account left-account2">
+                                        <h3>Account Details</h3>
+                                        <div class="row info">
+                                            <div class="col-6">
+                                                <span> Full Name</span>
+                                            </div>
+                                            <div class="col-6" id="NameInit"></div>
+                                        </div>
+                                        <div class="row info bot">
+                                            <div class="col-6">
+                                                <span> Email Address</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <span id="email"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row info bot">
+                                            <div class="col-6">
+                                                <span> ID No.</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <span id="idNumber"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row info bot">
+                                            <div class="col-6">
+                                                <span class="title"> Staff No.</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <span id="studentNO"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div
+                                                            class="col-6 right-account right-account2"
+                                                        >
+                                                            <h3>Make Consultations</h3>
+                                                            <div class="row info click-edit">
+                                                                <div class="col-6">
+                                                                    <span class="title"
+                                                                        >Office Location</span
+                                                                    >
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <span class="name"
+                                                                        >G purple 3, By the
+                                                                        Reception</span
+                                                                    >
+                                                                    &nbsp;&nbsp;
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="row info bot click-edit"
+                                                            >
+                                                                <div class="col-6">
+                                                                    <span class="title"
+                                                                        >Days Available</span
+                                                                    >
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <span class="name"
+                                                                        >Mondays: between 08:00
+                                                                        - 09:00</span
+                                                                    >&nbsp;&nbsp;
+                                                                    <span class="name"
+                                                                        >Wednsday: between 09:00
+                                                                        - 10:00</span
+                                                                    >
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="row info bot click-edit"
+                                                            >
+                                                                <div class="col-6">
+                                                                    <span class="title"
+                                                                        >Social Media</span
+                                                                    >
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <div
+                                                                        class="social-media-icons"
+                                                                    >
+                                                                        <ul>
+                                                                            <li>
+                                                                                <a
+                                                                                    href="http://facebook.com"
+                                                                                    target="_blank"
+                                                                                    ><i
+                                                                                        class="fa fa-facebook fb"
+                                                                                    ></i
+                                                                                ></a>
+                                                                            </li>
+                                                                            <li>
+                                                                                <a
+                                                                                    href="http://twitter.com"
+                                                                                    target="_blank"
+                                                                                    ><i
+                                                                                        class="fa fa-twitter tw"
+                                                                                    ></i
+                                                                                ></a>
+                                                                            </li>
+                                                                            <li>
+                                                                                <a
+                                                                                    href="http://instagram.com"
+                                                                                    target="_blank"
+                                                                                    ><i
+                                                                                        class="fa fa-instagram ig"
+                                                                                    ></i
+                                                                                ></a>
+                                                                            </li>
+                                                                            <li>
+                                                                                <a
+                                                                                    href="http://linkedin.com"
+                                                                                    target="_blank"
+                                                                                    ><i
+                                                                                        class="fab fa-linkedin lnk"
+                                                                                    ></i
+                                                                                ></a>
+                                                                            </li>
+                                                                        </ul>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                </div>
+                
+                             
+                
+                            
+                            </div>
+                        </div>
+                        <div class="missing-document" id="miss">
+                            
+                            <div class="dis">
+                            <div class="overlay"></div>
+                            <div class="sing-log">
+                                <span class="logout_profiletop2"
+                                                ><i class="fas fa-sign-out-alt"></i> Log
+                                                out</span
+                                            >
+                            </div>
+                            <div class="hold-1 id-doc" id="id-doc" >
+                            <table >
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Document Name</th>
+                                        <th>Select File</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        
+                                        </th>
+                                        
+                                    </tr>
+                                    <tr class="iddd " >
+                                        <th>1</th>
+                                        <th>ID</th>
+                                        <th>
+                                            <input type="file" id="ID" /> <br />
+                                            <br />
+                                            <div class="uploading-status">
+                                                &nbsp;<progress
+                                                id="uploader"
+                                                value="0"
+                                                max="100"
+                                            >
+                                                0%
+                                            </progress>&nbsp; <span id="UpProgress"></span> <br>
+                                            <div class="preload" id="preloadID">
+                                                
+                                            </div>
+                                            </div> 
+                                            
+                                        </th>
+                                        <th><button id="uploadID-doc">Upload</button></th>
+                                    </tr>
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="hold-2 sec-doc" id="sec-doc">
+                            <table class="" >
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Document Name</th>
+                                        <th>Select File</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                
+                                    <tr id="sec-doc">
+                                        <th>1</th>
+                                        <th>Recent Results</th>
+                                        <th>
+                                            <input
+                                                type="file"
+                                                id="Recent-results"
+                                            />
+                                            <br />
+                                            <br />
+                                            &nbsp;<progress
+                                                id="uploader2"
+                                                value="0"
+                                                max="100"
+                                            >
+                                                0%
+                                            </progress> &nbsp; <span id="UpProgress2"></span>
+                                            <br>
+                                            <div class="preload2" id="preloadID2">
+                                                
+                                            </div>
+                                        </th>
+                                        <th><button id="secResults">Upload</button></th>
+                                    </tr>
+                
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="hold-3 tert2" id="tert2">
+                            <table  >
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Document Name</th>
+                                        <th>Select File</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                
+                
+                                    <tr class="tert " id="tert tert2">
+                                        <th>1</th>
+                                        <th>Tertiary Transcript</th>
+                                        <th>
+                                            <input
+                                                type="file"
+                                                id="transcript-results"
+                                            />
+                                            <br />
+                                            <br />
+                                            &nbsp;<progress
+                                                id="uploader3"
+                                                value="0"
+                                                max="100"
+                                            >
+                                                0%
+                                            </progress> &nbsp; <span id="UpProgress3"></span>
+                                            <br>
+                                            <div class="preload3" id="preloadID3">
+                                                
+                                            </div>
+                                        </th>
+                                        <th><button id="tertiaryBTN">Upload</button></th>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                
+                        <div class="hold-3 accepted" id="accepted">
+                            <h3>Congratulations your application has be accepted</h3>
+                        </div>
+                        </div>
+                    </div>
+                
+                    </div>
+                </div>
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <h3>Course Notes</3>
+                            <br />
+                            
+                        </div>
+                    </nav>
+                    <div class="notes">
+<ul id="listofnotes">
+<div class="chapter">
+<li>
+
+<h3><i class="fas fa-solid fa-folder-open"></i> Chapter 1</h3>
+<div class="listofchapers">
+<a href="File/SAQA - 14917- Learner Guide.pdf" download  target="_blank">
+<i class="fas fa-file-download"></i> Learner Guard 14917
+</a>
+
+
+
+</li>
+<li><a href="File/SAQA 14918- LEARNER GUIDE.pdf" download  target="_blank">
+<i class="fas fa-file-download"></i> Learner Guard 14918
+</a></li></div>
+
+
+<div class="chapter">
+<li>
+
+<h3><i class="fas fa-solid fa-folder-open"></i> Chapter 2</h3>
+<div class="listofchapers">
+<a href="File/SAQA - 14917- Learner Guide.pdf" download  target="_blank">
+<i class="fas fa-file-download"></i> Learner Guard 14919
+</a>
+
+
+
+</li>
+</div>
+</ul>
+</ul>
+                    </div>
+                    
+                </div>
+                <div class="title22">
+                    
+                        <nav class="nav-bar">
+                            <div class="logo"></div>
+
+                            <div
+                                class="nav-items"
+                                data-bs-spy="scroll"
+                                data-bs-target="#list-example"
+                                data-bs-offset="0"
+                                class="scrollspy-example"
+                                tabindex="0"
+                            >
+                                <h3>Activities</3>
+                                <br />
+                                
+                            </div>
+                        </nav>
+                        <div class="notes">
+<ul id="listofactivities">
+<div class="chapter">
+<li>
+
+<h3><i class="fas fa-solid fa-folder-open"></i> Activity 1</h3>
+<div class="listofchapers">
+<a href="File/SAQA - 14917- Learner Guide.pdf" download  target="_blank">
+<i class="fas fa-file-download"></i> Basic Principles of Programming Ass
+</a>
+
+
+
+</li>
+<li><a href="File/SAQA 14918- LEARNER GUIDE.pdf" download  target="_blank">
+<i class="fas fa-file-download"></i> Pseudocode Tutorial
+</a></li></div>
+</ul>
+</div>
+                </div>
+            
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <h3>Exams</h3>
+                            
+                           
+                        </div>
+                    </nav>
+<div class="cont-exam">
+
+    <div class="exam-available">
+        <h1>No exams available</h1>
+
+        <ul id="listofactivities">
+            <div class="chapter">
+            <li>
+            
+            <h3><i class="fas fa-solid fa-folder-open"></i> Activity 1</h3>
+            <div class="listofchapers">
+            <a href="File/SAQA - 14917- Learner Guide.pdf" download  target="_blank">
+            <i class="fas fa-file-download"></i> Basic Principles of Programming Ass
+            </a>
+            
+            
+            
+            </li>
+            </div>
+            </ul>
+        
+    </div>
+
+    <div class="upload-exam">
+        <h3>Upload Exam File</h3>
+        <input type="file" name="" id="">
+        <button class="btn">Upload</button>
+    </div>
+  
+</div>
+                   
+                </div>
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <p>Marks</p>
+                            <br />
+                            <p>
+                                Date/Time:
+                                <span id="datetime"></span>
+                            </p>
+                            <script>
+                                var dt = new Date();
+                                document.getElementById(
+                                    "datetime"
+                                ).innerHTML = dt.toLocaleString();
+                            </script>
+                        </div>
+                    </nav>
+                </div>
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            
+                            <h3>
+                                Online Learning
+                            </3>
+                            
+                        </div>
+                    </nav>
+                    <h3 class="tSched">Time Schedule</h3>
+                    <div class="table">
+                        
+                        <table style="width: 100%; border: 1px">
+                            <thead>
+                                <tr>
+                                    <th>Days</th>
+                                    <th>Time Slot</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td >Monday - Tuesday</td>
+                                    <td id="date">08:00 - 10:00</td>
+                                    
+                                </tr>
+                                <tr>
+                                    <td >Thursday - Friday</td>
+                                    <td id="date">09:00 - 12:00</td>
+                                    
+                                </tr>
+                                <br />
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="how-join">
+                        <H3>ROOM NAME: <span >SYSTEMSA1</span> </H3>
+                    </div>
+                &nbsp;&nbsp; <h3 class="joinbtn" id="joinbtn"></h3>	
+                </div>
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <p>Groups</p>
+                            <br />
+                            <p>
+                                Date/Time:
+                                <span id="datetime"></span>
+                            </p>
+                            <script>
+                                var dt = new Date();
+                                document.getElementById(
+                                    "datetime"
+                                ).innerHTML = dt.toLocaleString();
+                            </script>
+                        </div>
+                    </nav>
+                </div>
+                <div class="title22">
+                    <nav class="nav-bar">
+                        <div class="logo"></div>
+
+                        <div
+                            class="nav-items"
+                            data-bs-spy="scroll"
+                            data-bs-target="#list-example"
+                            data-bs-offset="0"
+                            class="scrollspy-example"
+                            tabindex="0"
+                        >
+                            <p>Mark Enquiries</p>
+                            <br />
+                            <p>
+                                Date/Time:
+                                <span id="datetime"></span>
+                            </p>
+                            <script>
+                                var dt = new Date();
+                                document.getElementById(
+                                    "datetime"
+                                ).innerHTML = dt.toLocaleString();
+                            </script>
+                        </div>
+                    </nav>
+                </div>
+            </section>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Post Announcement</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <select name="" id="ann-title">
+                           
+                        </select>
+                          <textarea name="" cols="30" id="ann-content" rows="5" placeholder="Announcement"></textarea>
+                         <button class="btn" onclick="postAnn()">Post Announcement</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal fade" id="exampleModalActivity" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Post Activity</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <select name="" id="ann-title3">
+                            <option value="Systems Development">Systems Development</option>
+                        </select>
+                        <select name="" id="activityCourse">
+                            <option value="Activity 1">Activity 1</option>
+                            <option value="Activity 2">Activity2</option>
+                            <option value="Activity 3">Activity 3</option>
+                            <option value="Activity 4">Activity 4</option>
+                            <option value="Activity 5">Activity 5</option>
+                            <option value="Activity 6">Activity 6</option>
+                            <option value="Activity 7">Activity 7</option>
+                            <option value="Activity 8">Activity 8</option>
+                            <option value="Activity 9">Activity 9</option>
+                            <option value="Activity 10">Activity 10</option>
+                            <option value="Activity 11">Activity 11</option>
+                            <option value="Activity 12">Activity 12</option>
+                        </select>
+                          <input type="file" id="file2"> <br>
+                          <progress id="progress2" value="0" max="100">0%</progress><br>
+                          <span id="per-up2" ></span>
+                         <button class="btn" onclick="postActivity()">Post Activity</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="modal fade" id="exampleModalExam" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Post Exam</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <select name="" id="ann-title">
+                            <option value="Systems Development">Systems Development</option>
+                        </select>
+                          <input type="file"> <br>
+                          <progress></progress><br>
+                          <span></span>
+                         <button class="btn" onclick="postAnn()">Post Exam</button>
+                         <span class="or">or</span>
+                         <button class="btn announce" onclick="goTestPortal()">Create an Online Exam</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="modal fade" id="exampleModalNotes" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Post Course Notes</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <select name="" id="ann-title2">
+                            
+                        </select>
+                        <select name="" id="chapterCourse">
+                            <option value="Chapter 1">Chapter 1</option>
+                            <option value="Chapter 2">Chapter 2</option>
+                            <option value="Chapter 3">Chapter 3</option>
+                            <option value="Chapter 4">Chapter 4</option>
+                            <option value="Chapter 5">Chapter 5</option>
+                            <option value="Chapter 6">Chapter 6</option>
+                            <option value="Chapter 7">Chapter 7</option>
+                            <option value="Chapter 8">Chapter 8</option>
+                            <option value="Chapter 9">Chapter 9</option>
+                            <option value="Chapter 10">Chapter 10</option>
+                            <option value="Chapter 11">Chapter 11</option>
+                            <option value="Chapter 12">Chapter 12</option>
+                        </select>
+                          <input type="file" id="filenote"> <br>
+                          <progress id="progress-status"></progress><br>
+                          <span id="UpProgress2"></span> <br>
+                          <input type="text" name="" id="linkNote"placeholder="Additional Link">
+                         <button class="btn" onclick="postNotes()">Post Notes</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="modal fade" id="exampleModalOnline" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Create Online Class</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <h4>How to Create meeting?</h4>
+                        <ul>
+                            <li>Click "Create"</li>
+                            <li>You will be redirected to a meeting page</li>
+                            <li>Create the meeting and copy attendee link</li>
+                            <li>Come back to this popup and paste link to publish it</li>
+                        </ul>
+                        <select name="" id="ann-title5">
+                            <option value="Systems Development">Systems Development</option>
+                        </select>
+                          <a href="https://cl0zbbzsa5552xnl7usgq18t5-bpwi21umk-chrissifundza-gmailcom.vercel.app/create" target="_blank">Create</a>
+                          <input type="text" name="" id="theLink"placeholder="Meeting Link">
+                          <input type="text" name="" id="theHost"placeholder="Host Link">
+                         <button class="btn" onclick="postMeeting()">Post Meeting</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+		
+		
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-storage.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyBf0P2CRv9DUQepQ1hE9pAXL7wc8m8udoI",
+				authDomain: "adom-technologies.firebaseapp.com",
+				projectId: "adom-technologies",
+				storageBucket: "adom-technologies.appspot.com",
+				messagingSenderId: "634322050302",
+				appId: "1:634322050302:web:9575e6b19f42925cacd9af",
+				measurementId: "G-7D600VY2SV",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script>
+			setTimeout(function () {
+				$(".loader_bg").fadeToggle();
+			}, 1500);
+		</script>
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script
+			src="https://kit.fontawesome.com/8f7c71be78.js"
+			crossorigin="anonymous"
+		></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+		<script src="https://smtpjs.com/v3/smtp.js"></script>
+		<script src="javascript/moment.js"></script>
+		<script src="javascript/spinner.js"></script>
+        <script src="javascript/lectureProfile.js"></script>
+		<script src="javascript/userStatus.js"></script>
+	</body>
+</html>

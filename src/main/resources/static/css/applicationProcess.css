@@ -1,0 +1,526 @@
+html {
+	scroll-behavior: smooth;
+}
+body {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+}
+.header {
+	background: rgba(0, 0, 0, 0.699);
+	border-top-left-radius: 15px;
+	border-top-right-radius: 15px;
+}
+.header h1 {
+	color: darkcyan;
+
+	text-transform: uppercase;
+	display: none;
+}
+.loader_bg {
+	position: fixed;
+	z-index: 999999;
+	background: rgb(0, 0, 0);
+	width: 100%;
+	height: 100%;
+	opacity: 0.9;
+}
+.loader {
+	border: 0 soild transparent;
+	border-radius: 50%;
+	width: 150px;
+	height: 150px;
+	position: absolute;
+	top: calc(50vh - 75px);
+	left: calc(50vw - 75px);
+}
+.loader:before,
+.loader:after {
+	content: "";
+	border: 1em solid darkcyan;
+	border-radius: 50%;
+	width: inherit;
+	height: inherit;
+	position: absolute;
+	top: 0;
+	left: 0;
+	animation: loader 2s linear infinite;
+	opacity: 0;
+}
+.loader:before {
+	animation-delay: 0.5s;
+}
+@keyframes loader {
+	0% {
+		transform: scale(0);
+		opacity: 0;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 0;
+	}
+}
+.cont-bg {
+	position: relative;
+	display: flex;
+	width: 100vw;
+	height: 100vh;
+
+	justify-content: center;
+}
+.cont-bg .background1 {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	z-index: -5;
+	filter: blur(5px);
+}
+.cont-bg .overlay {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background: black;
+	opacity: 0.5;
+	z-index: -4;
+}
+.cont-bg .apply-form {
+	position: relative;
+	width: 50%;
+	height: fit-content;
+	overflow: hidden;
+	margin-top: 60px;
+}
+.cont-bg .vb {
+	position: relative;
+	width: 80% !important;
+	height: fit-content;
+	overflow: hidden;
+	margin-top: 60px;
+}
+.persnal222 table {
+	width: 95%;
+}
+.persnal222 table tr td {
+	background: rgb(38, 50, 105);
+}
+.persnal222 table tbody tr:hover {
+	color: red !important;
+}
+#uplo {
+	background: darkcyan;
+	border: 0;
+	outline: 0;
+	border-radius: 5px;
+	padding: 5px;
+}
+#uplo:hover {
+	background: rgb(4, 75, 75);
+}
+.persnal222 .uploadRegis tbody:hover {
+	color: unset;
+}
+
+.cont-bg .apply-form .background2 {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	z-index: -3;
+	background: black;
+	opacity: 0.7;
+	border-radius: 15px;
+	box-shadow: 0 1rem 1rem rgba(0, 0, 0, 0.4);
+	padding: 20px;
+}
+.cont-bg .apply-form .header h1 {
+	position: relative;
+	color: darkcyan;
+	font-weight: 500;
+}
+.cont-bg .apply-form .header h2 {
+	position: relative;
+	color: #ddd;
+	font-weight: bold;
+
+	padding-top: 15px;
+	padding-bottom: 15px;
+}
+.info span {
+	position: relative;
+	color: rgb(189, 182, 182);
+}
+
+.personal {
+	display: none;
+}
+.personal.active {
+	display: block;
+}
+.already-applied {
+	display: none;
+}
+.already-applied.active {
+	display: block;
+	color: white;
+}
+.yesID {
+	display: none;
+}
+.yesID.active {
+	display: block;
+}
+.noID {
+	display: none;
+}
+.noID.active {
+	display: block;
+	width: 100%;
+}
+.noID input {
+	width: 100%;
+}
+.postal {
+	display: none;
+}
+.postal.active {
+	display: block;
+}
+.passed {
+	display: none;
+}
+.passed.active {
+	display: block;
+}
+.tert {
+	display: none;
+}
+.tert.active {
+	display: contents;
+	background-color: rgba(0, 0, 0, 0.7) !important;
+}
+.footer {
+	display: none;
+}
+.footer.active {
+	display: block;
+	color: white;
+}
+.footer22 {
+	color: white;
+}
+.personal .pdf-container {
+	position: relative;
+	padding: 20px;
+	height: 500px;
+}
+.persnal22 .pdf-container {
+	position: relative;
+	padding: 20px;
+	height: 400px;
+}
+.personal .terms {
+	color: aliceblue;
+}
+.personal2 {
+	position: relative;
+	width: 100%;
+}
+.persnal22 span {
+	color: rgb(233, 233, 233);
+}
+.personal2 h3 {
+	width: 100%;
+	display: flex;
+	color: rgb(214, 214, 214);
+	justify-content: flex-start;
+	padding-left: 20px;
+	font-weight: 200;
+}
+.personal2 h5 {
+	width: 100%;
+	display: flex;
+	color: rgb(214, 214, 214);
+	justify-content: flex-start;
+	padding-left: 20px;
+	font-weight: 500;
+	border-bottom: 3px solid rgb(177, 22, 56);
+	width: fit-content;
+}
+.personal2 p {
+	width: 100%;
+	display: flex;
+	color: rgb(214, 214, 214);
+	justify-content: flex-start;
+	padding-left: 20px;
+	font-weight: 200;
+}
+.personal2 h6 {
+	width: 100%;
+	display: flex;
+	color: rgb(214, 214, 214);
+	justify-content: center;
+	padding-left: 20px;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	width: 90%;
+	border: 1px solid #ddd;
+	margin: 20px;
+	border-radius: 10px;
+}
+thead {
+	background: rgba(214, 214, 214, 0.801);
+	color: black !important;
+}
+tbody {
+	color: #ddd;
+}
+th,
+td {
+	text-align: left;
+	padding: 15px;
+}
+
+td .edit {
+	color: rgb(202, 78, 78);
+	cursor: pointer;
+}
+td .edit:hover {
+	color: rgb(119, 43, 43);
+}
+
+tr:nth-child(even) {
+	background-color: rgba(0, 0, 0, 0.7);
+}
+
+.preload .edit {
+	color: rgb(202, 78, 78);
+	cursor: pointer;
+}
+.preload .edit:hover {
+	color: rgb(119, 43, 43);
+}
+.preload2 .edit {
+	color: rgb(202, 78, 78);
+	cursor: pointer;
+}
+.preload2 .edit:hover {
+	color: rgb(119, 43, 43);
+}
+.preload3 .edit {
+	color: rgb(202, 78, 78);
+	cursor: pointer;
+}
+.preload3 .edit:hover {
+	color: rgb(119, 43, 43);
+}
+.row {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+
+	width: 100%;
+	background: black;
+}
+.row1 {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	margin-bottom: 17px;
+	gap: 15px;
+}
+.row1 .stylePersonal1 {
+	position: relative;
+	display: flex;
+	justify-content: flex-end;
+	align-items: flex-end;
+	text-align: end;
+	width: 40%;
+}
+.row1 .stylePersonal1 span {
+	color: #ddd;
+}
+.row1 .stylePersonal1 span::after {
+	content: "*";
+	top: 0;
+	right: 0;
+	display: contents;
+	color: rgb(177, 43, 43);
+	font-size: 18px;
+}
+.row1 .stylePersonal2 {
+	position: relative;
+	display: flex;
+	justify-content: flex-start;
+	align-items: flex-start;
+	text-align: start;
+	width: 40%;
+}
+.row1 .stylePersonal2 input {
+	width: 100%;
+	padding: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	border-radius: 20px;
+	outline: 0;
+	border: 0;
+	background: rgba(255, 255, 255, 0.801);
+}
+.row1 .stylePersonal2 input:focus {
+	outline: 2.5px solid rgb(0, 111, 139);
+}
+.row1 .stylePersonal2 select {
+	padding: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	border-radius: 20px;
+	outline: 0;
+	border: 0;
+	background: rgba(255, 255, 255, 0.801);
+}
+.row1 .stylePersonal2 select:focus {
+	outline: 2.5px solid rgb(9, 87, 87);
+}
+hr {
+	background: rgb(255, 255, 255);
+}
+.footer2 {
+	display: flex;
+	justify-content: space-between;
+	padding-left: 30px;
+	padding-right: 30px;
+	padding-bottom: 20px;
+}
+.footer2 button {
+	padding: 7px;
+	padding-left: 30px;
+	padding-right: 30px;
+	border-radius: 30px;
+	outline: 0;
+	border: 1px solid darkcyan;
+	box-shadow: 0 0.3rem 0.3rem rgba(0, 0, 0, 0.4);
+	background: transparent;
+	color: #ddd;
+}
+.footer2 button:hover {
+	background: #ddd;
+	color: black;
+	transition: all 1s ease;
+}
+.footer2 button:focus {
+	border: 2px solid rgb(0, 60, 139);
+	background: rgb(95, 95, 95);
+	transition: all 1s ease;
+}
+
+.footer3 button {
+	padding: 7px;
+	padding-left: 30px;
+	padding-right: 30px;
+	border-radius: 30px;
+	outline: 0;
+	border: 2px solid rgb(177, 22, 56);
+	box-shadow: 0 0.3rem 0.3rem rgba(0, 0, 0, 0.4);
+	background: transparent;
+	color: #ddd;
+	margin-bottom: 20px;
+}
+.footer3 button:hover {
+	background: #ddd;
+	color: black;
+	transition: all 1s ease;
+}
+.footer3 button:focus {
+	border: 2px solid rgb(0, 60, 139);
+	background: rgb(95, 95, 95);
+	transition: all 1s ease;
+}
+.info button {
+	padding: 7px;
+	padding-left: 30px;
+	padding-right: 30px;
+	border-radius: 30px;
+	outline: 0;
+	border: 1px solid darkcyan;
+	box-shadow: 0 0.3rem 0.3rem rgba(0, 0, 0, 0.4);
+	background: transparent;
+	color: #ddd;
+	transition: all 1s ease;
+}
+.info button:hover {
+	background: #ddd;
+	color: black;
+	transition: all 1s ease;
+}
+.bold {
+	font-weight: bold;
+}
+#dispay {
+}
+#dispay h4 {
+	color: #ddd;
+}
+#dispay h6 {
+	color: #ddd;
+	width: 100%;
+	margin-left: 0;
+	left: 0;
+}
+#dispay .studentNo {
+	font-weight: 600;
+	font-size: 20px;
+	text-decoration: underline;
+	color: rgb(177, 22, 56);
+}
+#dispay .pin {
+}
+.totalPriceRegistration {
+	font-weight: bold;
+	font-size: 20px;
+}
+@media (max-width: 1000px) {
+	.cont-bg .apply-form {
+		position: relative;
+		width: 70%;
+		height: fit-content;
+		overflow: hidden;
+		margin-top: 60px;
+	}
+}
+@media (max-width: 850px) {
+	.cont-bg .apply-form {
+		position: relative;
+		width: 80%;
+		height: fit-content;
+		overflow: hidden;
+		margin-top: 60px;
+	}
+}
+@media (max-width: 750px) {
+	.cont-bg .apply-form {
+		position: relative;
+		width: 90%;
+		height: fit-content;
+		overflow: hidden;
+		margin-top: 60px;
+	}
+}
+@media (max-width: 650px) {
+	.cont-bg .apply-form {
+		position: relative;
+		width: 98%;
+		height: fit-content;
+		overflow: hidden;
+		margin-top: 60px;
+	}
+}

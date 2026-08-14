@@ -1,0 +1,140 @@
+body {
+	margin: 0;
+	padding: 0;
+}
+nav {
+	display: flex;
+	flex-direction: row;
+	box-shadow: 0 0.3rem 0.3rem rgba(0, 0, 0, 0.4);
+	background: rgb(13, 37, 63);
+	color: #ddd;
+}
+nav .main {
+	padding: 10px;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	flex-grow: 1;
+}
+nav .main .main-left img {
+	height: 40px;
+	width: auto;
+}
+nav .main .main-left {
+	font-weight: bolder;
+	font-size: x-large;
+}
+nav .main .main-right {
+	font-weight: bold;
+}
+.loader_bg {
+	position: fixed;
+	z-index: 999999;
+	background: rgb(0, 0, 0);
+	width: 100%;
+	height: 100%;
+	opacity: 0.9;
+}
+.loader {
+	border: 0 soild transparent;
+	border-radius: 50%;
+	width: 150px;
+	height: 150px;
+	position: absolute;
+	top: calc(50vh - 75px);
+	left: calc(50vw - 75px);
+}
+.loader:before,
+.loader:after {
+	content: "";
+	border: 1em solid darkcyan;
+	border-radius: 50%;
+	width: inherit;
+	height: inherit;
+	position: absolute;
+	top: 0;
+	left: 0;
+	animation: loader 2s linear infinite;
+	opacity: 0;
+}
+.loader:before {
+	animation-delay: 0.5s;
+}
+@keyframes loader {
+	0% {
+		transform: scale(0);
+		opacity: 0;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 0;
+	}
+}
+.container {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	flex-grow: 1;
+	margin: 50px;
+}
+.container .cont-left {
+	display: flex;
+	flex-direction: row;
+}
+.container .cont-left .list1 ul li {
+	list-style: none;
+	cursor: pointer;
+	padding: 5px;
+}
+.container .cont-left .list1 ul li .fas {
+	font-size: 25px;
+}
+.container .cont-left .list2 ul li .fas {
+	font-size: 25px;
+}
+.container .cont-left .list1 ul li:hover {
+	background: rgb(146, 146, 146);
+	border-radius: 5px;
+}
+.container .cont-left .list2 ul li {
+	list-style: none;
+	cursor: pointer;
+	padding: 5px;
+}
+.container .cont-left .list2 ul li:hover {
+	background: rgb(146, 146, 146);
+	border-radius: 5px;
+}
+.adverts {
+	margin-top: 20px;
+	margin-right: 100px;
+	margin-left: 100px;
+}
+.adverts .img-advert {
+	width: 100%;
+	height: auto;
+}
+.adverts .img-advert img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+.cont-right {
+	position: relative;
+}
+.login-form {
+	position: relative;
+	width: 100%;
+	padding: 30px;
+	background: rgb(219, 219, 219);
+	border-radius: 10px;
+	right: 0;
+}
+.login-form button {
+	background: rosybrown;
+	position: relative;
+	right: 0px;
+}

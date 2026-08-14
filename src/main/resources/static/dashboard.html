@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Online Assessment Portal</title>
+
+		<link rel="shortcut icon" href="img/logo/logg.png" />
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+		<link rel="stylesheet" href="css/dashboard.css" />
+	</head>
+	<body onload="repeat();">
+	
+		<nav class=" navbar navbar-expand-lg">
+			<div class="main">
+				<div class="main-left m-2">
+					<img src="logo/adom-logo.png" alt="" />
+					
+					
+					
+				</div>
+				<div class="parentN">
+				<div class="collapse navbar-collapse" id="navbarSupportedContent"> 
+					<div class="main-left m-2 ">
+						<span class="logout nav-item" 
+						><i class="fas fa-power-off" onclick="logout()"></i>
+						Logout</span
+					>
+					<span class="logout nav-item"><i class="fas fa-info"></i> Info</span
+		 			>
+					<span class="logout nav-item"
+						><i class="fas fa-envelope"></i> Messages</span
+					>
+					</div>
+						<div class="main-middle nav-item m-2">
+							Contact: 011 083 0556 <br />
+							Email: online@assessment.ac.za
+						</div>
+						<div class="main-right m-2">
+							<span class="nav-item">Welcome</span>
+							<br />
+							<span id="NameInit" class="nav-item"></span>
+							<br />
+							<span class="student-name nav-item">Assessment Dashboard</span>
+						</div>
+					
+				
+			</div>
+		</div>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<i class="fas fa-bars"></i>
+			  </button>
+			</div>
+		</nav>
+		<div class="row home"><span>Home</span></div>
+		<div class="adverts">
+			<div class="img-advert active">
+				<img src="img/corona.jpg" alt="" />
+				<div class="info">
+					<h2>Vaccinate</h2>
+					<p>
+						Make sure you sanitize, be alert about corona virus
+						recent updates, stay safe
+					</p>
+				</div>
+			</div>
+			<div class="img-advert">
+				<img src="img/slide11.jpg" alt="" />
+				<div class="info">
+					<h2>E-Learning</h2>
+					<p>
+						Study at your own pace through online learning, Click to
+						view available courses
+					</p>
+				</div>
+			</div>
+			<div class="img-advert">
+				<img src="img/plagiarism.jpg" alt="" />
+				<div class="info">
+					<h2>Copying</h2>
+					<p>
+						Avoid copying from the internet as this will result into
+						expalsion, Be encouraged to write your work.
+					</p>
+				</div>
+			</div>
+			<div class="navigation">
+				<div class="btn1 active"></div>
+				<div class="btn1"></div>
+				<div class="btn1"></div>
+			</div>
+		</div>
+		<div class="container1">
+			<div class="row container-row">
+				<div class="col-md-4 box">
+					<div class="overpic" onclick="LearnBourd()"></div>
+					<img src="img/dashboard/write.jpg" alt="" />
+					<div class="caption-box" onclick="LearnBourd()"></div>
+					<span class="heading-box float-right" onclick="LearnBourd()"
+						>writeAssess</span
+					><br />
+					<span onclick="LearnBourd()">Learn Online</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/online.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right">Online Courses</span
+					><br />
+					<span>Register</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic" onclick="regFinance()"></div>
+					<img
+						src="img/dashboard/finance.jpg"
+						alt=""
+						onclick="regFinance()"
+					/>
+
+					<div class="caption-box" onclick="regFinance()"></div>
+					<span class="heading-box float-right" onclick="regFinance()"
+						>Register | Finances</span
+					><br />
+					<span onclick="regFinance()"
+						>Enroll for modules | Time Tables</span
+					>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/pass.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right">Results</span><br />
+					<span>Assessment |Exam | Policy</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/health.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right"
+						>Health | Covid-19</span
+					><br />
+					<span>Vaccinate</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/caree.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right"
+						>Careers | Resources</span
+					><br />
+					<span>Get Suppport</span>
+				</div>
+			</div>
+			<div class="footer-boo">
+				<span>Call: 0820480933 </span>|<span>
+					Email: assess@exam.co.za</span
+				>
+				|<span> www.assessment.co.za</span> <br />
+				<span
+					>&copy;
+					<script>
+						document.write(new Date().getFullYear());
+					</script>
+					| Chris Tech Solution | All rights reserved
+				</span>
+			</div>
+		</div>
+		<br />
+		<br />
+
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-storage.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyBf0P2CRv9DUQepQ1hE9pAXL7wc8m8udoI",
+				authDomain: "adom-technologies.firebaseapp.com",
+				projectId: "adom-technologies",
+				storageBucket: "adom-technologies.appspot.com",
+				messagingSenderId: "634322050302",
+				appId: "1:634322050302:web:9575e6b19f42925cacd9af",
+				measurementId: "G-7D600VY2SV",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script>
+			setTimeout(function () {
+				$(".loader_bg").fadeToggle();
+			}, 1500);
+		</script>
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+			crossorigin="anonymous"
+		></script>
+		<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+		<script
+			src="https://kit.fontawesome.com/47537ceff2.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="javascript/dashboard.js"></script>
+	</body>
+</html>

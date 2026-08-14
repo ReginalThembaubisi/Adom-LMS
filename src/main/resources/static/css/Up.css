@@ -1,0 +1,172 @@
+#myBtn {
+	display: none;
+	position: fixed;
+	bottom: 20px;
+	right: 30px;
+	z-index: 1005;
+	font-size: 20px;
+	border: 1px solid #ced2cc;
+	outline: none;
+	background-color: #40646e;
+	color: #ced2cc;
+	cursor: pointer;
+	border-radius: 20px;
+	padding: 0px 10px 0px 10px;
+}
+
+#myBtn:hover {
+	background-color: #ced2cc;
+	color: #1f3f49;
+	border: 1px solid #23282d;
+}
+
+.spinner {
+	width: 80px;
+	height: 80px;
+	border: 2px solid #ced2cc00;
+	border-radius: 100%;
+	border-top: 3px solid #1f3f49;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	margin: auto;
+	animation: spin 1s infinite linear;
+}
+
+/*xxxxxxxxxxxxxxxxxxxxxxxxxx Video Call xxxxxxxxxxxxxxxxxxxxxxxxxxxx*/
+.pop-up-call {
+	background: #1f3f49;
+	border-radius: 50%;
+	width: 60vh;
+	height: 60vh;
+	position: fixed;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 99;
+	top: 16.5%;
+	left: 35%;
+}
+
+#Vc {
+	display: none;
+}
+
+.circle {
+	background: #1f3f4960;
+	border-radius: 50%;
+	position: fixed;
+	padding: 5px;
+	width: 65vh;
+	height: 65vh;
+	z-index: 2001;
+	left: 34%;
+	top: 14%;
+	animation: scaling 1s linear infinite;
+}
+
+.circleII {
+	background: #1f3f4930;
+	border-radius: 50%;
+	position: fixed;
+	padding: 5px;
+	width: 65vh;
+	height: 65vh;
+	z-index: 2002;
+	left: 34%;
+	top: 14%;
+	animation: scaling 2s linear infinite;
+}
+
+.white {
+	color: #ced2cc;
+}
+
+.red {
+	color: #ff0000;
+}
+
+.green {
+	color: #00ff00;
+}
+
+@keyframes scaling {
+	0% {
+		transform: scale(1);
+	}
+	100% {
+		transform: scale(2);
+	}
+}
+
+.call-details {
+	display: block;
+	text-align: center;
+	justify-items: center;
+	z-index: 10;
+}
+.callingImage {
+	width: 200px;
+	height: 200px;
+	border-radius: 50%;
+	margin: 10px;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+}
+
+.action {
+	display: block;
+	z-index: 30;
+	position: fixed;
+	text-align: center;
+	justify-items: center;
+	top: 65%;
+}
+
+.action .fa {
+	cursor: pointer;
+}
+
+.action .fa:hover {
+	color: #ced2cc;
+	font-size: 57px;
+}
+
+/*xxxxxxxxxxxxxxxxxxxxxxxxxx Video Call xxxxxxxxxxxxxxxxxxxxxxxxxxxx*/
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+#overlay {
+	height: 100%;
+	width: 100%;
+	z-index: 2003;
+	background: rgba(0, 0, 0, 0.5);
+	position: fixed;
+	top: 0;
+	left: 0;
+}
+
+@media only screen and (max-width: 980px) {
+	#myBtn {
+		display: none;
+		position: fixed;
+		bottom: 5px;
+		right: 10px;
+		z-index: 99;
+		font-size: 14px;
+		background-color: rgba(0, 0, 0, 0.4);
+		color: #ced2cc;
+		cursor: pointer;
+		border-radius: 50px;
+	}
+}

@@ -59,12 +59,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
                         .requestMatchers(
                                 "/",
-                                "/index.html",
-                                "/register.html",
-                                "/login.html",
-                                "/landing.html",
-                                "/portal.html",
-                                "/student-portal.html",
+                                "/*.html",
                                 "/h2-console/**",
                                 "/api/auth/me",
                                 "/assets/**",
@@ -73,7 +68,19 @@ public class SecurityConfig {
                                 "/icons.svg",
                                 "/*.css",
                                 "/*.js",
-                                "/*.ico"
+                                "/*.ico",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/img/**",
+                                "/logo/**",
+                                "/javascript/**",
+                                "/dist/**",
+                                "/Online Exam/**",
+                                "/Online%20Exam/**",
+                                "/Admin/**",
+                                "/cs/**",
+                                "/File/**"
                         ).permitAll()
 
                         // Admin / Lecturer Protected Endpoints & Dashboards

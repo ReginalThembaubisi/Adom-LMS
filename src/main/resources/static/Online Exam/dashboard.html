@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Online Assessment Portal</title>
+
+		<link rel="shortcut icon" href="img/logo/logg.png" />
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+			rel="stylesheet"
+			integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+			crossorigin="anonymous"
+		/>
+		<link rel="stylesheet" href="css/dashboard.css" />
+	</head>
+	<body onload="repeat();">
+		<nav>
+			<div class="main">
+				<div class="main-left">
+					<img src="img/logo/logg.png" alt="" />
+					&nbsp;&nbsp;&nbsp;&nbsp;
+					<span class="logout"
+						><i class="fas fa-power-off"></i> Logout</span
+					>&nbsp;&nbsp;&nbsp;&nbsp;
+					<span class="logout"><i class="fas fa-info"></i> Info</span
+					>&nbsp;&nbsp;&nbsp;&nbsp;
+					<span class="logout"
+						><i class="fas fa-envelope"></i> Messages</span
+					>
+				</div>
+
+				<div class="main-middle">
+					Contact: 011 083 0556 <br />
+					Email: online@assessment.ac.za
+				</div>
+				<div class="main-right">
+					<span>Welcome</span>
+					<br />
+					<span>Kuyalunga Chris Sifundza</span>
+					<br />
+					<span class="student-name">Assessment Dashboard</span>
+				</div>
+			</div>
+		</nav>
+		<div class="row home"><span>Home</span></div>
+		<div class="adverts">
+			<div class="img-advert active">
+				<img src="img/corona.jpg" alt="" />
+				<div class="info">
+					<h2>Slide 01</h2>
+					<p>
+						Make sure you sanitize, be alert about corona virus
+						recent updates, stay safe
+					</p>
+				</div>
+			</div>
+			<div class="img-advert">
+				<img src="img/slide11.jpg" alt="" />
+				<div class="info">
+					<h2>Slide 02</h2>
+					<p>
+						Make sure you sanitize, be alert about corona virus
+						recent updates, stay safe
+					</p>
+				</div>
+			</div>
+			<div class="img-advert">
+				<img src="img/plagiarism.jpg" alt="" />
+				<div class="info">
+					<h2>Slide 03</h2>
+					<p>
+						Make sure you sanitize, be alert about corona virus
+						recent updates, stay safe
+					</p>
+				</div>
+			</div>
+			<div class="navigation">
+				<div class="btn1 active"></div>
+				<div class="btn1"></div>
+				<div class="btn1"></div>
+			</div>
+		</div>
+		<div class="container1">
+			<div class="row container-row">
+				<div class="col-md-4 box">
+					<div class="overpic" onclick="LearnBourd()"></div>
+					<img src="img/dashboard/write.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right">writeAssess</span
+					><br />
+					<span>Learn Online</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/online.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right">Online Courses</span
+					><br />
+					<span>Register</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic" onclick="regFinance()"></div>
+					<img
+						src="img/dashboard/finance.jpg"
+						alt=""
+						onclick="regFinance()"
+					/>
+
+					<div class="caption-box" onclick="regFinance()"></div>
+					<span class="heading-box float-right" onclick="regFinance()"
+						>Register | Finances</span
+					><br />
+					<span onclick="regFinance()"
+						>Enroll for modules | Time Tables</span
+					>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/pass.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right">Results</span><br />
+					<span>Assessment |Exam | Policy</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/health.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right"
+						>Health | Covid-19</span
+					><br />
+					<span>Vaccinate</span>
+				</div>
+				<div class="col-md-4 box">
+					<div class="overpic"></div>
+					<img src="img/dashboard/caree.jpg" alt="" />
+					<div class="caption-box"></div>
+					<span class="heading-box float-right"
+						>Careers | Resources</span
+					><br />
+					<span>Get Suppport</span>
+				</div>
+			</div>
+			<div class="footer-boo">
+				<span>Call: 0820480933 </span>|<span>
+					Email: assess@exam.co.za</span
+				>
+				|<span> www.assessment.co.za</span> <br />
+				<span
+					>&copy;
+					<script>
+						document.write(new Date().getFullYear());
+					</script>
+					| Chris Tech Solution | All rights reserved
+				</span>
+			</div>
+		</div>
+		<br />
+		<br />
+
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyCWh9wj-6mqremnyXHu-j_57Zhi74WUIpI",
+				authDomain: "aves-28bbd.firebaseapp.com",
+				projectId: "aves-28bbd",
+				storageBucket: "aves-28bbd.appspot.com",
+				messagingSenderId: "332353314052",
+				appId: "1:332353314052:web:e240407bcce4710a230451",
+				measurementId: "G-DXHJBY59Z8",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+			crossorigin="anonymous"
+		></script>
+		<script
+			src="https://kit.fontawesome.com/47537ceff2.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="js/dashboard.js"></script>
+	</body>
+</html>

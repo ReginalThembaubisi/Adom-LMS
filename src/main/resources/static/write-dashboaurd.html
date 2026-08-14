@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Learner's-bourd</title>
+
+		<link rel="shortcut icon" href="img/logo/logg.png" />
+		<link rel="stylesheet" href="css/nowRegAdom.css" />
+		<!-- Boxicons CDN Link -->
+		<link
+			href="https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css"
+			rel="stylesheet"
+		/>
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+			rel="stylesheet"
+			integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+			crossorigin="anonymous"
+		/>
+		<link rel="stylesheet" href="css/learn.css" />
+		<link rel="stylesheet" href="css/calender.css" />
+	</head>
+	<body onload="manualNavon()">
+		<div class="loader_bg">
+			<div class="loader"></div>
+		</div>
+		<div class="container1">
+			<aside>
+				<div class="top">
+					<div class="logo">
+						<h2>Learner's bourd</h2>
+					</div>
+					<div class="close" id="close-btn">
+						<i class="fas fa-times"></i>
+					</div>
+				</div>
+				<div class="sidebar">
+					<a href="#" class="btnAll btn1"
+						><i class="fas fa-bell"></i>
+						<h3>Notifications</h3></a
+					>
+					<a href="#" class="btnAll btn2">
+						<i class="fas fa-user"></i>
+						<h3>Account</h3></a
+					>
+					<a href="#" class="btnAll btn3"
+						><i class="fas fa-book"></i>
+						<h3>Courses</h3></a
+					>
+					<a href="#" class="btnAll btn4"
+						><i class="fas fa-calendar-alt"></i>
+						<h3>Calender</h3></a
+					>
+					<a href="#" class="btnAll btn5"
+						><i class="fas fa-envelope"></i>
+						<h3>Messages</h3>
+						<span class="message-count">25</span></a
+					>
+					<a href="#" class="btnAll btn6"
+						><i class="far fa-list-alt"></i>
+						<h3>Marks</h3></a
+					>
+
+					<a href="#" class="btnAll btn7"
+						><i class="fas fa-question-circle"></i>
+						<h3>Support</h3></a
+					>
+					<a href="#" onclick="logout()"
+						><i class="fas fa-sign-out-alt"></i>
+						<h3>Logout</h3></a
+					>
+				</div>
+			</aside>
+			<main>
+				<div class="notification-container divContainer">
+					<div class="top-main">
+						<div class="title-section"><h2>Notifications</h2></div>
+					</div>
+					<div class="search-course">
+						<div class="left-search">
+							<div class="filter">
+								<span>Filter</span>&nbsp;<select name="" id="">
+									<option value="All Notifications">
+										All Notifications
+									</option>
+									<option value="Last 24hrs">
+										Last 24rs
+									</option>
+									<option value="Current week">
+										Current Week
+									</option>
+									<option value="Current month">
+										Current Month
+									</option>
+									<option value="3 months">3 Months</option>
+								</select>
+							</div>
+						</div>
+						<div class="right-search">
+							<select name="" id="">
+								<option value="10">10</option></select
+							>&nbsp;<span>Items per page</span>
+						</div>
+					</div>
+					<div class="row noti">
+						<div class="row notRow" >
+							<div class="col-6 left-recent">
+								<div class="round-div"></div>
+							</div>
+							<div class="col-6 right-recent">
+								<span>Recent</span>
+							</div>
+						</div>
+						<div class="div" id="Listofann">
+				
+						</div>
+					</div>
+				</div>
+				<div class="account-container divContainer">
+					<div class="top-main back-img">
+						<img src="img/learn-bourd/background/1.jpg" alt="" />
+					</div>
+					<div class="profile-img">
+						<div class="img-container">
+							<img src="img/dfault/learn-user.jpg" alt="" />
+						</div>
+						<div class="edit-profile">
+							<i class="fas fa-camera"></i>
+						</div>
+						<h2 id="NameInit2"></h2>
+					</div>
+					<div class="row details-account">
+						<div class="col-6 left-account">
+							<h3>Account Details</h3>
+							<div class="row info">
+								<div class="col-6">
+									<span class="title"> Full Name</span>
+								</div>
+								<div class="col-6" id="NameInit"></div>
+							</div>
+							<div class="row info bot">
+								<div class="col-6">
+									<span class="title"> Email Address</span>
+								</div>
+								<div class="col-6" id="email"></div>
+							</div>
+						</div>
+						<div class="col-6 right-account">
+							<h3>Account Settings</h3>
+							<div class="row info click-edit">
+								<div class="col-6">
+									<span class="title">Language</span>
+								</div>
+								<div class="col-6">
+									<span class="name"
+										>System Default (English (United
+										Kingdom‭)‬)</span
+									>
+									&nbsp;&nbsp; 
+									<span class="edit"
+										><i class="fas fa-pencil-alt"></i
+									></span>
+								</div>
+							</div>
+							<div class="row info bot click-edit">
+								<div class="col-6">
+									<span class="title">Privacy Settings</span>
+								</div>
+								<div class="col-6">
+									<span class="name"
+										>Only instructors can view my profile
+										information</span
+									>&nbsp;&nbsp;
+									<span class="edit"
+										><i class="fas fa-pencil-alt"></i
+									></span>
+								</div>
+							</div>
+							<div class="row info bot click-edit">
+								<div class="col-6">
+									<span class="title"
+										>Global Notification Settings</span
+									>
+								</div>
+								<div class="col-6">
+									<a href="#">Recieve notification</a>
+									<br /><br />
+									<a href="#">Email notification</a
+									><br /><br />
+									<a href="#">Push notification</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="course-container divContainer">
+					<div class="top-main">
+						<div class="title-section"><h2>Courses</h2></div>
+						<div class="heading-courses">
+							<div class="name-of-semester underline">
+								<i class="fas fa-arrow-circle-left"></i>
+								&nbsp;&nbsp;
+								<span>212-Semester 2</span>
+							</div>
+							<div class="stage-course underline">
+								
+								&nbsp;&nbsp;
+								<span
+									><select class="drop-down">
+										<option value="Current Courses">
+											Current Courses
+										</option>
+										<option value="Current Courses">
+											Previous Courses
+										</option>
+										<option value="Current Courses">
+											Upcoming Courses
+										</option>
+									</select></span
+								>
+							</div>
+							<div class="upcoming-course underline">
+								<span>Upcoming Courses </span>&nbsp;&nbsp;<i
+									class="fas fa-arrow-circle-right"
+								></i>
+							</div>
+						</div>
+					</div>
+					<div class="search-course">
+						<div class="left-search">
+							<div class="list-grid">
+								<span><i class="fas fa-list"></i></span>
+								<span class="active"
+									><i class="fas fa-border-all"></i
+								></span>
+							</div>
+							<div class="search-input">
+								<i class="fas fa-search"></i>
+								<input
+									type="text"
+									placeholder="...Search Courses"
+								/>
+							</div>
+							<div class="filter">
+								<span>Filter</span>&nbsp;<select name="" id="">
+									<option value="All courses">
+										All courses
+									</option>
+									<option value="All courses">
+										Semester
+									</option>
+									<option value="All courses">Year</option>
+								</select>
+							</div>
+						</div>
+						<div class="right-search">
+							<select name="" id="">
+								<option value="10">10</option></select
+							>&nbsp;<span>Items per page</span>
+						</div>
+					</div>
+					<div class="row main-course" id="ListofcOURSE">
+						<div class="col-md-4 course">
+							<div class="out">
+								<img src="img/learn-bourd/course1.jpg" alt="" />
+								<div class="title-of-course">
+									<span class="module-code">212SSW01B1</span
+									><br />
+									<span class="module-name"
+										>System Software</span
+									><br />
+									<span class="lecture-name"
+										>Patrick Ndayizigamiye</span
+									>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4 course">
+							<div class="out">
+								<img src="img/learn-bourd/course2.jpg" alt="" />
+								<div class="title-of-course">
+									<span class="module-code">212HCI01B1</span
+									><br />
+									<span class="module-name"
+										>Human Computer Interface</span
+									><br />
+									<span class="lecture-name"
+										>Tinose Mokoana</span
+									>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4 course">
+							<div class="out">
+								<img src="img/learn-bourd/course3.jpg" alt="" />
+								<div class="title-of-course">
+									<span class="module-code">212BAY01B1</span
+									><br />
+									<span class="module-name"
+										>Business Analysis</span
+									><br />
+									<span class="lecture-name">Shobe Dube</span>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4 course" onclick="ViewCourse()">
+							<div class="out">
+								<img src="img/learn-bourd/course4.jpg" alt="" />
+								<div class="title-of-course">
+									<span class="module-code">212SDP01B1</span
+									><br />
+									<span class="module-name"
+										>software Development Project</span
+									><br />
+									<span class="lecture-name"
+										>Kwete Nyandongo</span
+									>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="courseProfile active" id="courseProfile">
+						<div class="sidebar2">
+							<div class="logo-details">
+								<h2>
+									<i
+										class="fas fa-arrow-alt-circle-left"
+										onclick="hideCourse()"
+									></i>
+									System Software
+								</h2>
+							</div>
+							<ul class="nav-links">
+								<li>
+									<a href="#" class="btnAll2 btn11 active">
+										<i class="bx bx-grid-alt"></i>
+										<span class="links_name"
+											>Course OverView</span
+										>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn12">
+										<i class="bx bxs-user-circle"></i>
+										<span class="links_name"
+											>Lecture's Profile</span
+										>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn13">
+										<i class="bx bxs-book"></i>
+										<span class="links_name"
+											>Course Notes</span
+										>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn14">
+										<i class="fas fa-pen-square"></i>
+										<span class="links_name"
+											>Activities</span
+										>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn15">
+										<i class="bx bx-book-open"></i>
+										<span class="links_name">Exams</span>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn16">
+										<i class="fas fa-address-book"></i>
+										<span class="links_name">Marks</span>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn17">
+										<i class="fas fa-laptop"></i>
+										<span class="links_name"
+											>Online Learning</span
+										>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn18">
+										<i class="fas fa-user-friends"></i>
+										<span class="links_name">Groups</span>
+									</a>
+								</li>
+								<li>
+									<a href="#" class="btnAll2 btn19">
+										<i class="bx bx-list-check"></i>
+										<span class="links_name"
+											>Mark Enquiries</span
+										>
+									</a>
+								</li>
+							</ul>
+						</div>
+						<section class="home-section">
+							<div class="title22 active">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Welcome To System Development</h3>
+
+										<p>
+											Date/Time:
+											<span id="datetime"></span>
+										</p>
+										<script>
+											var dt = new Date();
+											document.getElementById(
+												"datetime"
+											).innerHTML = dt.toLocaleString();
+										</script>
+									</div>
+								</nav>
+								<div class="welcome-img">
+									<img
+										src="img/background/codec.jpg"
+										alt=""
+									/>
+									<div class="about">
+										<h2>
+											About <br />
+											Software Development
+										</h2>
+									</div>
+								</div>
+								<div class="table bbtable">
+									<table style="width: 100%; border: 1px">
+										<thead>
+											<tr>
+												<th>Brief Description</th>
+												<th>NQF Level</th>
+												<th>Duration</th>
+												<th>Companies hiring</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>
+													<p>
+														A systems developer is a
+														type of software
+														developer. They develop
+														and implement
+														applications and
+														programs for the backend
+														processing systems used
+														in businesses and
+														organisations. Backend
+														processing systems are
+														the behind-the-scenes
+														parts of software that
+														don’t have a user
+														interface, except for
+														administration purposes.
+														They are used a lot in
+														online banking and HR
+														systems, for example.
+													</p>
+													<p>
+														Typical responsibilities
+														of a systems developer
+														include:
+													</p>
+													<ul>
+														<li>
+															discussing the
+															client’s
+															requirements and the
+															proposed solution
+															with a senior
+															developer (for
+															developers at
+															mid-skill level and
+															below)
+														</li>
+														<li>
+															using development
+															tools to write and
+															test code to develop
+															these solutions
+														</li>
+														<li>
+															writing
+															documentation and
+															operating manuals
+														</li>
+														<li>
+															testing and
+															modifying systems to
+															ensure that they
+															operate reliably
+														</li>
+
+														<li>
+															fault finding,
+															diagnosing and
+															fixing bugs
+														</li>
+													</ul>
+												</td>
+												<td>4</td>
+												<td id="statusAppli">
+													<span>12 months</span>
+												</td>
+												<td>
+													<ul>
+														<li>
+															Specialist software
+															development
+															companies
+														</li>
+														<li>
+															Financial services
+															firms
+														</li>
+														<li>Banks</li>
+														<li>
+															Technology
+															consultancies
+														</li>
+														<li>
+															Telecommunications
+															companies
+														</li>
+														<li>
+															Public sector
+															organisations
+														</li>
+														<li>Law firms</li>
+													</ul>
+												</td>
+											</tr>
+											<br />
+										</tbody>
+									</table>
+								</div>
+								<h2 class="proTitle">
+									#Example of products produced by Software
+									Developers
+								</h2>
+								<div class="example-products">
+									<div class="row">
+										<div class="one col-md-4 col-6">
+											<h4>Whastapp</h4>
+											<img
+												src="img/background/WhatsApp_icon.png"
+												alt=""
+											/>
+										</div>
+										<div class="two col-md-4 col-6">
+											<p>
+												More than 2 billion people in
+												over 180 countries use WhatsApp1
+												to stay in touch with friends
+												and family, anytime and
+												anywhere. WhatsApp is free2 and
+												offers simple, secure, reliable
+												messaging and calling, available
+												on phones all over the world.
+											</p>
+											<p>
+												WhatsApp was founded by Jan Koum
+												and Brian Acton who had
+												previously spent 20 years
+												combined at Yahoo. WhatsApp
+												joined Facebook in 2014, but
+												continues to operate as a
+												separate app with a laser focus
+												on building a messaging service
+												that works fast and reliably
+												anywhere in the world.
+											</p>
+										</div>
+									</div>
+									<div class="row">
+										<div class="one col-md-4 col-6">
+											<h4>Amazon</h4>
+											<img
+												src="img/background/Amazon_icon.png"
+												alt=""
+											/>
+										</div>
+										<div class="two col-md-4 col-6">
+											<p>
+												Amazon.com, Inc. is an American
+												multinational technology company
+												which focuses on e-commerce,
+												cloud computing, digital
+												streaming, and artificial
+												intelligence. It has been
+												referred to as "one of the most
+												influential economic and
+												cultural forces in the world",
+												and is one of the world's most
+												valuable brands
+											</p>
+											<p>
+												Amazon was founded by Jeff Bezos
+												from his garage in Bellevue,
+												Washington, on July 5, 1994.
+												Initially an online marketplace
+												for books
+											</p>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="one col-md-4 col-6">
+											<h4>PayPal</h4>
+											<img
+												src="img/background/Paypal_2014_logo.png"
+												alt=""
+											/>
+										</div>
+										<div class="two col-md-4 col-6">
+											<p>
+												PayPal Holdings, Inc. is an
+												American multinational financial
+												technology company operating an
+												online payments system in the
+												majority of countries that
+												support online money transfers,
+												and serves as an electronic
+												alternative to traditional paper
+												methods such as checks and money
+												orders.
+											</p>
+											<p>
+												PayPal has quickly become a
+												global leader in online payment
+												solutions with more than 325
+												million accounts worldwide.
+												Available in 202 countries and
+												25 currencies around the world,
+												PayPal enables global ecommerce
+												by making payments possible
+												across different locations,
+												currencies, and languages.
+											</p>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="title22">
+								<div class="account-container Lecture-div">
+									<div class="top-main back-img">
+										<img
+											src="img/learn-bourd/background/1.jpg"
+											alt=""
+										/>
+									</div>
+									<div class="profile-img">
+										<div class="img-container">
+											<img
+												src="img/dfault/learn-user.jpg"
+												alt=""
+											/>
+										</div>
+										<div class="edit-profile">
+											<i class="fas fa-camera"></i>
+										</div>
+										<h2 id="NameInit2Lecture"></h2>
+									</div>
+									<div
+										class="row details-account details-account2"
+									>
+										<div
+											class="col-6 left-account left-account2"
+										>
+											<h3>Account Details</h3>
+											<div class="row info">
+												<div class="col-6">
+													<span class="title">
+														Full Name</span
+													>
+												</div>
+												<div
+													class="col-6"
+													id="NameInitLecture"
+												></div>
+											</div>
+											<div class="row info bot">
+												<div class="col-6">
+													<span class="title">
+														Email Address</span
+													>
+												</div>
+												<div
+													class="col-6"
+													id="emailLecture"
+												></div>
+											</div>
+										</div>
+										<div
+											class="col-6 right-account right-account2"
+										>
+											<h3>Make Consultations</h3>
+											<div class="row info click-edit">
+												<div class="col-6">
+													<span class="title"
+														>Office Location</span
+													>
+												</div>
+												<div class="col-6">
+													<span class="name"
+														>G purple 3, By the
+														Reception</span
+													>
+													&nbsp;&nbsp;
+												</div>
+											</div>
+											<div
+												class="row info bot click-edit"
+											>
+												<div class="col-6">
+													<span class="title"
+														>Days Available</span
+													>
+												</div>
+												<div class="col-6">
+													<span class="name"
+														>Mondays: between 08:00
+														- 09:00</span
+													>&nbsp;&nbsp;
+													<span class="name"
+														>Wednsday: between 09:00
+														- 10:00</span
+													>
+												</div>
+											</div>
+											<div
+												class="row info bot click-edit"
+											>
+												<div class="col-6">
+													<span class="title"
+														>Social Media</span
+													>
+												</div>
+												<div class="col-6">
+													<div
+														class="social-media-icons"
+													>
+														<ul>
+															<li>
+																<a
+																	href="http://facebook.com"
+																	target="_blank"
+																	><i
+																		class="fa fa-facebook fb"
+																	></i
+																></a>
+															</li>
+															<li>
+																<a
+																	href="http://twitter.com"
+																	target="_blank"
+																	><i
+																		class="fa fa-twitter tw"
+																	></i
+																></a>
+															</li>
+															<li>
+																<a
+																	href="http://instagram.com"
+																	target="_blank"
+																	><i
+																		class="fa fa-instagram ig"
+																	></i
+																></a>
+															</li>
+															<li>
+																<a
+																	href="http://linkedin.com"
+																	target="_blank"
+																	><i
+																		class="fab fa-linkedin lnk"
+																	></i
+																></a>
+															</li>
+														</ul>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Course Notes</3>
+										<br />
+										
+									</div>
+								</nav>
+								<div class="notes">
+<ul id="listofnotes">
+
+  </ul>
+</ul>
+								</div>
+								
+							</div>
+							<div class="title22">
+								
+									<nav class="nav-bar">
+										<div class="logo"></div>
+	
+										<div
+											class="nav-items"
+											data-bs-spy="scroll"
+											data-bs-target="#list-example"
+											data-bs-offset="0"
+											class="scrollspy-example"
+											tabindex="0"
+										>
+											<h3>Activities</3>
+											<br />
+											
+										</div>
+									</nav>
+									<div class="notes">
+	<ul id="listofactivities">
+	
+	</ul>
+</div>
+							</div>
+						
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Exams</3>
+										
+										
+									</div>
+								</nav>
+								<div class="exam-policy">
+									<h2>Exam Rules and Regulations</h2>
+									<ul>
+										<li>You must not have in your possession, or access to, any non-permitted items, whether or not they have been used, or were unintentionally or intentionally retained. Such items include:
+											Communication devices, including mobile phones, smart watches (such as Apple Watch, Fitbit, and Samsung Galaxy Watch) or other electronic, mobile, technical or computing equipment capable of accessing the internet, email and/or storing data including notes and photographs;
+											All papers, including blank paper
+											Notes
+											Textbooks (unless permitted by the rubric)
+											Bags
+											Coats, jackets, bodywarmers/gilets, and hats/caps with the exception of religious headwear
+											Correctional/removal fluid or tape.</li>
+									</ul>
+								</div>
+								<div class="active-exam">
+									<button class="btn btn-primary" id="startExam" onclick="StartExam()">Start Exam</button>
+								</div>
+							</div>
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Marks</h3>
+										
+									</div>
+								</nav>
+								<div class="notes">
+									<ul >
+										<div class="chapter">
+											<li>
+											
+											<h3><i class="fas fa-solid fa-folder-open"></i> Test 1</h3>
+											<div class="listofchapers">
+											<h3 class="border" ><span class="sc"></span></h3>
+											
+											
+											</li>
+											</div>
+									</ul>
+								</div>
+							</div>
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										
+										<h3>
+											Online Learning
+										</3>
+										
+									</div>
+								</nav>
+								<h3 class="tSched">Time Schedule</h3>
+								<div class="table">
+									
+									<table style="width: 100%; border: 1px">
+										<thead>
+											<tr>
+												<th>Days</th>
+												<th>Time Slot</th>
+												
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td >Monday - Tuesday</td>
+												<td id="date">08:00 - 10:00</td>
+												
+											</tr>
+											<tr>
+												<td >Thursday - Friday</td>
+												<td id="date">09:00 - 12:00</td>
+												
+											</tr>
+											<br />
+										</tbody>
+									</table>
+								</div>
+								<div class="how-join">
+									<H3>ROOM NAME: <span >SYSTEMSA1</span> </H3>
+								</div>
+							&nbsp;&nbsp; <h3 class="joinbtn" id="joinbtn"></h3>	
+							</div>
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Groups</h3>
+										
+									</div>
+								</nav>
+							</div>
+							<div class="title22">
+								<nav class="nav-bar">
+									<div class="logo"></div>
+
+									<div
+										class="nav-items"
+										data-bs-spy="scroll"
+										data-bs-target="#list-example"
+										data-bs-offset="0"
+										class="scrollspy-example"
+										tabindex="0"
+									>
+										<h3>Mark Enquiries</h3>
+										
+									</div>
+								</nav>
+							</div>
+						</section>
+					</div>
+				</div>
+				<div class="calender-container divContainer">
+					<div class="top-main">
+						<div class="title-section"><h2>Calender</h2></div>
+						<div class="heading-courses">
+							<div
+								class="name-of-semester underline calender-due box-calender"
+							>
+								<div class="shedule tapped active">
+									<span>Schedule</span>
+								</div>
+								<div class="due-dates tapped">
+									<span>Due Dates</span>
+								</div>
+							</div>
+							<div
+								class="stage-course underline calender-due back-fourth"
+							>
+								<i
+									class="fas fa-arrow-circle-left"
+									id="backButton"
+								></i>
+								&nbsp;&nbsp;<span
+									class="current-month"
+									id="monthDisplay"
+								></span
+								>&nbsp;&nbsp;<i
+									class="fas fa-arrow-circle-right"
+									id="nextButton"
+								></i>
+							</div>
+							<div
+								class="upcoming-course underline calender-due box-calender"
+							>
+								<div class="day1 puanched">
+									<span>Day</span>
+								</div>
+								<div class="month puanched active">
+									<span>Month</span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="container-calender">
+						<div id="container">
+							<div id="header"></div>
+							<div id="weekdays">
+								<div>Sunday</div>
+								<div>Monday</div>
+								<div>Tuesday</div>
+								<div>Wednesday</div>
+								<div>Thursday</div>
+								<div>Friday</div>
+								<div>Saturday</div>
+							</div>
+
+							<div id="calendar"></div>
+						</div>
+					</div>
+				</div>
+				<div class="messages-container divContainer">
+					<h2>Messages</h2>
+				</div>
+				<div class="marks-container divContainer">
+					<h2>Marks</h2>
+				</div>
+				<div class="support-container divContainer">
+					<h2>Support</h2>
+				</div>
+			</main>
+		</div>
+      
+		<div class="modal fade" id="exampleModalNotes" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Post Course Notes</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cont-announcement">
+                        <select name="" id="ann-title2">
+                            
+                        </select>
+                        <select name="" id="chapterCourse">
+                            <option value="Chapter 1">Chapter 1</option>
+                            <option value="Chapter 2">Chapter 2</option>
+                            <option value="Chapter 3">Chapter 3</option>
+                            <option value="Chapter 4">Chapter 4</option>
+                            <option value="Chapter 5">Chapter 5</option>
+                            <option value="Chapter 6">Chapter 6</option>
+                            <option value="Chapter 7">Chapter 7</option>
+                            <option value="Chapter 8">Chapter 8</option>
+                            <option value="Chapter 9">Chapter 9</option>
+                            <option value="Chapter 10">Chapter 10</option>
+                            <option value="Chapter 11">Chapter 11</option>
+                            <option value="Chapter 12">Chapter 12</option>
+                        </select>
+                          <input type="file" id="filenote"> <br>
+                          <progress id="progress-status"></progress><br>
+                          <span id="UpProgress2"></span> <br>
+                          <input type="text" name="" id="linkNote"placeholder="Additional Link">
+                         <button class="btn" onclick="postNotes()">Post Notes</button>
+                      </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+        
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-storage.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyBf0P2CRv9DUQepQ1hE9pAXL7wc8m8udoI",
+				authDomain: "adom-technologies.firebaseapp.com",
+				projectId: "adom-technologies",
+				storageBucket: "adom-technologies.appspot.com",
+				messagingSenderId: "634322050302",
+				appId: "1:634322050302:web:9575e6b19f42925cacd9af",
+				measurementId: "G-7D600VY2SV",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script>
+			setTimeout(function () {
+				$(".loader_bg").fadeToggle();
+			}, 1500);
+		</script>
+		<script>
+			let sidebar = document.querySelector(".sidebar");
+			let sidebarBtn = document.querySelector(".sidebarBtn");
+			sidebarBtn.onclick = function () {
+				sidebar.classList.toggle("active");
+				if (sidebar.classList.contains("active")) {
+					sidebarBtn.classList.replace(
+						"bx-menu",
+						"bx-menu-alt-right"
+					);
+				} else
+					sidebarBtn.classList.replace(
+						"bx-menu-alt-right",
+						"bx-menu"
+					);
+			};
+		</script>
+
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script src="https://smtpjs.com/v3/smtp.js"></script>
+
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+			crossorigin="anonymous"
+		></script>
+		<script
+			src="https://kit.fontawesome.com/47537ceff2.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="javascript/write-dashboard.js"></script>
+		<script src="javascript/calender.js"></script>
+		<script src="Online Exam/js/javascript.js"></script>
+
+		
+	</body>
+</html>

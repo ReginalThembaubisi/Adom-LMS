@@ -1,0 +1,116 @@
+body
+{
+    position: relative;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    flex-direction: column;
+}
+.available 
+{
+    position: relative;
+    top: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: flex-start;
+    width: 90%;
+    border: 1px solid gray;
+    padding: 20px;
+    border-radius: 5px;
+    background-size: cover;
+    background: linear-gradient( rgba(4, 9, 30, 0.7), rgba(4,9,30,0.7)) ;
+    color: white;
+    
+
+}
+.available h3
+{
+    font-weight: 650;
+    padding-bottom: 30px;
+
+}
+.available p
+{
+    font-size: 21x;
+    border-bottom: 1px solid gray;
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: start;
+}
+.available a
+{
+   
+
+    background: rgb(255, 255, 255);
+    margin: 10px;
+
+    
+  
+}
+.available .apply-career
+{
+    background: darkcyan;
+    color: rgb(66,66,66);
+}
+.available .apply-career:hover
+{
+    background: rgb(0,109,109);
+
+}
+.available p a:hover
+{
+    
+    background: rgb(167, 69, 69);
+    
+    
+  
+}
+.progress
+{
+    position: relative;
+    top: 130px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: flex-start;
+    width: 90%;
+    padding: 20px;
+    background: rgb(228,228, 228);
+}
+
+.progress span
+{
+    margin-right: 10px;
+    padding-bottom: 40px;
+    cursor: pointer;
+}
+.progress span:hover
+{
+    color: red;
+}
+.progress span:last-child
+{
+color: red;
+}
+.footer 
+{
+    position: relative;
+    top: 500px;
+    width: 90%;
+    color: gray;
+    display: flex;
+    flex-direction: row;
+    text-align: center;
+    align-items: center;
+    padding: 30px;
+    justify-content: space-between;
+    border-top: 1px solid gray;
+}

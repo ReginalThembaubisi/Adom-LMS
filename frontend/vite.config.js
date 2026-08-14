@@ -16,6 +16,11 @@ export default defineConfig({
   },
   build: {
     outDir: '../src/main/resources/static',
-    emptyOutDir: false
+    emptyOutDir: false,
+    rollupOptions: {
+      input: {
+        portal: 'portal.html'
+      }
+    }
   }
 })

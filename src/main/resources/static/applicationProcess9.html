@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Application Process | Adom Technologiesss</title>
+		<link rel="shortcut icon" href="logo/adom-logo.png" />
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+			integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+			crossorigin="anonymous"
+		/>
+		<link rel="stylesheet" href="css/applicationProcess.css" />
+	</head>
+	<body>
+		<div class="loader_bg">
+			<div class="loader"></div>
+		</div>
+		<div class="cont-bg">
+			<div class="overlay"></div>
+			<img src="img/background/book.jpg" class="background1" alt="" />
+			<div class="apply-form">
+				<div class="background2"></div>
+				<div class="header">
+					
+					<h2>Application Process</h2>
+				</div>
+				<div class="body">
+					<form method="POST" class="generate-student" id="generate-student">
+					<div class="personal2" id="personal">
+						<h5>Validate Before Final Submission</h5>
+						
+						<br />
+						
+						<div class="info">
+							<div class="personal2">
+								<h5>Personal Details</h5>
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>RSA Citezen:</span> 
+									</div>
+									<div class="stylePersonal2">
+										<span id="RSAID" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>RSA ID No.:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="idNumber" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Date of Birth:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="dateOfBirth" class="bold"></span>
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Gender:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="gender" class="bold"></span>
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Title:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="title" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Initias:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="initials" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Surname:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="surname" class="bold"></span>
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Name:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="name" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Home Language:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="language" class="bold"></span>
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Race:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="race" class="bold"></span>
+									</div>
+								</div>
+								 &nbsp;
+								 <br />
+								
+								<button onclick="process3()">Update</button>
+							</div>
+							<hr>
+							<br />
+
+							<div class="personal2">
+								<h5>Contact Details</h5>
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Email:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="email" class="bold"></span>
+									</div>
+								</div>
+								 
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Cellphone No:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="cellphone" class="bold"></span>
+									</div>
+								</div>
+								 
+								<h5>Physical address</h5>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Unit Area:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address1" class="bold"></span>
+									</div>
+								</div>
+								 
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Sub-burb:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address2" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Town:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address3" class="bold"></span>
+									</div>
+								</div>
+								
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Postal code:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address4" class="bold"></span>
+									</div>
+								</div>
+								 
+								 <br />
+
+								 <div class="row1">
+									<div class="stylePersonal1">
+										<span
+										>Physical Address same with Postal
+										Address:</span
+									>
+									</div>
+									<div class="stylePersonal2">
+										<span id="addressSame" class="bold"></span> 
+									</div>
+								</div>
+
+							 <br />
+								<h5>Postal address</h5>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span
+										>Postal
+										Address:</span
+									>
+									</div>
+									<div class="stylePersonal2">
+										<span id="postal1"class="bold" ></span>
+									</div>
+								</div>
+								 
+
+								 <div class="row1">
+									<div class="stylePersonal1">
+										<span
+										>Sub-burb:</span
+									>
+									</div>
+									<div class="stylePersonal2">
+										<span id="postal2" class="bold"></span> 
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span
+										>Town:</span
+									>
+									</div>
+									<div class="stylePersonal2">
+										<span id="postal3" class="bold"></span>
+									</div>
+								</div>
+								 
+
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span
+										>Postal code:</span
+									>
+									</div>
+									<div class="stylePersonal2">
+										<span id="postal4" class="bold"></span>
+									</div>
+								</div>
+
+
+								 
+								<br />
+								<button onclick="process4()">Update</button>
+							</div>
+							<hr>
+							<br />
+
+							<div class="personal2">
+								<h5>Next of Kin Details</h5>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Name:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="name2" class="bold"></span>
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Email:</span> 
+									</div>
+									<div class="stylePersonal2">
+										<span id="email2" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Cellphone No:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="cellphone2" class="bold"></span>
+									</div>
+								</div>
+								
+								
+								 <br />
+								<h5>Physical address</h5>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Unit Area:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address11" class="bold"></span> 
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Sub-burb:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address22" class="bold"></span> 
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Town:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address33" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Town:</span>
+									</div>
+									<div class="stylePersonal2">
+										<span id="address44" class="bold"></span>
+									</div>
+								</div>
+
+								 <br />
+								 <div class="row1">
+									<div class="stylePersonal1">
+										<span
+									>Physical Address same with Postal
+									Address:</span
+								>
+									</div>
+									<div class="stylePersonal2">
+										<span id="postal12" class="bold"></span>
+									</div>
+								</div>
+								
+								&nbsp; <span id="addressSame2" class="bold"></span> <br />
+								<h5>Postal address</h5>
+
+								<span id="postal12"></span> <br />
+
+								<span id="postal22"></span> <br />
+
+								<span id="postal32"></span> <br />
+
+								<span id="postal42"></span> <br />
+								
+								<button onclick="process5()">Update</button>
+							</div>
+<hr>
+							<br />
+							<div class="personal2">
+								<h5>School Details</h5>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Finished grade 12:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="grade12" class="bold"></span> 
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Highest Grade Passed:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="gradeinResults" class="bold"></span> 
+									</div>
+								</div>
+								
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>School name:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="schoolName" class="bold"></span> 
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>School Province:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="province" class="bold"></span>
+									</div>
+								</div>
+
+							
+								 <br />
+								<h5>Recent School Results</h5>
+								<br />
+								<table>
+									<thead>
+										<tr>
+											<th>Subject Name</th>
+											<th>Grade</th>
+											<th>Level</th>
+										</tr>
+									</thead>
+									<tbody id="list"></tbody>
+								</table>
+								<br />
+
+								<br />
+								<button onclick="process6()">Update</button>
+								
+							</div>
+							<hr>
+							<br />
+
+							<div class="personal2">
+								<h5>Tertiary Details</h5>
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Include Tertiary Results:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="previousInst" class="bold"></span> 
+									</div>
+								</div>
+
+								 
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Name of Institution:</span> 
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="nameInst" class="bold"></span>
+									</div>
+								</div>
+
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span>Current Activity:</span> 
+								
+									</div>
+									<div class="stylePersonal2">
+										<span id="currentActivity" class="bold"></span>
+									</div>
+								</div>
+								
+								
+								
+
+								<br />
+								<button onclick="process7()">Update</button>
+								<br />
+							</div>
+<hr>
+							<div class="personal2">
+								<h5>Applied Courses</h5>
+								<table>
+									<thead>
+										<tr>
+											<th>#</th>
+											<th>Course Code</th>
+											<th>Course</th>
+										</tr>
+									</thead>
+									<tbody id="list2"></tbody>
+								</table>
+
+								<br />
+								<button onclick="process8()">Update</button>
+								<br />
+							</div>
+
+							<hr>
+							<br />
+							<div class="personal2">
+								<h5>Uploaded Supporting Documents</h5>
+								<table>
+									<thead>
+										<tr>
+											<th>#</th>
+											<th>Document Name</th>
+											<th> File</th>
+											
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											
+											</th>
+											
+										</tr>
+										<tr>
+											<th>1</th>
+											<th>ID</th>
+											<th>
+												
+												<div class="preload" id="preloadID">
+													
+												</div>
+												
+												
+											</th>
+											
+										</tr>
+										<tr>
+											<th>2</th>
+											<th>Recent Results</th>
+											<th>
+												
+												<div class="preload2" id="preloadID2">
+													
+												</div>
+											</th>
+											
+										</tr>
+	
+										<tr class="tert " id="tert">
+											<th>3</th>
+											<th>Tertiary Transcript</th>
+											<th>
+												
+												<div class="preload3" id="preloadID3">
+													
+												</div>
+											</th>
+										
+										</tr>
+									</tbody>
+								</table>
+
+								<br />
+								<button onclick="process9()">Update</button>
+								<br />
+							</div>
+
+
+							<div class="personal2">
+								<h5>Create you Login Pin</h5>
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span
+									>Create password:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<input
+										type="password"
+										placeholder="More than or equal 8 char" class="pin1"
+								/>
+									</div>
+								</div>
+								<div class="row1">
+									<div class="stylePersonal1">
+										<span
+									>Confirm password:</span>
+								
+									</div>
+									<div class="stylePersonal2">
+										<input
+										type="password"
+										placeholder="Confirm password" class="pin2"
+								/>
+									</div>
+								</div>
+								
+									
+								
+								
+
+								<br />
+							</div>
+						</div>
+					</div>
+					<div class="footer3">
+						
+						<button type="submit">Submit Application</button>
+					</div>
+				</form>
+				</div>
+			</div>
+		</div>
+
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-firestore.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-storage.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.8.0/firebase-analytics.js"></script>
+		<script>
+			const firebaseConfig = {
+				apiKey: "AIzaSyBf0P2CRv9DUQepQ1hE9pAXL7wc8m8udoI",
+				authDomain: "adom-technologies.firebaseapp.com",
+				projectId: "adom-technologies",
+				storageBucket: "adom-technologies.appspot.com",
+				messagingSenderId: "634322050302",
+				appId: "1:634322050302:web:9575e6b19f42925cacd9af",
+				measurementId: "G-7D600VY2SV",
+			};
+			firebase.initializeApp(firebaseConfig);
+			const auth = firebase.auth();
+			const db = firebase.firestore();
+			db.settings({ timestampsInSnapshots: true });
+			firebase.analytics();
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script>
+			setTimeout(function(){
+				$('.loader_bg').fadeToggle();
+			}, 1500);
+		</script>
+		<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+		<script
+			src="https://kit.fontawesome.com/8f7c71be78.js"
+			crossorigin="anonymous"
+		></script>
+		<script src="https://smtpjs.com/v3/smtp.js"></script>
+		<script src="javascript/applicationProcess9.js"></script>
+	</body>
+</html>

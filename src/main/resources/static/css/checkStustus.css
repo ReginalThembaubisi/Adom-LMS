@@ -1,0 +1,215 @@
+body{
+
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+   overflow-x: hidden;
+   background: whitesmoke;
+
+
+}
+.header-adom
+{ 
+    position: relative;
+    display: flex;
+    color:black;
+    background:  rgb(238, 228, 207);
+    padding: 12px;
+    top:-8%;
+
+}
+.login-logo
+{
+    width: 100%;
+    justify-content: left;
+    align-items:left;
+    text-align: left;
+    padding-top: 5px;
+    padding-bottom: 10px;
+}
+.login-logo img
+{
+position: relative;
+display: flex;
+width: auto;
+height: 80px;
+left: 3%;
+
+
+}
+.apply1 button
+{
+    width:330px;
+    background: rgb(19,10,121);
+    color: rgb(204,204,204);
+    border-radius: 60px;
+    padding: 5px;
+   width: 370px;
+   outline: 0;
+   border: 0;
+   cursor: pointer;
+}
+.apply1 button:hover
+{
+    
+    background:rgb(49,49,141);
+    color: rgb(204,204,204);
+    
+}
+
+.apply1
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 93%;
+    height: 45%;
+    background: rgb(187, 185, 180);
+    border-radius: 5px;
+    padding: 10px;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: start;
+   border-style: solid;
+   border-width: thin;
+    margin: 50px;
+    top: -14%;
+
+}
+.header
+{
+    color:white;
+    
+    
+    font-size: 20px;
+    font-weight: 700;
+  
+}
+.apply1 input{
+    position: relative;
+   
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 20px;
+    padding-top: 5px;
+    padding-bottom: 3px;
+    width: 350px;
+    height: 20px;
+    border: 0px;
+}
+.apply1 .submit
+{
+   
+    width: 370px;
+    height: 30px;
+    background: green;
+    color: white;
+    
+    
+    
+}
+
+
+.apply1 .stud-details
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 30%;
+    background: rgb(238, 228, 207);
+    border-style: solid;
+   border-width: thin;
+    bottom: 40px;
+    width: 40%;
+    padding-top: 4px;
+
+
+
+}
+.hea{
+    position: relative;
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: start;
+    
+}
+.apply1 .stud-details span
+{
+   position: relative; 
+   left: 3%;
+   text-indent: initial;
+   text-align: start;
+
+}
+.apply1 .stud-details input
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
+}
+
+.apply1 table tbody
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: space-between;
+    text-align: space-between;
+    background-color: #EAEAEA;
+    bottom: 15px;
+   border-collapse: separate;
+   text-indent: initial;
+   border-spacing: 35px;
+  padding: -20px;
+  padding-top: 20;
+ padding: -30px;
+ 
+    
+}
+.apply1 .header
+{
+    position: relative;
+    display: flex;
+    color: black;
+    background:  rgb(238, 228, 207);
+    padding: 4px;
+    top:-8%;
+    
+
+}
+.apply1 .header td
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: space-between;
+    text-align: space-between;
+    border-collapse: separate;
+    text-indent: initial;
+    border-spacing: 35px;
+    bottom: 3px;
+    padding-left: 30px;
+    font-size: large;
+    font-weight: bold;
+   
+
+}
+.restart button
+
+{
+    position: absolute;
+    bottom: 20%;
+    left: 5%;
+    width: 8%;
+
+}
+.restart button:hover
+{
+    position: absolute;
+    background: rgb(230, 216, 190);
+}
