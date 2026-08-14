@@ -30,12 +30,10 @@ public class SubmissionSession {
 
     @NotNull(message = "Start time is required")
     @Column(name = "start_time", nullable = false)
-    @Convert(converter = com.example.learnerassignments.converter.SastToUtcConverter.class)
     private LocalDateTime startTime;
 
     @NotNull(message = "End time is required")
     @Column(name = "end_time", nullable = false)
-    @Convert(converter = com.example.learnerassignments.converter.SastToUtcConverter.class)
     private LocalDateTime endTime;
 
     @Enumerated(EnumType.STRING)
