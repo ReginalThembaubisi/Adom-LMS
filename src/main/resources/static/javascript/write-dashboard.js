@@ -174,7 +174,7 @@ function loadTest(params) {
 function logout() {
 	auth.signOut().then(() => {
 		console.log("user signed out");
-		location.href = "dist/index.html";
+		location.href = "/portal.html";
 	});
 }
 

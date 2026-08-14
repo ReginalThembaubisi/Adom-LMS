@@ -418,7 +418,7 @@ const logout = document.querySelector(".logout_profiletop");
 logout.addEventListener("click", (e) => {
 	auth.signOut().then(() => {
 		console.log("user signed out");
-		location.href = "dist/index.html";
+		location.href = "/portal.html";
 	});
 });
 
