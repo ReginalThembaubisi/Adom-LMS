@@ -2,8 +2,12 @@ package com.example.learnerassignments.security;
 
 import com.example.learnerassignments.model.Admin;
 import com.example.learnerassignments.model.Lecturer;
+import com.example.learnerassignments.model.Moderator;
+import com.example.learnerassignments.model.Assessor;
 import com.example.learnerassignments.repository.AdminRepository;
 import com.example.learnerassignments.repository.LecturerRepository;
+import com.example.learnerassignments.repository.ModeratorRepository;
+import com.example.learnerassignments.repository.AssessorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +22,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private final AdminRepository adminRepository;
     private final LecturerRepository lecturerRepository;
+    private final ModeratorRepository moderatorRepository;
+    private final AssessorRepository assessorRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${FACILITATOR_USERNAME:admin}")
@@ -74,6 +80,40 @@ public class DataInitializer implements CommandLineRunner {
                         .build();
                 lecturerRepository.save(lecturer);
                 log.info("Seeded initial lecturer account: johnsmith");
+            }
+        );
+
+        moderatorRepository.findByUsername("moderator").ifPresentOrElse(
+            mod -> {
+                mod.setPasswordHash(passwordEncoder.encode("moderator123"));
+                moderatorRepository.save(mod);
+            },
+            () -> {
+                Moderator mod = Moderator.builder()
+                        .fullName("Official Moderator")
+                        .email("moderator@example.com")
+                        .username("moderator")
+                        .passwordHash(passwordEncoder.encode("moderator123"))
+                        .build();
+                moderatorRepository.save(mod);
+                log.info("Seeded initial moderator account: moderator");
+            }
+        );
+
+        assessorRepository.findByUsername("assessor").ifPresentOrElse(
+            ass -> {
+                ass.setPasswordHash(passwordEncoder.encode("assessor123"));
+                assessorRepository.save(ass);
+            },
+            () -> {
+                Assessor ass = Assessor.builder()
+                        .fullName("Official Assessor")
+                        .email("assessor@example.com")
+                        .username("assessor")
+                        .passwordHash(passwordEncoder.encode("assessor123"))
+                        .build();
+                assessorRepository.save(ass);
+                log.info("Seeded initial assessor account: assessor");
             }
         );
     }

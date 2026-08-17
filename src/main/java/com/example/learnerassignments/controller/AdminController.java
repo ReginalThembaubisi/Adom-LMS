@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 public class AdminController {
 
     private final LecturerRepository lecturerRepository;
+    private final ModeratorRepository moderatorRepository;
+    private final AssessorRepository assessorRepository;
     private final ModuleRepository moduleRepository;
     private final CategoryRepository categoryRepository;
     private final LearnershipRepository learnershipRepository;
@@ -320,6 +322,195 @@ public class AdminController {
         // 2. Delete the lecturer
         lecturerRepository.delete(lecturer);
 
+        return ResponseEntity.ok().build();
+    }
+
+    // --- LECTURER UPDATE ---
+    @PutMapping("/lecturers/{id}")
+    public ResponseEntity<AdminLecturerResponse> updateLecturer(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateLecturerRequest request) {
+        Lecturer lecturer = lecturerRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Lecturer not found"));
+
+        if (!lecturer.getUsername().equals(request.getUsername()) &&
+            lecturerRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        lecturer.setFullName(request.getFullName());
+        lecturer.setEmail(request.getEmail());
+        lecturer.setUsername(request.getUsername());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            lecturer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        Lecturer saved = lecturerRepository.save(lecturer);
+        AdminLecturerResponse response = AdminLecturerResponse.builder()
+                .id(saved.getId())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .username(saved.getUsername())
+                .createdAt(saved.getCreatedAt())
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
+    // --- MODERATORS CRUD ---
+    @GetMapping("/moderators")
+    public ResponseEntity<List<AdminModeratorResponse>> getAllModerators() {
+        List<AdminModeratorResponse> list = moderatorRepository.findAll().stream()
+                .map(m -> AdminModeratorResponse.builder()
+                        .id(m.getId())
+                        .fullName(m.getFullName())
+                        .email(m.getEmail())
+                        .username(m.getUsername())
+                        .createdAt(m.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
+    @PostMapping("/moderators")
+    public ResponseEntity<AdminModeratorResponse> createModerator(@Valid @RequestBody CreateModeratorRequest request) {
+        if (moderatorRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        com.example.learnerassignments.model.Moderator moderator = com.example.learnerassignments.model.Moderator.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .username(request.getUsername())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .build();
+
+        com.example.learnerassignments.model.Moderator saved = moderatorRepository.save(moderator);
+        AdminModeratorResponse response = AdminModeratorResponse.builder()
+                .id(saved.getId())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .username(saved.getUsername())
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/moderators/{id}")
+    public ResponseEntity<AdminModeratorResponse> updateModerator(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateModeratorRequest request) {
+        com.example.learnerassignments.model.Moderator moderator = moderatorRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Moderator not found"));
+
+        if (!moderator.getUsername().equals(request.getUsername()) &&
+            moderatorRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        moderator.setFullName(request.getFullName());
+        moderator.setEmail(request.getEmail());
+        moderator.setUsername(request.getUsername());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            moderator.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        com.example.learnerassignments.model.Moderator saved = moderatorRepository.save(moderator);
+        AdminModeratorResponse response = AdminModeratorResponse.builder()
+                .id(saved.getId())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .username(saved.getUsername())
+                .createdAt(saved.getCreatedAt())
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/moderators/{id}")
+    public ResponseEntity<Void> deleteModerator(@PathVariable Long id) {
+        if (!moderatorRepository.existsById(id)) {
+            throw new com.example.learnerassignments.exception.ResourceNotFoundException("Moderator not found");
+        }
+        moderatorRepository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // --- ASSESSORS CRUD ---
+    @GetMapping("/assessors")
+    public ResponseEntity<List<AdminAssessorResponse>> getAllAssessors() {
+        List<AdminAssessorResponse> list = assessorRepository.findAll().stream()
+                .map(a -> AdminAssessorResponse.builder()
+                        .id(a.getId())
+                        .fullName(a.getFullName())
+                        .email(a.getEmail())
+                        .username(a.getUsername())
+                        .createdAt(a.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
+    @PostMapping("/assessors")
+    public ResponseEntity<AdminAssessorResponse> createAssessor(@Valid @RequestBody CreateAssessorRequest request) {
+        if (assessorRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        com.example.learnerassignments.model.Assessor assessor = com.example.learnerassignments.model.Assessor.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .username(request.getUsername())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .build();
+
+        com.example.learnerassignments.model.Assessor saved = assessorRepository.save(assessor);
+        AdminAssessorResponse response = AdminAssessorResponse.builder()
+                .id(saved.getId())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .username(saved.getUsername())
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/assessors/{id}")
+    public ResponseEntity<AdminAssessorResponse> updateAssessor(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateAssessorRequest request) {
+        com.example.learnerassignments.model.Assessor assessor = assessorRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Assessor not found"));
+
+        if (!assessor.getUsername().equals(request.getUsername()) &&
+            assessorRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        assessor.setFullName(request.getFullName());
+        assessor.setEmail(request.getEmail());
+        assessor.setUsername(request.getUsername());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            assessor.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        com.example.learnerassignments.model.Assessor saved = assessorRepository.save(assessor);
+        AdminAssessorResponse response = AdminAssessorResponse.builder()
+                .id(saved.getId())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .username(saved.getUsername())
+                .createdAt(saved.getCreatedAt())
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/assessors/{id}")
+    public ResponseEntity<Void> deleteAssessor(@PathVariable Long id) {
+        if (!assessorRepository.existsById(id)) {
+            throw new com.example.learnerassignments.exception.ResourceNotFoundException("Assessor not found");
+        }
+        assessorRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
 }

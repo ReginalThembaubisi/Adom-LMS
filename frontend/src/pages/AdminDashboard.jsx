@@ -436,7 +436,48 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Overview Stats */}
+                
+                {/* Main Admin Workspace with Sidebar */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+                    {/* Left Navigation Sidebar */}
+                    <div className="lg:col-span-3">
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-2 sticky top-6">
+                            <div className="pb-3 border-b border-slate-800 mb-2">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-3">Navigation Menu</span>
+                            </div>
+                            {[
+                                { id: 'overview', label: 'Overview & Status', icon: '📊' },
+                                { id: 'programs', label: 'Programs & Categories', icon: '🎓' },
+                                { id: 'modules', label: 'Modules Directory', icon: '📚' },
+                                { id: 'staff', label: 'Staff Registry', icon: '👥' },
+                                { id: 'students', label: 'Student Directory', icon: '👤' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                                        activeTab === tab.id
+                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                                    }`}
+                                >
+                                    <span>{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right Content Workspace */}
+                    <div className="lg:col-span-9 space-y-6">
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Overview & Status</h2>
+                                    <p className="text-xs text-slate-500">System overview metrics and registration status.</p>
+                                </div>
+                                {/* Overview Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 h-full flex flex-col justify-between">
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Facilitators</h3>
@@ -477,357 +518,63 @@ const AdminDashboard = () => {
                         </button>
                     </div>
                 </div>
-
-                {/* Main Admin Workspace */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Creation Forms (lg:col-span-7) */}
-                    <div className="lg:col-span-7 space-y-6">
-                        {/* Card A: Register New Facilitator */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Register New Facilitator</h2>
-                                <p className="text-xs text-slate-500">Create facilitator profiles with dedicated dashboard authentication credentials.</p>
                             </div>
-                            <form onSubmit={handleCreateLecturer} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Full Name *</label>
-                                        <input 
-                                            type="text" 
-                                            value={fullName} 
-                                            onChange={e => setFullName(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required 
-                                            placeholder="e.g. Dr. Jane Smith" 
-                                        />
+                        )}
+
+                        {activeTab === 'programs' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Programs & Categories</h2>
+                                    <p className="text-xs text-slate-500">Manage learnership programs, categories, and assign facilitators.</p>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="space-y-6">
+                                        ${cardB1}
+                                        ${cardB2}
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
-                                        <input 
-                                            type="email" 
-                                            value={email} 
-                                            onChange={e => setEmail(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            placeholder="e.g. janesmith@example.com" 
-                                        />
+                                    <div>
+                                        ${cardC}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Username *</label>
-                                        <input 
-                                            type="text" 
-                                            value={username} 
-                                            onChange={e => setUsername(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required 
-                                            placeholder="e.g. janesmith" 
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Initial Password *</label>
-                                        <div className="relative">
-                                            <input 
-                                                type={showPassword ? "text" : "password"} 
-                                                value={password} 
-                                                onChange={e => setPassword(e.target.value)} 
-                                                className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                                required 
-                                                placeholder="••••••••" 
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                                            >
-                                                {showPassword ? (
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'modules' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Modules Directory</h2>
+                                    <p className="text-xs text-slate-500">Manage curriculum modules and syllabus content.</p>
                                 </div>
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
-                                    Register Facilitator
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* Card B1: Create Learnership Program */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Create Learnership Program</h2>
-                                <p className="text-xs text-slate-500">Define a new qualification container for modules.</p>
+                                ${cardD}
                             </div>
-                            <form onSubmit={handleCreateLearnership} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Learnership Name *</label>
-                                        <input 
-                                            type="text" 
-                                            value={learnershipName} 
-                                            onChange={e => setLearnershipName(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required 
-                                            placeholder="e.g. IT Systems Support NQF4" 
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Qualification Code</label>
-                                        <input 
-                                            type="text" 
-                                            value={qualificationCode} 
-                                            onChange={e => setQualificationCode(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            placeholder="e.g. 48220" 
-                                        />
-                                    </div>
+                        )}
+
+                        {activeTab === 'staff' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Staff Registry</h2>
+                                    <p className="text-xs text-slate-500">Register and manage facilitators, moderators, and assessors.</p>
                                 </div>
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
-                                    Create Learnership
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* Card B2: Add Category under Learnership */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Add Category under Learnership</h2>
-                                <p className="text-xs text-slate-500">Define new grouping tags (e.g. Fundamental, Practical) for a learnership.</p>
+                                ${cardA}
+                                ${cardD2}
+                                ${cardD3}
+                                ${cardD4}
                             </div>
-                            <form onSubmit={handleCreateCategory} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Select Learnership *</label>
-                                        <select 
-                                            value={selectedLearnershipId} 
-                                            onChange={e => setSelectedLearnershipId(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required
-                                        >
-                                            <option value="">-- Choose Learnership --</option>
-                                            {learnerships.map(l => (
-                                                <option key={l.id} value={l.id}>{l.name} ({l.qualificationCode || 'No Code'})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Category Name *</label>
-                                        <input 
-                                            type="text" 
-                                            value={newCategoryName} 
-                                            onChange={e => setNewCategoryName(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required 
-                                            placeholder="e.g. Fundamental, Elective, Practical" 
-                                        />
-                                    </div>
+                        )}
+
+                        {activeTab === 'students' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Student Directory</h2>
+                                    <p className="text-xs text-slate-500">View and manage registered student profiles.</p>
                                 </div>
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150" disabled={!selectedLearnershipId}>
-                                    Add Category
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* Right Column: Management & Assignments (lg:col-span-5) */}
-                    <div className="lg:col-span-5 space-y-6">
-                        {/* Card C: Category Facilitator Assignment */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Category Facilitator Assignment</h2>
-                                <p className="text-xs text-slate-500">SETA learnership module ownership is assigned by Category per Learnership.</p>
+                                ${cardE}
                             </div>
-                            <div className="space-y-4">
-                                {categories.map(c => {
-                                    const learnership = learnerships.find(l => l.id === c.learnershipId);
-                                    const learnershipNameText = learnership ? `${learnership.name}` : 'Unknown Learnership';
-                                    return (
-                                        <div key={c.id} className="bg-slate-50/50 border border-slate-200 rounded-xl p-4 space-y-2">
-                                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">{learnershipNameText}</span>
-                                            <h3 className="text-sm font-bold text-slate-800">{c.categoryType} Category</h3>
-                                            <p className="text-xs text-slate-600">
-                                                Currently: <strong className="text-blue-600 font-semibold">{c.lecturerName || 'Unassigned'}</strong>
-                                            </p>
-                                            <div className="pt-2">
-                                                <select 
-                                                    value={c.lecturerId || ''} 
-                                                    onChange={e => handleAssignLecturer(c.id, e.target.value)} 
-                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
-                                                >
-                                                    <option value="">-- Assign Facilitator --</option>
-                                                    {lecturers.map(l => (
-                                                        <option key={l.id} value={l.id}>{l.fullName} ({l.username})</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Card D: All Modules Overview Table */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 overflow-hidden space-y-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">All Modules Overview</h2>
-                                <p className="text-xs text-slate-500">Review created modules, code mapping, assigned facilitators, and syllabus files.</p>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-xs">
-                                    <thead>
-                                        <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
-                                            <th className="p-3 text-left rounded-l-lg">Code</th>
-                                            <th className="p-3 text-left">Module</th>
-                                            <th className="p-3 text-left">Facilitator</th>
-                                            <th className="p-3 text-right rounded-r-lg">Syllabus</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {modules.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="4" className="text-center py-4 text-slate-400">No modules created yet.</td>
-                                            </tr>
-                                        ) : (
-                                            modules.map(m => (
-                                                <tr key={m.id} className="hover:bg-blue-50/50 transition-colors cursor-pointer">
-                                                    <td className="p-3 font-bold text-slate-700">
-                                                        <span className="bg-slate-200/60 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
-                                                            Code: {m.moduleCode || 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3 font-semibold text-slate-900">{m.moduleName}</td>
-                                                    <td className="p-3 text-slate-500">{m.lecturerName || 'Unassigned'}</td>
-                                                    <td className="p-3 text-right text-blue-600 hover:text-blue-800">
-                                                        {m.filePath ? (
-                                                            <a href={m.filePath} className="font-bold" download>
-                                                                Download
-                                                            </a>
-                                                        ) : (
-                                                            <span className="text-slate-400 italic">None</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Card D-2: Registered Facilitators (Full Width) */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900">Registered Facilitators (Lecturers)</h2>
-                        <p className="text-xs text-slate-500">View registered facilitators, their contact details, usernames, and delete accounts.</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-xs">
-                            <thead>
-                                <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
-                                    <th className="p-3 text-left rounded-l-lg">Username</th>
-                                    <th className="p-3 text-left">Full Name</th>
-                                    <th className="p-3 text-left">Email Address</th>
-                                    <th className="p-3 text-right rounded-r-lg">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {lecturers.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" className="p-4 text-center text-slate-400 font-medium italic">No facilitators registered in the system.</td>
-                                    </tr>
-                                ) : (
-                                    lecturers.map(l => (
-                                        <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
-                                            <td className="p-3 font-bold text-blue-600">{l.username}</td>
-                                            <td className="p-3 font-semibold text-slate-900">{l.fullName}</td>
-                                            <td className="p-3 text-slate-500">{l.email || 'N/A'}</td>
-                                            <td className="p-3 text-right whitespace-nowrap space-x-2">
-                                                <button 
-                                                    onClick={() => setEditingLecturer({ id: l.id, fullName: l.fullName, email: l.email || '', username: l.username, password: '' })}
-                                                    className="bg-blue-50 text-blue-600 border border-blue-200/50 hover:bg-blue-100 hover:text-blue-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDeleteLecturer(l.id, l.fullName)}
-                                                    className="bg-rose-50 text-rose-600 border border-rose-200/50 hover:bg-rose-100 hover:text-rose-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Card E: Registered Students (Full Width) */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900">Registered Students (Learners)</h2>
-                        <p className="text-xs text-slate-500">View registered student credentials, active cohorts, and perform manual password resets or account deletion.</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-xs">
-                            <thead>
-                                <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
-                                    <th className="p-3 text-left rounded-l-lg">Student Code</th>
-                                    <th className="p-3 text-left">Full Name</th>
-                                    <th className="p-3 text-left">Email Address</th>
-                                    <th className="p-3 text-left">Phone</th>
-                                    <th className="p-3 text-left">Cohort</th>
-                                    <th className="p-3 text-left">Learnership</th>
-                                    <th className="p-3 text-right rounded-r-lg">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {learners.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" className="text-center py-4 text-slate-400">No students registered yet.</td>
-                                    </tr>
-                                ) : (
-                                    learners.map(l => (
-                                        <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
-                                            <td className="p-3 font-bold text-blue-600">{l.learnerCode}</td>
-                                            <td className="p-3 font-semibold text-slate-900">{l.fullName}</td>
-                                            <td className="p-3 text-slate-500">{l.email || 'N/A'}</td>
-                                            <td className="p-3 text-slate-500">{l.phoneNumber || 'N/A'}</td>
-                                            <td className="p-3 text-slate-500">{l.cohort || 'N/A'}</td>
-                                            <td className="p-3 text-slate-600 font-medium">{l.learnershipName || 'Unassigned'}</td>
-                                            <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                                                <button 
-                                                    onClick={() => handleResetPassword(l.id, l.fullName)}
-                                                    className="bg-blue-50 text-blue-600 border border-blue-200/50 hover:bg-blue-100 hover:text-blue-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
-                                                >
-                                                    Reset Password
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDeleteLearner(l.id, l.fullName)}
-                                                    className="bg-rose-50 text-rose-600 border border-rose-200/50 hover:bg-rose-100 hover:text-rose-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                        )}
                     </div>
                 </div>
             </div>
+
 
             {editingLecturer && (
                 <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">

@@ -62,18 +62,30 @@ const Landing = () => {
                     </div>
                 </div>
 
-                <div className="flex gap-4 pt-4 border-t border-slate-200">
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
                     <button 
                         onClick={() => navigate('/admin-login')} 
-                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-4 rounded-xl transition-all flex-1 text-center"
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-xl transition-all text-center"
                     >
                         Admin Portal
                     </button>
                     <button 
                         onClick={() => navigate('/lecturer-login')} 
-                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-4 rounded-xl transition-all flex-1 text-center"
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-xl transition-all text-center"
                     >
                         Facilitator Portal
+                    </button>
+                    <button 
+                        onClick={() => navigate('/moderator-login')} 
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-xl transition-all text-center"
+                    >
+                        Moderator Portal
+                    </button>
+                    <button 
+                        onClick={() => navigate('/assessor-login')} 
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-xl transition-all text-center"
+                    >
+                        Assessor Portal
                     </button>
                 </div>
             </div>

@@ -88,6 +88,10 @@ public class SecurityConfig {
                         .requestMatchers("/admin-dashboard.html").hasRole("ADMIN")
                         .requestMatchers("/api/lecturer/**").hasRole("LECTURER")
                         .requestMatchers("/lecturer-dashboard.html").hasRole("LECTURER")
+                        .requestMatchers("/api/moderator/**").hasRole("MODERATOR")
+                        .requestMatchers("/moderator-dashboard.html").hasRole("MODERATOR")
+                        .requestMatchers("/api/assessor/**").hasRole("ASSESSOR")
+                        .requestMatchers("/assessor-dashboard.html").hasRole("ASSESSOR")
 
                         .anyRequest().authenticated()
                 )
@@ -97,6 +101,10 @@ public class SecurityConfig {
                         response.sendRedirect("/#/admin-login");
                     } else if (uri.endsWith("/lecturer-dashboard.html") || uri.equals("/lecturer")) {
                         response.sendRedirect("/#/lecturer-login");
+                    } else if (uri.endsWith("/moderator-dashboard.html") || uri.equals("/moderator")) {
+                        response.sendRedirect("/#/moderator-login");
+                    } else if (uri.endsWith("/assessor-dashboard.html") || uri.equals("/assessor")) {
+                        response.sendRedirect("/#/assessor-login");
                     } else {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json");
@@ -109,6 +117,10 @@ public class SecurityConfig {
                         response.sendRedirect("/#/admin-login");
                     } else if (uri.endsWith("/lecturer-dashboard.html") || uri.equals("/lecturer")) {
                         response.sendRedirect("/#/lecturer-login");
+                    } else if (uri.endsWith("/moderator-dashboard.html") || uri.equals("/moderator")) {
+                        response.sendRedirect("/#/moderator-login");
+                    } else if (uri.endsWith("/assessor-dashboard.html") || uri.equals("/assessor")) {
+                        response.sendRedirect("/#/assessor-login");
                     } else {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json");

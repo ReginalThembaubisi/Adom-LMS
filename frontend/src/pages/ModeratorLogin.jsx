@@ -1,0 +1,136 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const ModeratorLogin = () => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        const user = username.trim();
+        const pass = password.trim();
+
+        if (!user || !pass) return;
+
+        setLoading(true);
+
+        // Construct Basic Auth token
+        const token = btoa(`${user}:${pass}`);
+
+        try {
+            const res = await fetch('/api/moderator/modules', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Basic ${token}`
+                }
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                throw new Error('Invalid moderator credentials. Please try again.');
+            }
+
+            if (res.ok) {
+                sessionStorage.setItem('moderator_auth', token);
+                navigate('/moderator-dashboard');
+            } else {
+                throw new Error('Authentication failed.');
+            }
+        } catch (err) {
+            setError(err.message || 'Connection failed.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="auth-page-container bg-slate-50/80 min-h-screen text-slate-800 antialiased flex flex-col justify-center items-center p-4 relative overflow-hidden">
+            {/* Ambient background blobs */}
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-teal-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+
+            <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
+                <div className="text-center space-y-1">
+                    <h2 className="text-xl font-extrabold text-slate-900 font-display">Moderator Portal Login</h2>
+                    <p className="text-xs text-slate-500 font-sans">Enter your moderator credentials to access submission reviews</p>
+                </div>
+
+                {error && (
+                    <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-rose-50 border-rose-200 text-rose-800 text-center">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5 font-sans">Username</label>
+                            <input
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-2xs font-sans"
+                                required
+                                placeholder="e.g. moderator"
+                                disabled={loading}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5 font-sans">Password</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-2xs font-sans"
+                                    required
+                                    placeholder="••••••••"
+                                    disabled={loading}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                >
+                                    {showPassword ? (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button 
+                        type="submit" 
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-emerald-500/20 hover:shadow-md hover:shadow-emerald-500/25 transition-all duration-150 font-sans"
+                        disabled={loading}
+                    >
+                        {loading ? 'Authenticating...' : 'Sign In as Moderator'}
+                    </button>
+                </form>
+
+                <div className="text-center pt-2 border-t border-slate-100">
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-1 mt-4 w-full font-sans"
+                    >
+                        ← Back to Main Entry
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ModeratorLogin;

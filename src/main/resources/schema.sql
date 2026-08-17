@@ -144,6 +144,26 @@ CREATE TABLE IF NOT EXISTS module_files (
     CONSTRAINT fk_module_file_module FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE
 );
 
+-- 8. Moderators Table
+CREATE TABLE IF NOT EXISTS moderators (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
+    username VARCHAR(255) NULL UNIQUE,
+    password_hash VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 9. Assessors Table
+CREATE TABLE IF NOT EXISTS assessors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
+    username VARCHAR(255) NULL UNIQUE,
+    password_hash VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 -- 7. System Settings Table
 CREATE TABLE IF NOT EXISTS system_settings (
     setting_key VARCHAR(100) PRIMARY KEY,
