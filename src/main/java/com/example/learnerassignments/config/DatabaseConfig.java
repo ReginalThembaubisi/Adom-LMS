@@ -9,10 +9,9 @@ public class DatabaseConfig {
     @PostConstruct
     public void init() {
         String dbUrl = System.getenv("SPRING_DATASOURCE_URL");
-        if (dbUrl != null && dbUrl.startsWith("postgres://")) {
-            // Convert postgres://username:password@hostname:port/dbname
-            // to jdbc:postgresql://hostname:port/dbname
-            String rawUrl = dbUrl.substring(11); // remove postgres://
+        if (dbUrl != null && (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"))) {
+            String prefix = dbUrl.startsWith("postgres://") ? "postgres://" : "postgresql://";
+            String rawUrl = dbUrl.substring(prefix.length());
             int atIndex = rawUrl.indexOf("@");
             if (atIndex != -1) {
                 String credentials = rawUrl.substring(0, atIndex);
@@ -28,7 +27,7 @@ public class DatabaseConfig {
                 System.setProperty("spring.datasource.username", username);
                 System.setProperty("spring.datasource.password", password);
                 
-                System.out.println("DatabaseConfig: Auto-converted postgres:// URL to jdbc:postgresql:// format");
+                System.out.println("DatabaseConfig: Auto-converted connection URL to jdbc:postgresql:// format");
             }
         }
     }
