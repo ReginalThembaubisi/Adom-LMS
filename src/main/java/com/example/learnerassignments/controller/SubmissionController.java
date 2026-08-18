@@ -11,7 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,11 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/submissions")
@@ -132,13 +126,16 @@ public class SubmissionController {
         return false;
     }
 
-    @GetMapping("/{id}/download")
-    public ResponseEntity<?> downloadSubmissionFile(
+    // Serves the submission file for in-app viewing only (iframe/Google Docs Viewer). Uses
+    // Content-Disposition: inline so browsers render it instead of prompting a file save —
+    // there is deliberately no "attachment" download path left for submissions anymore.
+    @GetMapping("/{id}/view")
+    public ResponseEntity<?> viewSubmissionFile(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
             @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
-        
+
         Submission submission = submissionService.getSubmission(id);
         if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -154,92 +151,7 @@ public class SubmissionController {
         Resource resource = submissionService.loadLocalResource(pathStr);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + submission.getOriginalFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + submission.getOriginalFilename() + "\"")
                 .body(resource);
-    }
-
-    @GetMapping("/{id}/graded-download")
-    public ResponseEntity<?> downloadGradedSubmissionFile(
-            @PathVariable Long id,
-            @RequestParam(value = "learnerCode", required = false) String learnerCode,
-            @RequestParam(value = "authToken", required = false) String authToken,
-            Authentication auth) throws IOException {
-        
-        Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        if (submission.getGradedFilePath() == null || submission.getGradedFilePath().isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-
-        String pathStr = submission.getGradedFilePath();
-        if (pathStr.startsWith("http://") || pathStr.startsWith("https://")) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .header(HttpHeaders.LOCATION, pathStr)
-                    .build();
-        }
-
-        if (pathStr.startsWith("/")) {
-            pathStr = pathStr.substring(1);
-        }
-        Path path = Paths.get(pathStr).toAbsolutePath().normalize();
-        Resource resource = new UrlResource(path.toUri());
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + submission.getGradedOriginalFilename() + "\"")
-                .body(resource);
-    }
-
-    @GetMapping("/{id}/download-url")
-    public ResponseEntity<?> getDownloadUrl(
-            @PathVariable Long id,
-            @RequestParam(value = "learnerCode", required = false) String learnerCode,
-            @RequestParam(value = "authToken", required = false) String authToken,
-            Authentication auth) {
-        
-        Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        String pathStr = submission.getFilePath();
-        String downloadUrl;
-        if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
-            downloadUrl = pathStr;
-        } else {
-            downloadUrl = "/api/submissions/" + id + "/download?stream=true" + (authToken != null ? "&authToken=" + java.net.URLEncoder.encode(authToken, java.nio.charset.StandardCharsets.UTF_8) : "");
-        }
-
-        return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));
-    }
-
-    @GetMapping("/{id}/graded-download-url")
-    public ResponseEntity<?> getGradedDownloadUrl(
-            @PathVariable Long id,
-            @RequestParam(value = "learnerCode", required = false) String learnerCode,
-            @RequestParam(value = "authToken", required = false) String authToken,
-            Authentication auth) {
-        
-        Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        if (submission.getGradedFilePath() == null || submission.getGradedFilePath().isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-
-        String pathStr = submission.getGradedFilePath();
-        String downloadUrl;
-        if (pathStr.startsWith("http://") || pathStr.startsWith("https://")) {
-            downloadUrl = pathStr;
-        } else {
-            downloadUrl = "/api/submissions/" + id + "/graded-download?stream=true" + (authToken != null ? "&authToken=" + java.net.URLEncoder.encode(authToken, java.nio.charset.StandardCharsets.UTF_8) : "");
-        }
-
-        return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));
     }
 }

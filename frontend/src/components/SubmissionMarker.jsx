@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 
 const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
-    const [grade, setGrade] = useState(submission.grade !== null && submission.grade !== undefined ? submission.grade.toString() : '');
+    const [outcome, setOutcome] = useState(submission.status === 'COMPETENT' || submission.status === 'NOT_YET_COMPETENT' ? submission.status : '');
     const [feedback, setFeedback] = useState(submission.feedback || '');
-    const [markedFile, setMarkedFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -13,29 +12,21 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
         setError('');
         setSuccess('');
 
-        const gradeVal = parseInt(grade);
-        if (isNaN(gradeVal) || gradeVal < 0 || gradeVal > 100) {
-            setError('Grade must be a percentage between 0 and 100.');
+        if (outcome !== 'COMPETENT' && outcome !== 'NOT_YET_COMPETENT') {
+            setError('Select an outcome: Competent or Not Yet Competent.');
             return;
         }
 
         setLoading(true);
 
-        const formData = new FormData();
-        formData.append('grade', gradeVal);
-        formData.append('feedback', feedback);
-        if (markedFile) {
-            formData.append('file', markedFile);
-        }
-
         try {
-            await onSaveGrade(submission.submissionId, formData);
-            setSuccess('Grade and feedback saved successfully!');
+            await onSaveGrade(submission.submissionId, { outcome, feedback });
+            setSuccess('Outcome and feedback saved successfully!');
             setTimeout(() => {
                 onClose();
             }, 1000);
         } catch (err) {
-            setError(err.message || 'Failed to save grade.');
+            setError(err.message || 'Failed to save outcome.');
         } finally {
             setLoading(false);
         }
@@ -54,9 +45,9 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
     const isExternal = submission.filePath?.startsWith('http://') || submission.filePath?.startsWith('https://');
 
     // Construct absolute public download URL for Google Docs Viewer in production
-    const documentUrl = isExternal 
-        ? submission.filePath 
-        : `${window.location.origin}/api/submissions/${submission.submissionId}/download` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
+    const documentUrl = isExternal
+        ? submission.filePath
+        : `${window.location.origin}/api/submissions/${submission.submissionId}/view` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -141,8 +132,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                     <div className="w-1/4 bg-slate-900 p-6 flex flex-col justify-between overflow-y-auto">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-1">
-                                <h4 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">Grading Console</h4>
-                                <p className="text-[11px] text-slate-500">Provide a score percentage and written feedback directly onto the student portal.</p>
+                                <h4 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">Assessment Console</h4>
+                                <p className="text-[11px] text-slate-500">Record a Competent / Not Yet Competent outcome and written feedback directly onto the student portal.</p>
                             </div>
 
                             {error && (
@@ -159,43 +150,45 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
 
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Score Percentage (0-100%)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={grade}
-                                        onChange={(e) => setGrade(e.target.value)}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-600 transition-all font-sans"
-                                        placeholder="e.g. 85"
-                                        required
-                                        disabled={loading}
-                                    />
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Outcome</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOutcome('COMPETENT')}
+                                            disabled={loading}
+                                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                outcome === 'COMPETENT'
+                                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-emerald-600/50'
+                                            }`}
+                                        >
+                                            Competent
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOutcome('NOT_YET_COMPETENT')}
+                                            disabled={loading}
+                                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                outcome === 'NOT_YET_COMPETENT'
+                                                    ? 'bg-rose-600 border-rose-600 text-white'
+                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-rose-600/50'
+                                            }`}
+                                        >
+                                            Not Yet Competent
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Feedback Comments</label>
                                     <textarea
-                                        rows="6"
+                                        rows="8"
                                         value={feedback}
                                         onChange={(e) => setFeedback(e.target.value)}
                                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-600 transition-all font-sans resize-none"
                                         placeholder="Write constructive evaluation notes here..."
                                         disabled={loading}
                                     />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Return Marked File (Optional)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            onChange={(e) => setMarkedFile(e.target.files[0])}
-                                            className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 transition-all"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mt-1">Upload a graded version of their work if they need corrected details.</p>
                                 </div>
                             </div>
 
@@ -204,7 +197,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                 className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
                                 disabled={loading}
                             >
-                                {loading ? 'Saving...' : 'Save & Publish Grade'}
+                                {loading ? 'Saving...' : 'Save & Publish Outcome'}
                             </button>
                         </form>
 

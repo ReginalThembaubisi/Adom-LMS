@@ -23,9 +23,6 @@ public class SubmittedLearnerDto {
     private SubmissionStatus status;
     private String filePath;
     private String originalFilename;
-    private Integer grade;
     private String feedback;
     private LocalDateTime gradedAt;
-    private String gradedFilePath;
-    private String gradedOriginalFilename;
 }

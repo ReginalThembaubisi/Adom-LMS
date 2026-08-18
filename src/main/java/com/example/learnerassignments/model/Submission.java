@@ -46,20 +46,11 @@ public class Submission {
     @Column(name = "status", nullable = false, length = 20)
     private SubmissionStatus status;
 
-    @Column(name = "grade")
-    private Integer grade;
-
     @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
 
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
-
-    @Column(name = "graded_file_path", length = 500)
-    private String gradedFilePath;
-
-    @Column(name = "graded_original_filename")
-    private String gradedOriginalFilename;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

@@ -20,9 +20,6 @@ public class StudentSubmissionHistoryDto {
     private String originalFilename;
     private LocalDateTime submittedAt;
     private String status;
-    private Integer grade;
     private String feedback;
     private LocalDateTime gradedAt;
-    private String gradedFilePath;
-    private String gradedOriginalFilename;
 }

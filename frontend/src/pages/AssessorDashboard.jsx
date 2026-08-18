@@ -96,16 +96,17 @@ const AssessorDashboard = () => {
         }
     };
 
-    const handleSaveGrade = async (submissionId, formData) => {
+    const handleSaveGrade = async (submissionId, payload) => {
         const res = await fetch(`/api/assessor/submissions/${submissionId}/grade`, {
             method: 'PUT',
             headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Basic ${token}`
             },
-            body: formData
+            body: JSON.stringify(payload)
         });
         if (!res.ok) {
-            throw new Error('Failed to save grade.');
+            throw new Error('Failed to save outcome.');
         }
         // Refresh submissions
         fetchSubmissions(selectedSessionId);
@@ -222,8 +223,7 @@ const AssessorDashboard = () => {
                                                 <th className="py-3 px-4">Full Name</th>
                                                 <th className="py-3 px-4">File Submitted</th>
                                                 <th className="py-3 px-4">Submitted At</th>
-                                                <th className="py-3 px-4">Status</th>
-                                                <th className="py-3 px-4">Grade</th>
+                                                <th className="py-3 px-4">Outcome</th>
                                                 <th className="py-3 px-4 text-right">Action</th>
                                             </tr>
                                         </thead>
@@ -240,18 +240,19 @@ const AssessorDashboard = () => {
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${
-                                                            sub.status === 'GRADED' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-blue-500/10 text-blue-400'
+                                                            sub.status === 'COMPETENT' ? 'bg-emerald-500/10 text-emerald-400'
+                                                                : sub.status === 'NOT_YET_COMPETENT' ? 'bg-rose-500/10 text-rose-400'
+                                                                : 'bg-blue-500/10 text-blue-400'
                                                         }`}>
-                                                            {sub.status}
+                                                            {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : sub.status}
                                                         </span>
                                                     </td>
-                                                    <td className="py-3 px-4 font-bold text-indigo-400">{sub.grade !== null ? `${sub.grade}%` : '-'}</td>
                                                     <td className="py-3 px-4 text-right">
                                                         <button
                                                             onClick={() => setActiveSubmission(sub)}
                                                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[10px] py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
                                                         >
-                                                            Inspect & Mark
+                                                            Inspect & Assess
                                                         </button>
                                                     </td>
                                                 </tr>

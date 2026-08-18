@@ -109,11 +109,8 @@ public class LearnerService {
                         .originalFilename(s.getOriginalFilename())
                         .submittedAt(s.getSubmittedAt())
                         .status(s.getStatus().name())
-                        .grade(s.getGrade())
                         .feedback(s.getFeedback())
                         .gradedAt(s.getGradedAt())
-                        .gradedFilePath(s.getGradedFilePath())
-                        .gradedOriginalFilename(s.getGradedOriginalFilename())
                         .build())
                 .collect(Collectors.toList());
     }

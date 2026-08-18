@@ -3,25 +3,14 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.*;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.repository.*;
-import com.example.learnerassignments.service.CloudinaryService;
 import com.example.learnerassignments.service.SubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,12 +21,7 @@ public class AssessorController {
     private final AssessorRepository assessorRepository;
     private final ModuleRepository moduleRepository;
     private final SubmissionSessionRepository sessionRepository;
-    private final SubmissionRepository submissionRepository;
     private final SubmissionService submissionService;
-    private final CloudinaryService cloudinaryService;
-
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
 
     private Assessor getAuthenticatedAssessor(Authentication auth) {
         String username = auth.getName();
@@ -81,42 +65,14 @@ public class AssessorController {
     }
 
     @PutMapping("/submissions/{id}/grade")
-    public ResponseEntity<Void> gradeSubmission(
+    public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable Long id,
-            @RequestParam("grade") Integer grade,
-            @RequestParam(value = "feedback", required = false) String feedback,
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            Authentication auth) throws IOException {
-        
+            @Valid @RequestBody GradeSubmissionRequest request,
+            Authentication auth) {
+
         getAuthenticatedAssessor(auth);
-        Submission submission = submissionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Submission not found"));
-
-        submission.setGrade(grade);
-        submission.setFeedback(feedback);
-        submission.setStatus(SubmissionStatus.GRADED);
-        submission.setGradedAt(LocalDateTime.now());
-
-        if (file != null && !file.isEmpty()) {
-            String gradedUrl;
-            if (cloudinaryService.isConfigured()) {
-                gradedUrl = cloudinaryService.uploadFile(file);
-            } else {
-                File dir = new File(uploadDir);
-                if (!dir.exists()) dir.mkdirs();
-
-                String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-                Path filePath = Paths.get(uploadDir, uniqueFilename);
-                Files.copy(file.getInputStream(), filePath);
-
-                gradedUrl = "/" + uploadDir + "/" + uniqueFilename;
-            }
-            submission.setGradedFilePath(gradedUrl);
-            submission.setGradedOriginalFilename(file.getOriginalFilename());
-        }
-
-        submissionRepository.save(submission);
-        return ResponseEntity.ok().build();
+        SubmissionResponse response = submissionService.gradeSubmission(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/sessions")

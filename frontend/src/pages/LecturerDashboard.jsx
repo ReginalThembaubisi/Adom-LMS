@@ -52,10 +52,6 @@ const LecturerDashboard = () => {
     // Grading state
     const [activeTab, setActiveTab] = useState('overview');
     const [activeSubmission, setActiveSubmission] = useState(null);
-    const [gradingSubId, setGradingSubId] = useState(null);
-    const [editGrade, setEditGrade] = useState('');
-    const [editFeedback, setEditFeedback] = useState('');
-    const [markedFile, setMarkedFile] = useState(null);
     const [profile, setProfile] = useState(null);
     const [editingProfile, setEditingProfile] = useState(null);
 
@@ -81,48 +77,6 @@ const LecturerDashboard = () => {
             return false;
         }
         return true;
-    };
-
-    const downloadSubmissionFile = async (e, submissionId, filename, isGraded = false) => {
-        e.preventDefault();
-        const endpoint = isGraded ? 'graded-download-url' : 'download-url';
-        try {
-            const res = await fetch(`/api/submissions/${submissionId}/${endpoint}`, {
-                headers: { 'Authorization': `Basic ${token}` }
-            });
-            if (!checkAuthResponse(res)) return;
-            if (res.ok) {
-                const data = await res.json();
-                const downloadUrl = data.url;
-
-                if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
-                    // Open Cloudinary cloud URL directly in a new tab to bypass fetch CORS/Credentials limits
-                    window.open(downloadUrl, '_blank');
-                } else {
-                    // For local files, fetch the stream binary with Authorization header
-                    const fileRes = await fetch(downloadUrl, {
-                        headers: { 'Authorization': `Basic ${token}` }
-                    });
-                    if (fileRes.ok) {
-                        const blob = await fileRes.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                    } else {
-                        showMsg('error', 'Failed to download the submission file.');
-                    }
-                }
-            } else {
-                showMsg('error', 'Failed to retrieve download link.');
-            }
-        } catch (err) {
-            showMsg('error', 'Connection issue during download.');
-        }
     };
 
     const fetchProfile = async () => {
@@ -474,46 +428,6 @@ const LecturerDashboard = () => {
             }
         } catch (e) {
             showMsg('error', 'Connection issue.');
-        }
-    };
-
-    const handleSaveGrade = async (e, submissionId) => {
-        e.preventDefault();
-        const gradeVal = parseInt(editGrade);
-        if (isNaN(gradeVal) || gradeVal < 0 || gradeVal > 100) {
-            showMsg('error', 'Grade must be a percentage between 0 and 100.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('grade', gradeVal);
-        formData.append('feedback', editFeedback);
-        if (markedFile) {
-            formData.append('file', markedFile);
-        }
-
-        try {
-            const res = await fetch(`/api/lecturer/submissions/${submissionId}/grade`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Basic ${token}`
-                },
-                body: formData
-            });
-            if (!checkAuthResponse(res)) return;
-
-            if (res.ok) {
-                showMsg('success', 'Submission marked successfully!');
-                setGradingSubId(null);
-                setEditGrade('');
-                setEditFeedback('');
-                setMarkedFile(null);
-                inspectSubmissions(activeSessionId);
-            } else {
-                showMsg('error', 'Failed to save grade.');
-            }
-        } catch (err) {
-            showMsg('error', 'Connection failed.');
         }
     };
 
@@ -1053,7 +967,7 @@ const LecturerDashboard = () => {
                         <div className="flex justify-between items-center border-b border-slate-300 pb-3">
                             <div className="space-y-1">
                                 <h2 className="text-lg font-bold text-slate-900">Student Submissions Audit</h2>
-                                <p className="text-xs text-slate-500">Grade student work, download submitted files, and add feedback comments.</p>
+                                <p className="text-xs text-slate-500">Review student work in-app, record a Competent / Not Yet Competent outcome, and add feedback comments.</p>
                             </div>
                             <button 
                                 onClick={() => inspectSubmissions('')} 
@@ -1078,45 +992,32 @@ const LecturerDashboard = () => {
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
                                                 <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${
-                                                    sub.status === 'GRADED'
+                                                    sub.status === 'COMPETENT'
                                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                        : sub.status === 'NOT_YET_COMPETENT'
+                                                        ? 'bg-rose-50 text-rose-700 border-rose-200/60'
                                                         : 'bg-blue-50 text-blue-700 border-blue-200/60'
                                                 }`}>
-                                                    {sub.status || 'SUBMITTED'}
+                                                    {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
                                                 </span>
-                                                {sub.status === 'GRADED' && (
-                                                    <span className="text-sm font-bold text-emerald-600">Grade: {sub.grade}%</span>
-                                                )}
                                             </div>
                                         </div>
 
-                                        {sub.status === 'GRADED' && (
+                                        {(sub.status === 'COMPETENT' || sub.status === 'NOT_YET_COMPETENT') && (
                                             <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 space-y-2">
                                                 <p className="font-semibold italic">Feedback: "{sub.feedback || 'No comments provided.'}"</p>
-                                                {sub.gradedFilePath && (
-                                                    <div className="pt-1.5 border-t border-slate-300 flex items-center justify-between">
-                                                        <span className="text-[10px] text-slate-400">Returned marked file: {sub.gradedOriginalFilename}</span>
-                                                        <a 
-                                                            href="#" 
-                                                            onClick={(e) => downloadSubmissionFile(e, sub.submissionId, sub.gradedOriginalFilename, true)} 
-                                                            className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900"
-                                                        >
-                                                            Download Marked File
-                                                        </a>
-                                                    </div>
-                                                )}
                                             </div>
                                         )}
 
-                                        
+
                                         <div className="flex gap-2">
-                                            <button 
+                                            <button
                                                 onClick={() => {
                                                     setActiveSubmission(sub);
                                                 }}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer"
                                             >
-                                                {sub.status === 'GRADED' ? 'Inspect & Edit Grade' : 'Inspect & Mark'}
+                                                {(sub.status === 'COMPETENT' || sub.status === 'NOT_YET_COMPETENT') ? 'Inspect & Edit Outcome' : 'Inspect & Assess'}
                                             </button>
                                         </div>
 
@@ -1153,16 +1054,17 @@ const LecturerDashboard = () => {
                         setActiveSubmission(null);
                         inspectSubmissions(activeSessionId);
                     }}
-                    onSaveGrade={async (submissionId, formData) => {
+                    onSaveGrade={async (submissionId, payload) => {
                         const res = await fetch(`/api/lecturer/submissions/${submissionId}/grade`, {
                             method: 'PUT',
                             headers: {
+                                'Content-Type': 'application/json',
                                 'Authorization': `Basic ${token}`
                             },
-                            body: formData
+                            body: JSON.stringify(payload)
                         });
                         if (!res.ok) {
-                            throw new Error('Failed to save grade.');
+                            throw new Error('Failed to save outcome.');
                         }
                         inspectSubmissions(activeSessionId);
                     }}

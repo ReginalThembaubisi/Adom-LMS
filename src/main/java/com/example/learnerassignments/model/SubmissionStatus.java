@@ -3,5 +3,6 @@ package com.example.learnerassignments.model;
 public enum SubmissionStatus {
     SUBMITTED,
     LATE,
-    GRADED
+    COMPETENT,
+    NOT_YET_COMPETENT
 }

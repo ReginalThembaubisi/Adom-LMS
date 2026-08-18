@@ -80,18 +80,18 @@ public class ChatbotService {
 
             List<Submission> submissions = submissionRepository.findByLearner_LearnerCodeOrderBySubmittedAtDesc(learnerCode);
             List<Submission> graded = submissions.stream()
-                    .filter(s -> s.getGrade() != null)
+                    .filter(s -> s.getStatus() == SubmissionStatus.COMPETENT || s.getStatus() == SubmissionStatus.NOT_YET_COMPETENT)
                     .toList();
 
             if (graded.isEmpty()) {
-                return "You don't have any graded assignments yet. Facilitators are currently reviewing submissions.";
+                return "You don't have any assessed assignments yet. Facilitators are currently reviewing submissions.";
             }
 
-            StringBuilder sb = new StringBuilder("📝 **Your Graded Submissions & Feedback**:\n");
+            StringBuilder sb = new StringBuilder("📝 **Your Assessed Submissions & Feedback**:\n");
             for (Submission sub : graded) {
-                sb.append(String.format("* **%s**:\n  * **Score**: `%s`\n  * **Feedback**: *\"%s\"*\n",
+                sb.append(String.format("* **%s**:\n  * **Outcome**: `%s`\n  * **Feedback**: *\"%s\"*\n",
                         sub.getSession() != null && sub.getSession().getAssignment() != null ? sub.getSession().getAssignment().getTitle() : "Assignment",
-                        sub.getGrade(),
+                        sub.getStatus() == SubmissionStatus.COMPETENT ? "Competent" : "Not Yet Competent",
                         sub.getFeedback() != null && !sub.getFeedback().isBlank() ? sub.getFeedback() : "No written comments provided"
                 ));
             }

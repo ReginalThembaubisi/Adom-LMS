@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
+import SubmissionViewer from '../components/SubmissionViewer';
 
 const StudentPortal = () => {
     const { learner, logoutStudent } = useLearner();
@@ -33,6 +34,7 @@ const StudentPortal = () => {
 
     // Submissions history state
     const [history, setHistory] = useState([]);
+    const [viewingSubmission, setViewingSubmission] = useState(null);
 
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -855,56 +857,47 @@ const StudentPortal = () => {
                                             <p className="text-[10px] text-slate-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
                                         </div>
 
-                                        {/* Unified footer container for status, grades, feedback, and files download */}
+                                        {/* Unified footer container for status, outcome, and feedback */}
                                         <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-center gap-3 ${
-                                            sub.status === 'GRADED'
+                                            sub.status === 'COMPETENT'
                                                 ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
+                                                : sub.status === 'NOT_YET_COMPETENT'
+                                                ? 'bg-rose-50/50 border-rose-100 text-rose-800'
                                                 : 'bg-slate-50 border-slate-200 text-slate-700'
                                         }`}>
-                                            {/* Left side: Status badge & Grade & Feedback */}
+                                            {/* Left side: Status badge & Feedback */}
                                             <div className="flex flex-col md:flex-row items-center md:items-start gap-3 w-full md:w-auto">
                                                 <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0 ${
-                                                    sub.status === 'GRADED'
+                                                    sub.status === 'COMPETENT'
                                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                        : sub.status === 'NOT_YET_COMPETENT'
+                                                        ? 'bg-rose-50 text-rose-700 border-rose-200/60'
                                                         : 'bg-blue-50 text-blue-700 border-blue-200/60'
                                                 }`}>
                                                     <span className={`w-1.5 h-1.5 rounded-full ${
-                                                        sub.status === 'GRADED' ? 'bg-emerald-500' : 'bg-blue-500'
+                                                        sub.status === 'COMPETENT' ? 'bg-emerald-500' : sub.status === 'NOT_YET_COMPETENT' ? 'bg-rose-500' : 'bg-blue-500'
                                                     }`}></span>
-                                                    {sub.status || 'SUBMITTED'}
+                                                    {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
                                                 </span>
                                                 <div className="text-xs text-center md:text-left space-y-0.5">
-                                                    {sub.status === 'GRADED' ? (
-                                                        <>
-                                                            <p className="font-extrabold text-emerald-800">Grade: {sub.grade}%</p>
-                                                            <p className="text-slate-600 font-medium italic">
-                                                                {sub.feedback ? `"${sub.feedback}"` : 'No feedback comment provided.'}
-                                                            </p>
-                                                        </>
+                                                    {(sub.status === 'COMPETENT' || sub.status === 'NOT_YET_COMPETENT') ? (
+                                                        <p className="text-slate-600 font-medium italic">
+                                                            {sub.feedback ? `"${sub.feedback}"` : 'No feedback comment provided.'}
+                                                        </p>
                                                     ) : (
-                                                        <p className="text-slate-500 font-medium italic">Not yet graded.</p>
+                                                        <p className="text-slate-500 font-medium italic">Not yet assessed.</p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             {/* Right side: Action Buttons */}
                                             <div className="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-end">
-                                                <a 
-                                                    href={`/api/submissions/${sub.submissionId}/download?learnerCode=${studentNumber}`} 
-                                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5"
-                                                    download
+                                                <button
+                                                    onClick={() => setViewingSubmission(sub)}
+                                                    className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                                                 >
-                                                    Download Submission
-                                                </a>
-                                                {sub.status === 'GRADED' && sub.gradedFilePath && (
-                                                    <a 
-                                                        href={`/api/submissions/${sub.submissionId}/graded-download?learnerCode=${studentNumber}`} 
-                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5"
-                                                        download
-                                                    >
-                                                        Download Marked Work
-                                                    </a>
-                                                )}
+                                                    View Submission
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -1004,6 +997,14 @@ const StudentPortal = () => {
                     )}
                 </button>
             </div>
+
+            {viewingSubmission && (
+                <SubmissionViewer
+                    submission={viewingSubmission}
+                    learnerCode={studentNumber}
+                    onClose={() => setViewingSubmission(null)}
+                />
+            )}
         </div>
     );
 };

@@ -172,11 +172,8 @@ public class SubmissionService {
                         .status(latestSubmission.getStatus())
                         .filePath(latestSubmission.getFilePath())
                         .originalFilename(latestSubmission.getOriginalFilename())
-                        .grade(latestSubmission.getGrade())
                         .feedback(latestSubmission.getFeedback())
                         .gradedAt(latestSubmission.getGradedAt())
-                        .gradedFilePath(latestSubmission.getGradedFilePath())
-                        .gradedOriginalFilename(latestSubmission.getGradedOriginalFilename())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -247,11 +244,8 @@ public class SubmissionService {
                         .status(latestSubmission.getStatus())
                         .filePath(latestSubmission.getFilePath())
                         .originalFilename(latestSubmission.getOriginalFilename())
-                        .grade(latestSubmission.getGrade())
                         .feedback(latestSubmission.getFeedback())
                         .gradedAt(latestSubmission.getGradedAt())
-                        .gradedFilePath(latestSubmission.getGradedFilePath())
-                        .gradedOriginalFilename(latestSubmission.getGradedOriginalFilename())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -292,6 +286,32 @@ public class SubmissionService {
         } catch (MalformedURLException ex) {
             throw new ResourceNotFoundException("File path invalid for submission id: " + submissionId);
         }
+    }
+
+    @Transactional
+    public SubmissionResponse gradeSubmission(Long submissionId, GradeSubmissionRequest request) {
+        if (request.getOutcome() != SubmissionStatus.COMPETENT && request.getOutcome() != SubmissionStatus.NOT_YET_COMPETENT) {
+            throw new InvalidFileException("Outcome must be COMPETENT or NOT_YET_COMPETENT.");
+        }
+
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
+
+        submission.setStatus(request.getOutcome());
+        submission.setFeedback(request.getFeedback());
+        submission.setGradedAt(LocalDateTime.now());
+
+        Submission saved = submissionRepository.save(submission);
+
+        return SubmissionResponse.builder()
+                .id(saved.getId())
+                .learnerCode(saved.getLearner().getLearnerCode())
+                .learnerName(saved.getLearner().getFullName())
+                .sessionId(saved.getSession().getId())
+                .sessionName(saved.getSession().getSessionName())
+                .originalFilename(saved.getOriginalFilename())
+                .status(saved.getStatus())
+                .build();
     }
 
     @Transactional(readOnly = true)

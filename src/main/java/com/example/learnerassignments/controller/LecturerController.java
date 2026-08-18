@@ -312,16 +312,14 @@ public class LecturerController {
     }
 
     @PutMapping("/submissions/{id}/grade")
-    public ResponseEntity<Void> gradeSubmission(
+    public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable Long id,
-            @RequestParam("grade") Integer grade,
-            @RequestParam(value = "feedback", required = false) String feedback,
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            Authentication auth) throws IOException {
-        
+            @Valid @RequestBody GradeSubmissionRequest request,
+            Authentication auth) {
+
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         Submission submission = submissionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Submission not found"));
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Submission not found"));
 
         // Scope check
         SubmissionSession session = submission.getSession();
@@ -333,33 +331,8 @@ public class LecturerController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        submission.setGrade(grade);
-        submission.setFeedback(feedback);
-        submission.setStatus(SubmissionStatus.GRADED);
-        submission.setGradedAt(java.time.LocalDateTime.now());
-
-        // Handle optional marked-up file upload
-        if (file != null && !file.isEmpty()) {
-            String gradedUrl;
-            if (cloudinaryService.isConfigured()) {
-                gradedUrl = cloudinaryService.uploadFile(file);
-            } else {
-                File dir = new File(UPLOAD_DIR);
-                if (!dir.exists()) dir.mkdirs();
-
-                String uniqueFilename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-                Path filePath = Paths.get(UPLOAD_DIR, uniqueFilename);
-                Files.copy(file.getInputStream(), filePath);
-
-                gradedUrl = "/" + UPLOAD_DIR + uniqueFilename;
-            }
-
-            submission.setGradedFilePath(gradedUrl);
-            submission.setGradedOriginalFilename(file.getOriginalFilename());
-        }
-
-        submissionRepository.save(submission);
-        return ResponseEntity.ok().build();
+        SubmissionResponse response = submissionService.gradeSubmission(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/categories")
