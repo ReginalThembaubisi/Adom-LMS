@@ -362,11 +362,14 @@ public class SubmissionService {
                     HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
 
             if (response.statusCode() != 200) {
-                // A 401/403 here means this submission was uploaded before files were switched
-                // to Cloudinary's "authenticated" delivery type (see CloudinaryService.uploadFile)
-                // — its public "upload"-type URL is blocked by Cloudinary's raw/PDF security
-                // restriction and can't be recovered by re-signing; it needs re-uploading.
-                throw new ResourceNotFoundException("Could not retrieve file from storage (status " + response.statusCode() + ")");
+                // Surface Cloudinary's own error body (not just our status code) so a failure
+                // here is actually diagnosable instead of a bare "(status 401)".
+                String cloudinaryBody = new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
+                if (cloudinaryBody.length() > 300) {
+                    cloudinaryBody = cloudinaryBody.substring(0, 300);
+                }
+                throw new ResourceNotFoundException(
+                        "Could not retrieve file from storage (status " + response.statusCode() + "): " + cloudinaryBody);
             }
             return response.body();
         } catch (IOException | InterruptedException e) {
