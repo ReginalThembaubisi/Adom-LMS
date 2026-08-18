@@ -347,10 +347,20 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleCreateLecturer = async (e) => {
+        const handleCreateStaff = async (e) => {
         e.preventDefault();
+        let endpoint = '/api/admin/lecturers';
+        let successMsg = 'Facilitator registered successfully!';
+        if (staffRole === 'MODERATOR') {
+            endpoint = '/api/admin/moderators';
+            successMsg = 'Moderator registered successfully!';
+        } else if (staffRole === 'ASSESSOR') {
+            endpoint = '/api/admin/assessors';
+            successMsg = 'Assessor registered successfully!';
+        }
+
         try {
-            const res = await fetch('/api/admin/lecturers', {
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -361,20 +371,114 @@ const AdminDashboard = () => {
             if (!checkAuthResponse(res)) return;
 
             if (res.ok) {
-                showMsg('success', 'Lecturer registered successfully!');
+                showMsg('success', successMsg);
                 setFullName('');
                 setEmail('');
                 setUsername('');
                 setPassword('');
                 fetchLecturers();
+                fetchModerators();
+                fetchAssessors();
                 fetchOverview();
             } else {
-                showMsg('error', 'Failed to register lecturer account (username may already be taken).');
+                showMsg('error', 'Failed to register account (username may already be taken).');
             }
         } catch (err) {
             showMsg('error', 'Connection failed.');
         }
     };
+
+    const handleDeleteModerator = async (id, name) => {
+        if (!confirm(`Are you sure you want to delete moderator ${name}? This action cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/api/admin/moderators/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (res.ok) {
+                showMsg('success', `Moderator ${name} deleted successfully.`);
+                fetchModerators();
+            } else {
+                showMsg('error', 'Failed to delete moderator.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error.');
+        }
+    };
+
+    const handleDeleteAssessor = async (id, name) => {
+        if (!confirm(`Are you sure you want to delete assessor ${name}? This action cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/api/admin/assessors/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (res.ok) {
+                showMsg('success', `Assessor ${name} deleted successfully.`);
+                fetchAssessors();
+            } else {
+                showMsg('error', 'Failed to delete assessor.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error.');
+        }
+    };
+
+    const handleUpdateModerator = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`/api/admin/moderators/${editingModerator.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({
+                    fullName: editingModerator.fullName,
+                    email: editingModerator.email || '',
+                    username: editingModerator.username,
+                    password: editingModerator.password || ''
+                })
+            });
+            if (res.ok) {
+                showMsg('success', 'Moderator updated successfully!');
+                setEditingModerator(null);
+                fetchModerators();
+            } else {
+                showMsg('error', 'Failed to update moderator.');
+            }
+        } catch (err) {
+            showMsg('error', 'Network error.');
+        }
+    };
+
+    const handleUpdateAssessor = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`/api/admin/assessors/${editingAssessor.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({
+                    fullName: editingAssessor.fullName,
+                    email: editingAssessor.email || '',
+                    username: editingAssessor.username,
+                    password: editingAssessor.password || ''
+                })
+            });
+            if (res.ok) {
+                showMsg('success', 'Assessor updated successfully!');
+                setEditingAssessor(null);
+                fetchAssessors();
+            } else {
+                showMsg('error', 'Failed to update assessor.');
+            }
+        } catch (err) {
+            showMsg('error', 'Network error.');
+        }
+    };;
 
     const handleCreateModule = async (e) => {
         e.preventDefault();
