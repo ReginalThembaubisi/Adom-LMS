@@ -12,7 +12,7 @@ const AdminDashboard = () => {
         }
     }, [token, navigate]);
 
-    if (!token) return null;
+    
 
     // State variables
     const [lecturers, setLecturers] = useState([]);
@@ -553,6 +553,8 @@ const AdminDashboard = () => {
         sessionStorage.removeItem('admin_auth');
         navigate('/');
     };
+
+    if (!token) return null;
 
     return (
         <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">

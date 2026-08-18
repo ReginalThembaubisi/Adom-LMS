@@ -12,7 +12,6 @@ const LecturerDashboard = () => {
         }
     }, [token, navigate]);
 
-    if (!token) return null;
 
     // UI state
     const [modules, setModules] = useState([]);
@@ -518,6 +517,8 @@ const LecturerDashboard = () => {
     };
 
     const mySessions = sessions;
+
+    if (!token) return null;
 
     return (
         <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">

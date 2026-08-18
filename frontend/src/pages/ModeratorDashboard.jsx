@@ -13,7 +13,6 @@ const ModeratorDashboard = () => {
         }
     }, [token, navigate]);
 
-    if (!token) return null;
 
     // UI state
     const [modules, setModules] = useState([]);
@@ -125,6 +124,8 @@ const ModeratorDashboard = () => {
         const selectedMod = modules.find(m => m.id === parseInt(selectedModuleId));
         return selectedMod ? s.assignmentTitle.includes(`[${selectedMod.moduleName}]`) : true;
     });
+
+    if (!token) return null;
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">

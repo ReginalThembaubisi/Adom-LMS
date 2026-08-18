@@ -13,7 +13,6 @@ const StudentPortal = () => {
         }
     }, [learner, navigate]);
 
-    if (!learner) return null;
 
     const studentNumber = learner.learnerCode || '';
 
@@ -320,6 +319,8 @@ const StudentPortal = () => {
             });
         }
     });
+
+    if (!learner) return null;
 
     return (
         <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
