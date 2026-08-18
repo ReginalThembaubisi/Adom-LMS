@@ -13,7 +13,7 @@ const Login = () => {
 
     useEffect(() => {
         if (learner) {
-            navigate('/student-portal');
+            navigate('/portal');
         }
     }, [learner, navigate]);
 
