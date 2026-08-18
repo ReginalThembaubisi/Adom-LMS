@@ -26,7 +26,6 @@ const AdminDashboard = () => {
     const [loadingRegStatus, setLoadingRegStatus] = useState(false);
     const [learners, setLearners] = useState([]);
     const [editingLecturer, setEditingLecturer] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview');
 
     // Learnership form
     const [learnershipName, setLearnershipName] = useState('');
