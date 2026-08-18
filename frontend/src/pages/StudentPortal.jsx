@@ -18,7 +18,7 @@ const StudentPortal = () => {
     }, [learner, navigate]);
 
 
-    const studentNumber = learner.learnerCode || '';
+    const studentNumber = learner?.learnerCode || '';
 
     // UI Tab State: 'modules' | 'submit' | 'history'
     const [activeTab, setActiveTab] = useState('modules');
@@ -402,7 +402,7 @@ const StudentPortal = () => {
                                 <p className="text-sm text-slate-300">Here is your academic overview for this term.</p>
                             </div>
                         </div>
-                        <button onClick={logoutStudent} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 text-white transition-all shadow-xs">
+                        <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 text-white transition-all shadow-xs">
                             Sign Out
                         </button>
                     </header>
