@@ -470,6 +470,9 @@ const LecturerDashboard = () => {
             setInspectedSubmissions([]);
             return;
         }
+        // Jump straight to the results instead of leaving the lecturer to notice and
+        // click over to the separate Grading Console tab themselves.
+        setActiveTab('grading');
 
         try {
             const res = await fetch(`/api/lecturer/sessions/${sessionId}/submissions`, {
