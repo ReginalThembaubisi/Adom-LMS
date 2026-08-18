@@ -42,13 +42,11 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                   sessionStorage.getItem('assessor_auth') || 
                   sessionStorage.getItem('admin_auth');
 
-    // Check if the file is stored externally (e.g. Cloudinary public URL)
-    const isExternal = submission.filePath?.startsWith('http://') || submission.filePath?.startsWith('https://');
-
-    // Construct absolute public download URL for Google Docs Viewer in production
-    const documentUrl = isExternal
-        ? submission.filePath
-        : `${window.location.origin}/api/submissions/${submission.submissionId}/view` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
+    // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
+    // files — so the response always carries a Content-Type the browser can render inline.
+    // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
+    // blank when linked to directly.
+    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -60,8 +58,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                 <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                     <div>
                         <h3 className="text-base font-extrabold text-white">In-App Grading Workspace</h3>
-                        <p className="text-xs text-slate-400">
-                            Student: <span className="font-semibold text-slate-200">{submission.learnerName} ({submission.learnerCode})</span> | File: <span className="font-semibold text-slate-200">{submission.originalFilename}</span>
+                        <p className="text-xs text-slate-300">
+                            Student: <span className="font-semibold text-white">{submission.learnerName} ({submission.learnerCode})</span> | File: <span className="font-semibold text-white">{submission.originalFilename}</span>
                         </p>
                     </div>
                     <button 

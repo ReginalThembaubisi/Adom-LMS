@@ -8,11 +8,11 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
     const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf');
     const isDoc = submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx');
 
-    const isExternal = submission.filePath?.startsWith('http://') || submission.filePath?.startsWith('https://');
-
-    const documentUrl = isExternal
-        ? submission.filePath
-        : `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}`;
+    // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
+    // files — so the response always carries a Content-Type the browser can render inline.
+    // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
+    // blank when linked to directly.
+    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}`;
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -26,8 +26,8 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                 <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                     <div>
                         <h3 className="text-base font-extrabold text-white">My Submission</h3>
-                        <p className="text-xs text-slate-400">
-                            File: <span className="font-semibold text-slate-200">{submission.originalFilename}</span>
+                        <p className="text-xs text-slate-300">
+                            File: <span className="font-semibold text-white">{submission.originalFilename}</span>
                         </p>
                     </div>
                     <button

@@ -10,7 +10,6 @@ import com.example.learnerassignments.repository.AssessorRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -142,16 +141,21 @@ public class SubmissionController {
         }
 
         String pathStr = submission.getFilePath();
+        String contentType = submissionService.resolveContentType(submission.getOriginalFilename());
+
+        Object body;
         if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .header(HttpHeaders.LOCATION, pathStr)
-                    .build();
+            // Fetch and re-serve rather than redirecting: Cloudinary's raw-resource delivery
+            // doesn't reliably set an inline-renderable Content-Type on its own, which left
+            // the in-app viewer blank for externally-stored files.
+            body = submissionService.fetchExternalFile(pathStr);
+        } else {
+            body = submissionService.loadLocalResource(pathStr);
         }
 
-        Resource resource = submissionService.loadLocalResource(pathStr);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + submission.getOriginalFilename() + "\"")
-                .body(resource);
+                .body(body);
     }
 }

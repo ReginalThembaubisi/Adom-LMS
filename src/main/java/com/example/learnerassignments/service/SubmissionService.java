@@ -21,6 +21,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -345,5 +349,33 @@ public class SubmissionService {
             return "";
         }
         return filename.substring(filename.lastIndexOf(".") + 1);
+    }
+
+    // Cloudinary serves "raw" resources (how submission files are stored) without a
+    // reliable, inline-renderable Content-Type — embedding the raw Cloudinary URL directly
+    // in an <iframe> left the viewer blank instead of showing the document. Fetching the
+    // bytes ourselves and re-serving them with a Content-Type we control fixes that.
+    public byte[] fetchExternalFile(String url) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200) {
+                throw new ResourceNotFoundException("Could not retrieve file from storage (status " + response.statusCode() + ")");
+            }
+            return response.body();
+        } catch (IOException | InterruptedException e) {
+            throw new ResourceNotFoundException("Could not retrieve file from storage: " + e.getMessage());
+        }
+    }
+
+    public String resolveContentType(String originalFilename) {
+        String extension = getFileExtension(originalFilename).toLowerCase();
+        return switch (extension) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
     }
 }
