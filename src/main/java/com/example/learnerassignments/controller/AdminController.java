@@ -4,10 +4,14 @@ import com.example.learnerassignments.dto.*;
 import com.example.learnerassignments.model.Lecturer;
 import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.*;
+import com.example.learnerassignments.service.AuditLogService;
+import com.example.learnerassignments.service.BackupService;
+import com.example.learnerassignments.service.CloudinaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +32,10 @@ public class AdminController {
     private final SubmissionRepository submissionRepository;
     private final LearnerRepository learnerRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final AuditLogService auditLogService;
+    private final BackupService backupService;
+    private final CloudinaryService cloudinaryService;
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/lecturers")
@@ -274,11 +282,12 @@ public class AdminController {
     }
 
     @DeleteMapping("/learners/{id}")
-    public ResponseEntity<Void> deleteLearner(@PathVariable Long id) {
-        if (!learnerRepository.existsById(id)) {
-            throw new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found");
-        }
+    public ResponseEntity<Void> deleteLearner(@PathVariable Long id, Authentication auth) {
+        com.example.learnerassignments.model.Learner learner = learnerRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found"));
         learnerRepository.deleteById(id);
+        auditLogService.log(auth, "DELETE_LEARNER", "Learner", id,
+                "Student '" + learner.getFullName() + "' (" + learner.getLearnerCode() + ") deleted");
         return ResponseEntity.ok().build();
     }
 
@@ -308,7 +317,7 @@ public class AdminController {
 
     @DeleteMapping("/lecturers/{id}")
     @org.springframework.transaction.annotation.Transactional
-    public ResponseEntity<?> deleteLecturer(@PathVariable Long id) {
+    public ResponseEntity<?> deleteLecturer(@PathVariable Long id, Authentication auth) {
         Lecturer lecturer = lecturerRepository.findById(id)
                 .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Lecturer not found"));
 
@@ -321,6 +330,8 @@ public class AdminController {
 
         // 2. Delete the lecturer
         lecturerRepository.delete(lecturer);
+        auditLogService.log(auth, "DELETE_LECTURER", "Lecturer", id,
+                "Facilitator '" + lecturer.getFullName() + "' (" + lecturer.getUsername() + ") deleted");
 
         return ResponseEntity.ok().build();
     }
@@ -427,11 +438,12 @@ public class AdminController {
     }
 
     @DeleteMapping("/moderators/{id}")
-    public ResponseEntity<Void> deleteModerator(@PathVariable Long id) {
-        if (!moderatorRepository.existsById(id)) {
-            throw new com.example.learnerassignments.exception.ResourceNotFoundException("Moderator not found");
-        }
+    public ResponseEntity<Void> deleteModerator(@PathVariable Long id, Authentication auth) {
+        com.example.learnerassignments.model.Moderator moderator = moderatorRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Moderator not found"));
         moderatorRepository.deleteById(id);
+        auditLogService.log(auth, "DELETE_MODERATOR", "Moderator", id,
+                "Moderator '" + moderator.getFullName() + "' (" + moderator.getUsername() + ") deleted");
         return ResponseEntity.ok().build();
     }
 
@@ -506,11 +518,47 @@ public class AdminController {
     }
 
     @DeleteMapping("/assessors/{id}")
-    public ResponseEntity<Void> deleteAssessor(@PathVariable Long id) {
-        if (!assessorRepository.existsById(id)) {
-            throw new com.example.learnerassignments.exception.ResourceNotFoundException("Assessor not found");
-        }
+    public ResponseEntity<Void> deleteAssessor(@PathVariable Long id, Authentication auth) {
+        com.example.learnerassignments.model.Assessor assessor = assessorRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Assessor not found"));
         assessorRepository.deleteById(id);
+        auditLogService.log(auth, "DELETE_ASSESSOR", "Assessor", id,
+                "Assessor '" + assessor.getFullName() + "' (" + assessor.getUsername() + ") deleted");
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<com.example.learnerassignments.model.AuditLog>> getAuditLogs() {
+        return ResponseEntity.ok(auditLogRepository.findAllByOrderByCreatedAtDesc());
+    }
+
+    @PostMapping("/backups/run")
+    public ResponseEntity<?> runBackup(Authentication auth) {
+        try {
+            String filename = backupService.performBackup();
+            auditLogService.log(auth, "RUN_BACKUP", "Backup", null, "Manual backup triggered: " + filename);
+            return ResponseEntity.ok(java.util.Map.of("filename", filename));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("message", "Backup failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/backups")
+    public ResponseEntity<?> listBackups() {
+        try {
+            List<java.util.Map<String, Object>> resources = cloudinaryService.listBackups();
+            List<java.util.Map<String, Object>> withUrls = resources.stream()
+                    .map(r -> {
+                        java.util.Map<String, Object> entry = new java.util.HashMap<>(r);
+                        entry.put("downloadUrl", cloudinaryService.getSignedBackupUrl((String) r.get("public_id")));
+                        return entry;
+                    })
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(withUrls);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("message", "Failed to list backups: " + e.getMessage()));
+        }
     }
 }

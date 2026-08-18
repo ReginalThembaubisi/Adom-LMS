@@ -84,6 +84,9 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Admin / Lecturer Protected Endpoints & Dashboards
+                        .requestMatchers(HttpMethod.POST, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
+                        .requestMatchers(HttpMethod.PUT, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/admin-dashboard.html").hasRole("ADMIN")
                         .requestMatchers("/api/lecturer/**").hasRole("LECTURER")

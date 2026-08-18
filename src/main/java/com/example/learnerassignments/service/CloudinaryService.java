@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 @Service
 public class CloudinaryService {
@@ -35,5 +36,46 @@ public class CloudinaryService {
             "public_id", "lms_files/" + System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_")
         ));
         return (String) uploadResult.get("secure_url");
+    }
+
+    // Backups use resource_type "authenticated" (not plain public "upload") so a leaked or
+    // guessed URL alone can't be used to download student/staff data — every access needs a
+    // signature generated server-side via getSignedBackupUrl().
+    public String uploadBackup(byte[] data, String filename) throws IOException {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        String publicId = "lms_backups/" + filename;
+        cloudinary.uploader().upload(data, ObjectUtils.asMap(
+            "resource_type", "raw",
+            "type", "authenticated",
+            "public_id", publicId
+        ));
+        return publicId;
+    }
+
+    public String getSignedBackupUrl(String publicId) {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        return cloudinary.url()
+                .resourceType("raw")
+                .type("authenticated")
+                .signed(true)
+                .generate(publicId);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> listBackups() throws Exception {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        Map result = cloudinary.api().resources(ObjectUtils.asMap(
+            "type", "authenticated",
+            "resource_type", "raw",
+            "prefix", "lms_backups/",
+            "max_results", 100
+        ));
+        return (List<Map<String, Object>>) result.get("resources");
     }
 }

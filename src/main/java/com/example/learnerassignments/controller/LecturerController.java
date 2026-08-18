@@ -39,6 +39,7 @@ public class LecturerController {
     private final SubmissionSessionService sessionService;
     private final SubmissionService submissionService;
     private final CloudinaryService cloudinaryService;
+    private final com.example.learnerassignments.service.AuditLogService auditLogService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     private static final String UPLOAD_DIR = "uploads/";
@@ -498,6 +499,8 @@ public class LecturerController {
         }
 
         moduleRepository.delete(module);
+        auditLogService.log(auth, "DELETE_MODULE", "Module", id,
+                "Module '" + module.getModuleName() + "' deleted by lecturer " + lecturer.getUsername());
         return ResponseEntity.ok().build();
     }
 
@@ -525,6 +528,8 @@ public class LecturerController {
         }
 
         moduleFileRepository.delete(file);
+        auditLogService.log(auth, "DELETE_MODULE_FILE", "ModuleFile", id,
+                "File '" + file.getOriginalFilename() + "' deleted by lecturer " + lecturer.getUsername());
         return ResponseEntity.ok().build();
     }
 
@@ -543,11 +548,15 @@ public class LecturerController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not own this session");
         }
 
-        // 1. Delete all submissions linked to the session
-        submissionRepository.deleteBySessionId(id);
-        
-        // 2. Delete the session itself
-        sessionRepository.delete(session);
+        // Soft-delete: mark the session and its submissions as deleted instead of removing
+        // the rows, so they can be restored if this was triggered by mistake.
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        submissionRepository.softDeleteBySessionId(id, now);
+        session.setDeletedAt(now);
+        sessionRepository.save(session);
+
+        auditLogService.log(auth, "DELETE_SESSION", "SubmissionSession", id,
+                "Session '" + session.getSessionName() + "' and its submissions soft-deleted by lecturer " + lecturer.getUsername());
 
         return ResponseEntity.ok().build();
     }

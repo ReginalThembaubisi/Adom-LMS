@@ -424,8 +424,13 @@ const LecturerDashboard = () => {
         }
     };
 
-    const deleteSession = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this submission session? This will also delete ALL student submissions linked to it. This action cannot be undone.")) {
+    const deleteSession = async (id, sessionName) => {
+        const typed = window.prompt(
+            `This will remove the session "${sessionName}" and every student submission linked to it from view (it can be restored by an admin from the database if needed, but is NOT permanently erased).\n\nType the session name exactly to confirm:`
+        );
+        if (typed === null) return;
+        if (typed.trim() !== sessionName) {
+            showMsg('error', 'Session name did not match. Delete cancelled.');
             return;
         }
         try {
@@ -1019,8 +1024,8 @@ const LecturerDashboard = () => {
                                                         >
                                                             Inspect
                                                         </button>
-                                                        <button 
-                                                            onClick={() => deleteSession(s.id)} 
+                                                        <button
+                                                            onClick={() => deleteSession(s.id, s.sessionName)}
                                                             className="font-medium text-[10px] py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors flex-1 text-center"
                                                         >
                                                             Delete

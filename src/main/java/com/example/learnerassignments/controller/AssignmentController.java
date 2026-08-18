@@ -4,11 +4,13 @@ import com.example.learnerassignments.dto.AssignmentResponse;
 import com.example.learnerassignments.dto.AssignmentSubmissionOverviewResponse;
 import com.example.learnerassignments.dto.CreateAssignmentRequest;
 import com.example.learnerassignments.service.AssignmentService;
+import com.example.learnerassignments.service.AuditLogService;
 import com.example.learnerassignments.service.SubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +22,7 @@ public class AssignmentController {
 
     private final AssignmentService assignmentService;
     private final SubmissionService submissionService;
+    private final AuditLogService auditLogService;
 
     @PostMapping
     public ResponseEntity<AssignmentResponse> createAssignment(@Valid @RequestBody CreateAssignmentRequest request) {
@@ -46,8 +49,9 @@ public class AssignmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAssignment(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteAssignment(@PathVariable Long id, Authentication auth) {
         assignmentService.deleteAssignment(id);
+        auditLogService.log(auth, "DELETE_ASSIGNMENT", "Assignment", id, "Assignment deleted");
         return ResponseEntity.noContent().build();
     }
 }
