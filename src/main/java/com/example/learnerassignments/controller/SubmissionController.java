@@ -2,6 +2,12 @@ package com.example.learnerassignments.controller;
 
 import com.example.learnerassignments.dto.SubmissionResponse;
 import com.example.learnerassignments.model.Submission;
+import com.example.learnerassignments.model.Lecturer;
+import com.example.learnerassignments.repository.LecturerRepository;
+import com.example.learnerassignments.repository.AdminRepository;
+import com.example.learnerassignments.repository.ModeratorRepository;
+import com.example.learnerassignments.repository.AssessorRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -25,6 +31,11 @@ import java.util.Map;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final LecturerRepository lecturerRepository;
+    private final AdminRepository adminRepository;
+    private final ModeratorRepository moderatorRepository;
+    private final AssessorRepository assessorRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SubmissionResponse> submitAssignment(
@@ -65,14 +76,71 @@ public class SubmissionController {
         return false;
     }
 
+    private boolean checkTokenAccess(Submission submission, String authToken) {
+        if (authToken == null || authToken.isBlank()) {
+            return false;
+        }
+        try {
+            String base64Credentials = authToken;
+            if (base64Credentials.startsWith("Basic ")) {
+                base64Credentials = base64Credentials.substring("Basic ".length());
+            }
+            byte[] decoded = java.util.Base64.getDecoder().decode(base64Credentials);
+            String credentials = new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+            String[] parts = credentials.split(":", 2);
+            if (parts.length < 2) return false;
+            String username = parts[0];
+            String password = parts[1];
+
+            // 1. Check if admin
+            var adminOpt = adminRepository.findByUsername(username);
+            if (adminOpt.isPresent() && passwordEncoder.matches(password, adminOpt.get().getPasswordHash())) {
+                return true;
+            }
+
+            // 2. Check if lecturer
+            var lecturerOpt = lecturerRepository.findByUsername(username);
+            if (lecturerOpt.isPresent() && passwordEncoder.matches(password, lecturerOpt.get().getPasswordHash())) {
+                Lecturer lecturer = lecturerOpt.get();
+                if (submission.getSession() != null &&
+                    submission.getSession().getAssignment() != null &&
+                    submission.getSession().getAssignment().getModule() != null &&
+                    submission.getSession().getAssignment().getModule().getCategory() != null &&
+                    submission.getSession().getAssignment().getModule().getCategory().getLecturer() != null) {
+                    
+                    String assignedUsername = submission.getSession().getAssignment().getModule().getCategory().getLecturer().getUsername();
+                    if (username.equals(assignedUsername)) {
+                        return true;
+                    }
+                }
+            }
+
+            // 3. Check if moderator
+            var modOpt = moderatorRepository.findByUsername(username);
+            if (modOpt.isPresent() && passwordEncoder.matches(password, modOpt.get().getPasswordHash())) {
+                return true;
+            }
+
+            // 4. Check if assessor
+            var assOpt = assessorRepository.findByUsername(username);
+            if (assOpt.isPresent() && passwordEncoder.matches(password, assOpt.get().getPasswordHash())) {
+                return true;
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return false;
+    }
+
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadSubmissionFile(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
         
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth)) {
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -94,10 +162,11 @@ public class SubmissionController {
     public ResponseEntity<?> downloadGradedSubmissionFile(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) throws IOException {
         
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth)) {
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -128,10 +197,11 @@ public class SubmissionController {
     public ResponseEntity<?> getDownloadUrl(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
         
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth)) {
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -140,7 +210,7 @@ public class SubmissionController {
         if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
             downloadUrl = pathStr;
         } else {
-            downloadUrl = "/api/submissions/" + id + "/download?stream=true";
+            downloadUrl = "/api/submissions/" + id + "/download?stream=true" + (authToken != null ? "&authToken=" + java.net.URLEncoder.encode(authToken, java.nio.charset.StandardCharsets.UTF_8) : "");
         }
 
         return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));
@@ -150,10 +220,11 @@ public class SubmissionController {
     public ResponseEntity<?> getGradedDownloadUrl(
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
         
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, learnerCode, auth)) {
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -166,7 +237,7 @@ public class SubmissionController {
         if (pathStr.startsWith("http://") || pathStr.startsWith("https://")) {
             downloadUrl = pathStr;
         } else {
-            downloadUrl = "/api/submissions/" + id + "/graded-download?stream=true";
+            downloadUrl = "/api/submissions/" + id + "/graded-download?stream=true" + (authToken != null ? "&authToken=" + java.net.URLEncoder.encode(authToken, java.nio.charset.StandardCharsets.UTF_8) : "");
         }
 
         return ResponseEntity.ok(java.util.Map.of("url", downloadUrl));

@@ -44,8 +44,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
     const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf');
     const isDoc = submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx');
     
+    // Retrieve authentication token to allow document preview downloading without standard basic auth headers in iframe
+    const token = sessionStorage.getItem('lecturer_auth') || 
+                  sessionStorage.getItem('moderator_auth') || 
+                  sessionStorage.getItem('assessor_auth') || 
+                  sessionStorage.getItem('admin_auth');
+
     // Construct absolute public download URL for Google Docs Viewer in production
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/download`;
+    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/download` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
