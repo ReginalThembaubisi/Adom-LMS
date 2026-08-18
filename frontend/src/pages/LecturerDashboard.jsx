@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SubmissionMarker from '../components/SubmissionMarker';
 
 const LecturerDashboard = () => {
     const navigate = useNavigate();
