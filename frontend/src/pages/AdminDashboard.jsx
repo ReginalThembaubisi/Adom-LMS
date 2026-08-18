@@ -16,6 +16,8 @@ const AdminDashboard = () => {
 
     // State variables
     const [lecturers, setLecturers] = useState([]);
+    const [moderators, setModerators] = useState([]);
+    const [assessors, setAssessors] = useState([]);
     const [modules, setModules] = useState([]);
     const [categories, setCategories] = useState([]);
     const [learnerships, setLearnerships] = useState([]);
@@ -26,6 +28,10 @@ const AdminDashboard = () => {
     const [loadingRegStatus, setLoadingRegStatus] = useState(false);
     const [learners, setLearners] = useState([]);
     const [editingLecturer, setEditingLecturer] = useState(null);
+    const [editingModerator, setEditingModerator] = useState(null);
+    const [editingAssessor, setEditingAssessor] = useState(null);
+    const [staffRole, setStaffRole] = useState('LECTURER');
+    const [activeTab, setActiveTab] = useState('overview');
 
     // Learnership form
     const [learnershipName, setLearnershipName] = useState('');
@@ -50,6 +56,8 @@ const AdminDashboard = () => {
         if (token) {
             fetchOverview();
             fetchLecturers();
+            fetchModerators();
+            fetchAssessors();
             fetchModules();
             fetchCategories();
             fetchLearnerships();
@@ -133,6 +141,36 @@ const AdminDashboard = () => {
             if (res.ok) {
                 const data = await res.json();
                 setLecturers(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchModerators = async () => {
+        try {
+            const res = await fetch('/api/admin/moderators', {
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                const data = await res.json();
+                setModerators(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchAssessors = async () => {
+        try {
+            const res = await fetch('/api/admin/assessors', {
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                const data = await res.json();
+                setAssessors(data);
             }
         } catch (e) {
             console.error(e);
@@ -1200,6 +1238,156 @@ const AdminDashboard = () => {
                                 <button 
                                     type="button" 
                                     onClick={() => setEditingLecturer(null)}
+                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingModerator && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xl w-full max-w-md space-y-6 relative text-slate-800">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-base font-extrabold text-slate-900">Edit Moderator</h3>
+                            <button 
+                                onClick={() => setEditingModerator(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleUpdateModerator} className="space-y-4 text-left">
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    value={editingModerator.fullName}
+                                    onChange={e => setEditingModerator({...editingModerator, fullName: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Email</label>
+                                <input 
+                                    type="email" 
+                                    value={editingModerator.email || ''}
+                                    onChange={e => setEditingModerator({...editingModerator, email: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Username</label>
+                                <input 
+                                    type="text" 
+                                    value={editingModerator.username}
+                                    onChange={e => setEditingModerator({...editingModerator, username: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Password (Leave blank to keep current)</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="••••••••"
+                                    value={editingModerator.password || ''}
+                                    onChange={e => setEditingModerator({...editingModerator, password: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingModerator(null)}
+                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingAssessor && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xl w-full max-w-md space-y-6 relative text-slate-800">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-base font-extrabold text-slate-900">Edit Assessor</h3>
+                            <button 
+                                onClick={() => setEditingAssessor(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleUpdateAssessor} className="space-y-4 text-left">
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    value={editingAssessor.fullName}
+                                    onChange={e => setEditingAssessor({...editingAssessor, fullName: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Email</label>
+                                <input 
+                                    type="email" 
+                                    value={editingAssessor.email || ''}
+                                    onChange={e => setEditingAssessor({...editingAssessor, email: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Username</label>
+                                <input 
+                                    type="text" 
+                                    value={editingAssessor.username}
+                                    onChange={e => setEditingAssessor({...editingAssessor, username: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Password (Leave blank to keep current)</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="••••••••"
+                                    value={editingAssessor.password || ''}
+                                    onChange={e => setEditingAssessor({...editingAssessor, password: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingAssessor(null)}
                                     className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition-colors"
                                 >
                                     Cancel
