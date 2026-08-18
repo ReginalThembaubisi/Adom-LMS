@@ -2,16 +2,18 @@ import React from 'react';
 
 // Distinct color per role so it's visible at a glance who recorded an outcome,
 // since Facilitators, Assessors, and Moderators can each grade independently.
+// Hex values are a validated categorical triple (CVD-safe, ≥3:1 contrast on
+// both surfaces) — see frontend/src/utils/colors.js.
 const ROLE_STYLES = {
-    FACILITATOR: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    ASSESSOR: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-    MODERATOR: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    FACILITATOR: 'bg-[#3987e5]/10 text-[#3987e5] border-[#3987e5]/20',
+    ASSESSOR: 'bg-[#9085e9]/10 text-[#9085e9] border-[#9085e9]/20',
+    MODERATOR: 'bg-[#d95926]/10 text-[#d95926] border-[#d95926]/20',
 };
 
 const ROLE_STYLES_LIGHT = {
-    FACILITATOR: 'bg-blue-50 text-blue-700 border-blue-200/60',
-    ASSESSOR: 'bg-violet-50 text-violet-700 border-violet-200/60',
-    MODERATOR: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    FACILITATOR: 'bg-[#2a78d6]/10 text-[#2a78d6] border-[#2a78d6]/20',
+    ASSESSOR: 'bg-[#4a3aa7]/10 text-[#4a3aa7] border-[#4a3aa7]/20',
+    MODERATOR: 'bg-[#eb6834]/10 text-[#eb6834] border-[#eb6834]/20',
 };
 
 const ROLE_LABELS = {

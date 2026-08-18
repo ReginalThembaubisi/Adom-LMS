@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
 import { GraderBadge } from '../utils/graderBadge';
+import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
 import MessagesPanel from '../components/MessagesPanel';
 
 const LecturerDashboard = () => {
@@ -1047,14 +1048,8 @@ const LecturerDashboard = () => {
                                                 <p className="text-[10px] text-slate-400">Uploaded: {new Date(sub.submittedAt).toLocaleString()}</p>
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
-                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${
-                                                    sub.status === 'COMPETENT'
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                                                        : sub.status === 'NOT_YET_COMPETENT'
-                                                        ? 'bg-rose-50 text-rose-700 border-rose-200/60'
-                                                        : 'bg-blue-50 text-blue-700 border-blue-200/60'
-                                                }`}>
-                                                    {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
+                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${getStatusBadgeClasses(sub.status, 'light')}`}>
+                                                    {getStatusLabel(sub.status || 'SUBMITTED')}
                                                 </span>
                                                 {sub.gradedByRole && <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />}
                                             </div>

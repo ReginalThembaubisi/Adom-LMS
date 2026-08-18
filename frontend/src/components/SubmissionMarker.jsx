@@ -165,8 +165,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                             disabled={loading}
                                             className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                                 outcome === 'COMPETENT'
-                                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-emerald-600/50'
+                                                    ? 'bg-[#0ca30c] border-[#0ca30c] text-white'
+                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-[#0ca30c]/50'
                                             }`}
                                         >
                                             Competent
@@ -177,8 +177,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                             disabled={loading}
                                             className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                                 outcome === 'NOT_YET_COMPETENT'
-                                                    ? 'bg-rose-600 border-rose-600 text-white'
-                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-rose-600/50'
+                                                    ? 'bg-[#d03b3b] border-[#d03b3b] text-white'
+                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-[#d03b3b]/50'
                                             }`}
                                         >
                                             Not Yet Competent

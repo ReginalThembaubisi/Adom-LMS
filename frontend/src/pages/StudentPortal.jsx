@@ -4,6 +4,7 @@ import { useLearner } from '../context/LearnerContext';
 import SubmissionViewer from '../components/SubmissionViewer';
 import MessagesPanel from '../components/MessagesPanel';
 import { GraderBadge } from '../utils/graderBadge';
+import { getStatusBadgeClasses, getStatusLabel, getStatusDotClasses, getStatusContainerClasses } from '../utils/colors';
 
 const StudentPortal = () => {
     const { learner, logoutStudent } = useLearner();
@@ -913,26 +914,12 @@ const StudentPortal = () => {
                                         </div>
 
                                         {/* Unified footer container for status, outcome, and feedback */}
-                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-center gap-3 ${
-                                            sub.status === 'COMPETENT'
-                                                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
-                                                : sub.status === 'NOT_YET_COMPETENT'
-                                                ? 'bg-rose-50/50 border-rose-100 text-rose-800'
-                                                : 'bg-slate-50 border-slate-200 text-slate-700'
-                                        }`}>
+                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-center gap-3 ${getStatusContainerClasses(sub.status)}`}>
                                             {/* Left side: Status badge & Feedback */}
                                             <div className="flex flex-col md:flex-row items-center md:items-start gap-3 w-full md:w-auto">
-                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0 ${
-                                                    sub.status === 'COMPETENT'
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                                                        : sub.status === 'NOT_YET_COMPETENT'
-                                                        ? 'bg-rose-50 text-rose-700 border-rose-200/60'
-                                                        : 'bg-blue-50 text-blue-700 border-blue-200/60'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${
-                                                        sub.status === 'COMPETENT' ? 'bg-emerald-500' : sub.status === 'NOT_YET_COMPETENT' ? 'bg-rose-500' : 'bg-blue-500'
-                                                    }`}></span>
-                                                    {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
+                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0 ${getStatusBadgeClasses(sub.status, 'light')}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDotClasses(sub.status)}`}></span>
+                                                    {getStatusLabel(sub.status || 'SUBMITTED')}
                                                 </span>
                                                 {sub.gradedByRole && <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />}
                                                 <div className="text-xs text-center md:text-left space-y-0.5">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
 import { GraderBadge } from '../utils/graderBadge';
+import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
 
 const ModeratorDashboard = () => {
     const navigate = useNavigate();
@@ -243,12 +244,8 @@ const ModeratorDashboard = () => {
                                                         {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : 'N/A'}
                                                     </td>
                                                     <td className="py-3 px-4">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${
-                                                            sub.status === 'COMPETENT' ? 'bg-emerald-500/10 text-emerald-400'
-                                                                : sub.status === 'NOT_YET_COMPETENT' ? 'bg-rose-500/10 text-rose-400'
-                                                                : 'bg-blue-500/10 text-blue-400'
-                                                        }`}>
-                                                            {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : sub.status}
+                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${getStatusBadgeClasses(sub.status, 'dark')}`}>
+                                                            {getStatusLabel(sub.status)}
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-4">
