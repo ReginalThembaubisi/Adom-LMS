@@ -96,4 +96,34 @@ public class EmailService {
             log.error("Failed to send assignment reminder email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
+
+    @Async
+    public void sendNewMessageEmail(String toEmail, String recipientName, String senderName, String messagePreview) {
+        if (toEmail == null || toEmail.isBlank()) {
+            log.debug("No email address provided for {}, skipping new-message email.", recipientName);
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
+            message.setFrom(sender);
+            message.setTo(toEmail.trim());
+            message.setSubject("New message from " + senderName);
+            String preview = messagePreview != null && messagePreview.length() > 200
+                    ? messagePreview.substring(0, 200) + "..."
+                    : messagePreview;
+            message.setText(String.format(
+                    "Hi %s,\n\nYou have a new message from %s:\n\n\"%s\"\n\nLog in to the portal to read and reply.\n\nBest regards,\nLearner Assignments System",
+                    recipientName,
+                    senderName,
+                    preview
+            ));
+
+            mailSender.send(message);
+            log.info("Successfully dispatched new-message email to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send new-message email to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
 }

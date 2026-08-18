@@ -29,7 +29,8 @@ public class BackupService {
     private static final List<String> BACKUP_TABLES = List.of(
             "admins", "learnerships", "lecturers", "moderators", "assessors",
             "learners", "categories", "modules", "module_files", "assignments",
-            "submission_sessions", "submissions", "learner_modules", "learner_code_sequences"
+            "submission_sessions", "submissions", "learner_modules", "learner_code_sequences",
+            "messages"
     );
 
     @Scheduled(cron = "0 0 3 * * *") // Daily at 03:00 server time

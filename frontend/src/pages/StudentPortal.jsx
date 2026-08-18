@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
 import SubmissionViewer from '../components/SubmissionViewer';
+import MessagesPanel from '../components/MessagesPanel';
 import { GraderBadge } from '../utils/graderBadge';
 
 const StudentPortal = () => {
@@ -36,6 +37,7 @@ const StudentPortal = () => {
     // Submissions history state
     const [history, setHistory] = useState([]);
     const [viewingSubmission, setViewingSubmission] = useState(null);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -67,8 +69,46 @@ const StudentPortal = () => {
             fetchModules();
             fetchTimeline();
             fetchHistory();
+            fetchUnreadMessages();
+            const interval = setInterval(fetchUnreadMessages, 30000);
+            return () => clearInterval(interval);
         }
     }, [studentNumber]);
+
+    const fetchUnreadMessages = async () => {
+        try {
+            const res = await fetch(`/api/learners/${studentNumber}/messages/unread-count`);
+            if (res.ok) {
+                const data = await res.json();
+                setUnreadMessages(data.unreadCount || 0);
+            }
+        } catch (e) {
+            // Silent — background poll.
+        }
+    };
+
+    const fetchStudentThreads = async () => {
+        const res = await fetch(`/api/learners/${studentNumber}/messages`);
+        if (!res.ok) throw new Error('Failed to load conversations');
+        return res.json();
+    };
+
+    const fetchStudentThread = async (lecturerId) => {
+        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`);
+        if (!res.ok) throw new Error('Failed to load conversation');
+        fetchUnreadMessages();
+        return res.json();
+    };
+
+    const sendStudentMessage = async (lecturerId, body) => {
+        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body })
+        });
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+    };
 
     const checkStudentResponse = (res) => {
         if (res.status === 401 || res.status === 404) {
@@ -417,14 +457,28 @@ const StudentPortal = () => {
                         >
                             My Calendar
                         </button>
-                        <button 
-                            className={activeTab === 'history' 
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
+                        <button
+                            className={activeTab === 'history'
+                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all"
                                 : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                             }
                             onClick={() => handleTabChange('history')}
                         >
                             My Submissions
+                        </button>
+                        <button
+                            className={activeTab === 'messages'
+                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                            }
+                            onClick={() => handleTabChange('messages')}
+                        >
+                            Messages
+                            {unreadMessages > 0 && (
+                                <span className="bg-rose-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                    {unreadMessages}
+                                </span>
+                            )}
                         </button>
                     </nav>
                 )}
@@ -906,6 +960,22 @@ const StudentPortal = () => {
                                 ))
                             )}
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'messages' && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                        <div className="border-b border-slate-300 pb-3">
+                            <h2 className="text-lg font-bold text-slate-900">Messages</h2>
+                            <p className="text-xs text-slate-500">Message the facilitators of your enrolled modules.</p>
+                        </div>
+                        <MessagesPanel
+                            theme="light"
+                            currentSenderType="LEARNER"
+                            fetchThreads={fetchStudentThreads}
+                            fetchThread={fetchStudentThread}
+                            sendMessage={sendStudentMessage}
+                        />
                     </div>
                 )}
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
 import { GraderBadge } from '../utils/graderBadge';
+import MessagesPanel from '../components/MessagesPanel';
 
 const LecturerDashboard = () => {
     const navigate = useNavigate();
@@ -55,6 +56,7 @@ const LecturerDashboard = () => {
     const [activeSubmission, setActiveSubmission] = useState(null);
     const [profile, setProfile] = useState(null);
     const [editingProfile, setEditingProfile] = useState(null);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     useEffect(() => {
         if (token) {
@@ -63,8 +65,55 @@ const LecturerDashboard = () => {
             fetchAssignments();
             fetchCategories();
             fetchProfile();
+            fetchUnreadMessages();
+            const interval = setInterval(fetchUnreadMessages, 30000);
+            return () => clearInterval(interval);
         }
     }, [token]);
+
+    const fetchUnreadMessages = async () => {
+        try {
+            const res = await fetch('/api/lecturer/messages/unread-count', {
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setUnreadMessages(data.unreadCount || 0);
+            }
+        } catch (e) {
+            // Silent — this is a background poll, not a user-initiated action.
+        }
+    };
+
+    const fetchLecturerThreads = async () => {
+        const res = await fetch('/api/lecturer/messages', {
+            headers: { 'Authorization': `Basic ${token}` }
+        });
+        if (!checkAuthResponse(res)) return [];
+        if (!res.ok) throw new Error('Failed to load conversations');
+        return res.json();
+    };
+
+    const fetchLecturerThread = async (learnerId) => {
+        const res = await fetch(`/api/lecturer/messages/${learnerId}`, {
+            headers: { 'Authorization': `Basic ${token}` }
+        });
+        if (!checkAuthResponse(res)) return [];
+        if (!res.ok) throw new Error('Failed to load conversation');
+        fetchUnreadMessages();
+        return res.json();
+    };
+
+    const sendLecturerMessage = async (learnerId, body) => {
+        const res = await fetch(`/api/lecturer/messages/${learnerId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${token}` },
+            body: JSON.stringify({ body })
+        });
+        if (!checkAuthResponse(res)) return;
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+    };
 
     const showMsg = (type, message) => {
         setAlert({ type, message });
@@ -496,13 +545,14 @@ const LecturerDashboard = () => {
                                 { id: 'overview', label: 'Dashboard Overview', icon: '📊' },
                                 { id: 'materials', label: 'Module Materials', icon: '📚' },
                                 { id: 'setup', label: 'Assignments & Setup', icon: '⚙️' },
-                                { id: 'grading', label: 'Grading Console', icon: '📝' }
+                                { id: 'grading', label: 'Grading Console', icon: '📝' },
+                                { id: 'messages', label: 'Messages', icon: '💬' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
                                     type="button"
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all relative ${
                                         activeTab === tab.id
                                             ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
                                             : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
@@ -510,6 +560,11 @@ const LecturerDashboard = () => {
                                 >
                                     <span>{tab.icon}</span>
                                     <span>{tab.label}</span>
+                                    {tab.id === 'messages' && unreadMessages > 0 && (
+                                        <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                            {unreadMessages}
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -1042,6 +1097,22 @@ const LecturerDashboard = () => {
                                         </button>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {activeTab === 'messages' && (
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Messages</h2>
+                                    <p className="text-xs text-slate-500">Message students enrolled in your modules.</p>
+                                </div>
+                                <MessagesPanel
+                                    theme="dark"
+                                    currentSenderType="LECTURER"
+                                    fetchThreads={fetchLecturerThreads}
+                                    fetchThread={fetchLecturerThread}
+                                    sendMessage={sendLecturerMessage}
+                                />
                             </div>
                         )}
                     </div>
