@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
+import { GraderBadge } from '../utils/graderBadge';
 
 const LecturerDashboard = () => {
     const navigate = useNavigate();
@@ -1000,6 +1001,7 @@ const LecturerDashboard = () => {
                                                 }`}>
                                                     {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
                                                 </span>
+                                                {sub.gradedByRole && <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />}
                                             </div>
                                         </div>
 

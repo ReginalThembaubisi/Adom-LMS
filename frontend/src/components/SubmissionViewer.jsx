@@ -1,4 +1,5 @@
 import React from 'react';
+import { GraderBadge } from '../utils/graderBadge';
 
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
 // document in-app (no download) alongside its assessment outcome and feedback.
@@ -99,6 +100,12 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                                 }`}>
                                     {status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (status === 'COMPETENT' ? 'Competent' : (status || 'Submitted'))}
                                 </span>
+
+                                {isAssessed && (
+                                    <div>
+                                        <GraderBadge role={submission.gradedByRole} name={submission.gradedByName} theme="dark" />
+                                    </div>
+                                )}
 
                                 <div className="space-y-1.5">
                                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Feedback</label>

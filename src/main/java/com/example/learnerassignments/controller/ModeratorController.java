@@ -70,8 +70,8 @@ public class ModeratorController {
             @Valid @RequestBody GradeSubmissionRequest request,
             Authentication auth) {
 
-        getAuthenticatedModerator(auth);
-        SubmissionResponse response = submissionService.gradeSubmission(id, request);
+        Moderator moderator = getAuthenticatedModerator(auth);
+        SubmissionResponse response = submissionService.gradeSubmission(id, request, "MODERATOR", moderator.getFullName());
         return ResponseEntity.ok(response);
     }
 

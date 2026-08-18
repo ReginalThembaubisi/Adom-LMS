@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
 import SubmissionViewer from '../components/SubmissionViewer';
+import { GraderBadge } from '../utils/graderBadge';
 
 const StudentPortal = () => {
     const { learner, logoutStudent } = useLearner();
@@ -879,6 +880,7 @@ const StudentPortal = () => {
                                                     }`}></span>
                                                     {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : (sub.status || 'SUBMITTED')}
                                                 </span>
+                                                {sub.gradedByRole && <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />}
                                                 <div className="text-xs text-center md:text-left space-y-0.5">
                                                     {(sub.status === 'COMPETENT' || sub.status === 'NOT_YET_COMPETENT') ? (
                                                         <p className="text-slate-600 font-medium italic">

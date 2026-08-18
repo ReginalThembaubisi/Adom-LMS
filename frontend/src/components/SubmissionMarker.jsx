@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GraderBadge } from '../utils/graderBadge';
 
 const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
     const [outcome, setOutcome] = useState(submission.status === 'COMPETENT' || submission.status === 'NOT_YET_COMPETENT' ? submission.status : '');
@@ -134,6 +135,12 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                             <div className="space-y-1">
                                 <h4 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">Assessment Console</h4>
                                 <p className="text-[11px] text-slate-500">Record a Competent / Not Yet Competent outcome and written feedback directly onto the student portal.</p>
+                                {submission.gradedByRole && (
+                                    <div className="pt-2">
+                                        <span className="text-[10px] text-slate-500">Currently marked by </span>
+                                        <GraderBadge role={submission.gradedByRole} name={submission.gradedByName} theme="dark" />
+                                    </div>
+                                )}
                             </div>
 
                             {error && (

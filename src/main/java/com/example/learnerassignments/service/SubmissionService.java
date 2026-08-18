@@ -174,6 +174,8 @@ public class SubmissionService {
                         .originalFilename(latestSubmission.getOriginalFilename())
                         .feedback(latestSubmission.getFeedback())
                         .gradedAt(latestSubmission.getGradedAt())
+                        .gradedByRole(latestSubmission.getGradedByRole())
+                        .gradedByName(latestSubmission.getGradedByName())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -246,6 +248,8 @@ public class SubmissionService {
                         .originalFilename(latestSubmission.getOriginalFilename())
                         .feedback(latestSubmission.getFeedback())
                         .gradedAt(latestSubmission.getGradedAt())
+                        .gradedByRole(latestSubmission.getGradedByRole())
+                        .gradedByName(latestSubmission.getGradedByName())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -289,7 +293,7 @@ public class SubmissionService {
     }
 
     @Transactional
-    public SubmissionResponse gradeSubmission(Long submissionId, GradeSubmissionRequest request) {
+    public SubmissionResponse gradeSubmission(Long submissionId, GradeSubmissionRequest request, String graderRole, String graderName) {
         if (request.getOutcome() != SubmissionStatus.COMPETENT && request.getOutcome() != SubmissionStatus.NOT_YET_COMPETENT) {
             throw new InvalidFileException("Outcome must be COMPETENT or NOT_YET_COMPETENT.");
         }
@@ -300,6 +304,8 @@ public class SubmissionService {
         submission.setStatus(request.getOutcome());
         submission.setFeedback(request.getFeedback());
         submission.setGradedAt(LocalDateTime.now());
+        submission.setGradedByRole(graderRole);
+        submission.setGradedByName(graderName);
 
         Submission saved = submissionRepository.save(submission);
 

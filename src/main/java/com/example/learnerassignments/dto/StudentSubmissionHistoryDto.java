@@ -22,4 +22,6 @@ public class StudentSubmissionHistoryDto {
     private String status;
     private String feedback;
     private LocalDateTime gradedAt;
+    private String gradedByRole;
+    private String gradedByName;
 }

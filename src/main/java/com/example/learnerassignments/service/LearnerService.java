@@ -111,6 +111,8 @@ public class LearnerService {
                         .status(s.getStatus().name())
                         .feedback(s.getFeedback())
                         .gradedAt(s.getGradedAt())
+                        .gradedByRole(s.getGradedByRole())
+                        .gradedByName(s.getGradedByName())
                         .build())
                 .collect(Collectors.toList());
     }

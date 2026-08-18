@@ -52,6 +52,14 @@ public class Submission {
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
 
+    // Which role (FACILITATOR/ASSESSOR/MODERATOR) recorded the current outcome, since all
+    // three can grade independently — lets the UI color-code and attribute who marked it.
+    @Column(name = "graded_by_role", length = 20)
+    private String gradedByRole;
+
+    @Column(name = "graded_by_name")
+    private String gradedByName;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

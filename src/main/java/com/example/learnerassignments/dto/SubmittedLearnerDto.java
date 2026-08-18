@@ -25,4 +25,6 @@ public class SubmittedLearnerDto {
     private String originalFilename;
     private String feedback;
     private LocalDateTime gradedAt;
+    private String gradedByRole;
+    private String gradedByName;
 }

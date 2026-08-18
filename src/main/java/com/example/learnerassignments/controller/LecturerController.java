@@ -331,7 +331,7 @@ public class LecturerController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        SubmissionResponse response = submissionService.gradeSubmission(id, request);
+        SubmissionResponse response = submissionService.gradeSubmission(id, request, "FACILITATOR", lecturer.getFullName());
         return ResponseEntity.ok(response);
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
+import { GraderBadge } from '../utils/graderBadge';
 
 const AssessorDashboard = () => {
     const navigate = useNavigate();
@@ -224,6 +225,7 @@ const AssessorDashboard = () => {
                                                 <th className="py-3 px-4">File Submitted</th>
                                                 <th className="py-3 px-4">Submitted At</th>
                                                 <th className="py-3 px-4">Outcome</th>
+                                                <th className="py-3 px-4">Graded By</th>
                                                 <th className="py-3 px-4 text-right">Action</th>
                                             </tr>
                                         </thead>
@@ -246,6 +248,9 @@ const AssessorDashboard = () => {
                                                         }`}>
                                                             {sub.status === 'NOT_YET_COMPETENT' ? 'Not Yet Competent' : sub.status}
                                                         </span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="dark" />
                                                     </td>
                                                     <td className="py-3 px-4 text-right">
                                                         <button

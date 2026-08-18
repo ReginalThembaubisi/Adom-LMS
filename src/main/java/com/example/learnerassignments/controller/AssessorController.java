@@ -70,8 +70,8 @@ public class AssessorController {
             @Valid @RequestBody GradeSubmissionRequest request,
             Authentication auth) {
 
-        getAuthenticatedAssessor(auth);
-        SubmissionResponse response = submissionService.gradeSubmission(id, request);
+        Assessor assessor = getAuthenticatedAssessor(auth);
+        SubmissionResponse response = submissionService.gradeSubmission(id, request, "ASSESSOR", assessor.getFullName());
         return ResponseEntity.ok(response);
     }
 

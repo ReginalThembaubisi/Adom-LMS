@@ -191,6 +191,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE submission_sessions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;
 
+-- Attribute outcomes to the role/person that recorded them (2026-08-18)
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS graded_by_role VARCHAR(20) NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS graded_by_name VARCHAR(255) NULL;
+
 ALTER TABLE submission_sessions DROP CONSTRAINT IF EXISTS fk_session_assignment;
 ALTER TABLE submission_sessions ADD CONSTRAINT fk_session_assignment
     FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE RESTRICT;
