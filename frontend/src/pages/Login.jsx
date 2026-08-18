@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
 
@@ -8,8 +8,14 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { loginStudent } = useLearner();
+    const { loginStudent, learner } = useLearner();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (learner) {
+            navigate('/student-portal');
+        }
+    }, [learner, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
