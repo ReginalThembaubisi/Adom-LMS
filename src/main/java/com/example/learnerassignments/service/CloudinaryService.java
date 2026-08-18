@@ -27,33 +27,33 @@ public class CloudinaryService {
     public boolean isConfigured() {
         return this.cloudinary != null;
     }
+    // Submission files use resource_type "raw" + type "authenticated" — the same pattern
+    // already proven for backups below. Cloudinary's account-level security setting blocks
+    // *public* ("upload" type) delivery of raw/PDF files with a 401 regardless of whether the
+    // URL carries a signature — signing a public-type URL does not bypass that restriction,
+    // only actually uploading (and delivering) as "authenticated" does.
     public String uploadFile(MultipartFile file) throws IOException {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+        String publicId = "lms_files/" + System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
+        cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
             "resource_type", "raw",
-            "public_id", "lms_files/" + System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_")
+            "type", "authenticated",
+            "public_id", publicId
         ));
-        // Cloudinary's default account security setting blocks unsigned delivery of raw/PDF
-        // files with a 401 (a guard against PDF/ZIP-based attacks). Sign the URL so delivery
-        // works regardless of that setting, instead of returning the plain public secure_url.
-        String publicId = (String) uploadResult.get("public_id");
-        return cloudinary.url().resourceType("raw").signed(true).generate(publicId);
+        return getSignedFileUrl(publicId);
     }
 
-    // Re-signs a raw delivery URL that was stored unsigned (from before this fix), so
-    // already-uploaded submissions self-heal instead of needing a data migration.
-    public String getSignedRawUrl(String existingUrl) {
+    public String getSignedFileUrl(String publicId) {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("/raw/upload/v\\d+/(.+)$").matcher(existingUrl);
-        if (!matcher.find()) {
-            return existingUrl;
-        }
-        String publicId = matcher.group(1);
-        return cloudinary.url().resourceType("raw").signed(true).generate(publicId);
+        return cloudinary.url()
+                .resourceType("raw")
+                .type("authenticated")
+                .signed(true)
+                .generate(publicId);
     }
 
     // Backups use resource_type "authenticated" (not plain public "upload") so a leaked or

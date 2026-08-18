@@ -361,16 +361,11 @@ public class SubmissionService {
             HttpResponse<byte[]> response = client.send(
                     HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
 
-            if ((response.statusCode() == 401 || response.statusCode() == 403) && cloudinaryService.isConfigured()) {
-                // Cloudinary's default account security blocks unsigned raw/PDF delivery.
-                // Submissions uploaded before this was signed at upload time are stored with
-                // the old unsigned URL — re-sign it and retry once instead of failing outright.
-                String signedUrl = cloudinaryService.getSignedRawUrl(url);
-                response = client.send(
-                        HttpRequest.newBuilder(URI.create(signedUrl)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
-            }
-
             if (response.statusCode() != 200) {
+                // A 401/403 here means this submission was uploaded before files were switched
+                // to Cloudinary's "authenticated" delivery type (see CloudinaryService.uploadFile)
+                // — its public "upload"-type URL is blocked by Cloudinary's raw/PDF security
+                // restriction and can't be recovered by re-signing; it needs re-uploading.
                 throw new ResourceNotFoundException("Could not retrieve file from storage (status " + response.statusCode() + ")");
             }
             return response.body();
