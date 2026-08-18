@@ -35,7 +35,25 @@ public class CloudinaryService {
             "resource_type", "raw",
             "public_id", "lms_files/" + System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_")
         ));
-        return (String) uploadResult.get("secure_url");
+        // Cloudinary's default account security setting blocks unsigned delivery of raw/PDF
+        // files with a 401 (a guard against PDF/ZIP-based attacks). Sign the URL so delivery
+        // works regardless of that setting, instead of returning the plain public secure_url.
+        String publicId = (String) uploadResult.get("public_id");
+        return cloudinary.url().resourceType("raw").signed(true).generate(publicId);
+    }
+
+    // Re-signs a raw delivery URL that was stored unsigned (from before this fix), so
+    // already-uploaded submissions self-heal instead of needing a data migration.
+    public String getSignedRawUrl(String existingUrl) {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("/raw/upload/v\\d+/(.+)$").matcher(existingUrl);
+        if (!matcher.find()) {
+            return existingUrl;
+        }
+        String publicId = matcher.group(1);
+        return cloudinary.url().resourceType("raw").signed(true).generate(publicId);
     }
 
     // Backups use resource_type "authenticated" (not plain public "upload") so a leaked or

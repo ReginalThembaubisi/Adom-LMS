@@ -358,8 +358,18 @@ public class SubmissionService {
     public byte[] fetchExternalFile(String url) {
         try {
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
-            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> response = client.send(
+                    HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+
+            if ((response.statusCode() == 401 || response.statusCode() == 403) && cloudinaryService.isConfigured()) {
+                // Cloudinary's default account security blocks unsigned raw/PDF delivery.
+                // Submissions uploaded before this was signed at upload time are stored with
+                // the old unsigned URL — re-sign it and retry once instead of failing outright.
+                String signedUrl = cloudinaryService.getSignedRawUrl(url);
+                response = client.send(
+                        HttpRequest.newBuilder(URI.create(signedUrl)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+            }
+
             if (response.statusCode() != 200) {
                 throw new ResourceNotFoundException("Could not retrieve file from storage (status " + response.statusCode() + ")");
             }
