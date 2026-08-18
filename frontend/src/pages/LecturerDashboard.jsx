@@ -51,6 +51,7 @@ const LecturerDashboard = () => {
     const [sessionTaskFile, setSessionTaskFile] = useState(null);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
+    const [creatingSession, setCreatingSession] = useState(false);
 
     // Grading state
     const [activeTab, setActiveTab] = useState('overview');
@@ -356,10 +357,12 @@ const LecturerDashboard = () => {
 
     const handleCreateSession = async (e) => {
         e.preventDefault();
+        if (creatingSession) return; // Guard against double-submit creating duplicate sessions
         if (sessionTaskFile && sessionTaskFile.size > 20 * 1024 * 1024) {
             showMsg('error', 'Brief file size exceeds the 20MB limit. Please choose a smaller file.');
             return;
         }
+        setCreatingSession(true);
         try {
             const formData = new FormData();
             formData.append('sessionName', sessionName);
@@ -407,6 +410,8 @@ const LecturerDashboard = () => {
             }
         } catch (err) {
             showMsg('error', 'Connection failed.');
+        } finally {
+            setCreatingSession(false);
         }
     };
 
@@ -487,7 +492,14 @@ const LecturerDashboard = () => {
         navigate('/');
     };
 
-    const mySessions = sessions;
+    // Open sessions need attention first, then scheduled, then closed — so the
+    // most actionable items sit at the top instead of getting buried by scrolling.
+    const STATUS_ORDER = { OPEN: 0, SCHEDULED: 1, CLOSED: 2 };
+    const mySessions = [...sessions].sort((a, b) => {
+        const orderDiff = (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3);
+        if (orderDiff !== 0) return orderDiff;
+        return new Date(a.endTime) - new Date(b.endTime);
+    });
 
     if (!token) return null;
 
@@ -935,8 +947,8 @@ const LecturerDashboard = () => {
                                     
                                     {/* Action Bar */}
                                     <div className="border-t border-slate-200 pt-4 mt-4 flex justify-end">
-                                        <button type="submit" className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg shadow-xs transition-colors">
-                                            Open Session Window
+                                        <button type="submit" disabled={creatingSession} className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {creatingSession ? 'Opening...' : 'Open Session Window'}
                                         </button>
                                     </div>
                                 </form>
@@ -950,7 +962,7 @@ const LecturerDashboard = () => {
                                     <h2 className="text-lg font-bold text-slate-900">4. Active Intake Windows</h2>
                                     <p className="text-xs text-slate-500">Manage ongoing submission slots.</p>
                                 </div>
-                                <div className="space-y-4">
+                                <div className="space-y-4 max-h-[720px] overflow-y-auto pr-1">
                                     {mySessions.length === 0 ? (
                                         <p className="text-xs text-slate-500 text-center py-6">No submission sessions mapped to your modules.</p>
                                     ) : (
