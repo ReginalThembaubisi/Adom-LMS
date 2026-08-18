@@ -50,8 +50,13 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                   sessionStorage.getItem('assessor_auth') || 
                   sessionStorage.getItem('admin_auth');
 
+    // Check if the file is stored externally (e.g. Cloudinary public URL)
+    const isExternal = submission.filePath?.startsWith('http://') || submission.filePath?.startsWith('https://');
+
     // Construct absolute public download URL for Google Docs Viewer in production
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/download` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
+    const documentUrl = isExternal 
+        ? submission.filePath 
+        : `${window.location.origin}/api/submissions/${submission.submissionId}/download` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
