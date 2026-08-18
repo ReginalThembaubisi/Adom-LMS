@@ -19,6 +19,9 @@ public class LearnerAssignmentsApplication {
 
 	public static void main(String[] args) {
 		String dbUrl = System.getenv("SPRING_DATASOURCE_URL");
+		if (dbUrl == null || dbUrl.isBlank()) {
+			dbUrl = System.getenv("DATABASE_URL");
+		}
 		if (dbUrl != null && (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"))) {
 			String prefix = dbUrl.startsWith("postgres://") ? "postgres://" : "postgresql://";
 			String rawUrl = dbUrl.substring(prefix.length());
