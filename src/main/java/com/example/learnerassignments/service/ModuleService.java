@@ -115,6 +115,7 @@ public class ModuleService {
                     .id(s.getId())
                     .title(s.getAssignment().getTitle())
                     .description(s.getAssignment().getDescription())
+                    .startTime(s.getStartTime())
                     .endTime(s.getEndTime())
                     .sessionName(s.getSessionName())
                     .status(s.getStatus().name())

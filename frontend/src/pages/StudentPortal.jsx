@@ -691,7 +691,9 @@ const StudentPortal = () => {
                                                             ? <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>Submitted</span>
                                                             : s.status === 'CLOSED'
                                                                 ? <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>Closed</span>
-                                                                : <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Pending</span>;
+                                                                : s.status === 'SCHEDULED'
+                                                                    ? <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-300/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>Not Open Yet</span>
+                                                                    : <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Pending</span>;
 
                                                         return (
                                                             <div key={s.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 flex flex-col gap-4">
@@ -707,6 +709,11 @@ const StudentPortal = () => {
                                                                 </div>
 
                                                                 <div className="text-[11px] text-slate-500 space-y-1">
+                                                                    {s.status === 'SCHEDULED' && s.startTime && (
+                                                                        <p className="font-semibold text-slate-500">
+                                                                            Opens: {new Date(s.startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                        </p>
+                                                                    )}
                                                                     <p className="font-semibold text-amber-600">Deadline: {deadline}</p>
                                                                     <p>{s.description || 'No instructions provided.'}</p>
                                                                 </div>
@@ -796,12 +803,21 @@ const StudentPortal = () => {
                                                                 {/* Initial submit button */}
                                                                 {s.status === 'OPEN' && !isSubmitted && activeUploadSessionId !== s.id && (
                                                                     <div className="pt-1">
-                                                                        <button 
+                                                                        <button
                                                                             onClick={() => { setActiveUploadSessionId(s.id); setInlineAlerts({}); }}
                                                                             className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150 text-center w-full block"
                                                                         >
                                                                             Submit Assignment
                                                                         </button>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Not open yet — explain why there's no submit button instead of leaving a dead end */}
+                                                                {s.status === 'SCHEDULED' && (
+                                                                    <div className="pt-1">
+                                                                        <div className="bg-slate-50 border border-slate-200 text-slate-500 text-xs font-semibold py-2 px-4 rounded-xl text-center w-full">
+                                                                            Submission not open yet
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </div>
