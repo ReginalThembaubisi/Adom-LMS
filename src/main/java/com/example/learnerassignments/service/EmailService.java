@@ -44,30 +44,34 @@ public class EmailService {
         }
     }
 
-    @Async
+    // Deliberately NOT @Async and does NOT swallow failures — a registration email failing
+    // silently is recoverable (an admin can still look up the student number), but a reset
+    // code that silently fails to send leaves the student stuck with no other way to get it
+    // and no indication anything went wrong. Let the exception propagate so the request
+    // actually fails with a real error instead of the frontend reporting "code sent" either way.
     public void sendPasswordResetEmail(String toEmail, String fullName, String resetCode) {
         if (toEmail == null || toEmail.isBlank()) {
-            log.debug("No email address provided for student {}, skipping reset email.", fullName);
-            return;
+            throw new IllegalStateException("No email address on file for this student.");
         }
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
+        message.setFrom(sender);
+        message.setTo(toEmail.trim());
+        message.setSubject("Reset your password");
+        message.setText(String.format(
+                "Hi %s,\n\nYou have requested a password reset.\nYour 6-Digit Password Reset Code is: %s\n\nThis code will expire in 15 minutes.\n\nBest regards,\nLearner Assignments System",
+                fullName,
+                resetCode
+        ));
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
-            message.setFrom(sender);
-            message.setTo(toEmail.trim());
-            message.setSubject("Reset your password");
-            message.setText(String.format(
-                    "Hi %s,\n\nYou have requested a password reset.\nYour 6-Digit Password Reset Code is: %s\n\nThis code will expire in 15 minutes.\n\nBest regards,\nLearner Assignments System",
-                    fullName,
-                    resetCode
-            ));
-
             mailSender.send(message);
-            log.info("Successfully dispatched password reset email to {}", toEmail);
         } catch (Exception e) {
             log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage(), e);
+            throw e;
         }
+        log.info("Successfully dispatched password reset email to {}", toEmail);
     }
 
     @Async
