@@ -362,14 +362,20 @@ public class SubmissionService {
                     HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
 
             if (response.statusCode() != 200) {
-                // Surface Cloudinary's own error body (not just our status code) so a failure
-                // here is actually diagnosable instead of a bare "(status 401)".
+                // The body has been empty every time so far — Cloudinary sometimes puts the
+                // real reason for a CDN-edge rejection in a response header instead (e.g.
+                // x-cld-error). Surface both, plus which URL was actually requested, so this
+                // is finally diagnosable instead of another guess.
                 String cloudinaryBody = new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
                 if (cloudinaryBody.length() > 300) {
                     cloudinaryBody = cloudinaryBody.substring(0, 300);
                 }
+                String headers = response.headers().map().entrySet().stream()
+                        .map(e -> e.getKey() + "=" + e.getValue())
+                        .collect(Collectors.joining("; "));
                 throw new ResourceNotFoundException(
-                        "Could not retrieve file from storage (status " + response.statusCode() + "): " + cloudinaryBody);
+                        "Could not retrieve file from storage (status " + response.statusCode() + ") url=" + url
+                                + " body=" + cloudinaryBody + " headers=" + headers);
             }
             return response.body();
         } catch (IOException | InterruptedException e) {
