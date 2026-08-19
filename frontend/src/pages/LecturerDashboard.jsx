@@ -117,6 +117,32 @@ const LecturerDashboard = () => {
         return res.json();
     };
 
+    const [broadcastDraft, setBroadcastDraft] = useState('');
+    const [broadcasting, setBroadcasting] = useState(false);
+
+    const handleBroadcast = async (e) => {
+        e.preventDefault();
+        const body = broadcastDraft.trim();
+        if (!body) return;
+        setBroadcasting(true);
+        try {
+            const res = await fetch('/api/lecturer/messages/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${token}` },
+                body: JSON.stringify({ body })
+            });
+            if (!checkAuthResponse(res)) return;
+            if (!res.ok) throw new Error('Failed to send broadcast');
+            const data = await res.json();
+            showMsg('success', `Sent to ${data.sentCount} student${data.sentCount === 1 ? '' : 's'}.`);
+            setBroadcastDraft('');
+        } catch (err) {
+            showMsg('error', 'Failed to send broadcast message.');
+        } finally {
+            setBroadcasting(false);
+        }
+    };
+
     const showMsg = (type, message) => {
         setAlert({ type, message });
         setTimeout(() => setAlert({ type: '', message: '' }), 5000);
@@ -1116,6 +1142,31 @@ const LecturerDashboard = () => {
                                     <h2 className="text-lg font-bold text-slate-900">Messages</h2>
                                     <p className="text-xs text-slate-500">Message students enrolled in your modules.</p>
                                 </div>
+
+                                <form onSubmit={handleBroadcast} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                        Message All Students
+                                    </label>
+                                    <p className="text-[11px] text-slate-500 -mt-1">e.g. an online class starting now — sent to every student in your modules at once.</p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={broadcastDraft}
+                                            onChange={(e) => setBroadcastDraft(e.target.value)}
+                                            placeholder="Type an announcement..."
+                                            disabled={broadcasting}
+                                            className="flex-1 rounded-xl px-3.5 py-2 text-xs bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={broadcasting || !broadcastDraft.trim()}
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer flex-shrink-0"
+                                        >
+                                            {broadcasting ? 'Sending...' : 'Send to All'}
+                                        </button>
+                                    </div>
+                                </form>
+
                                 <MessagesPanel
                                     theme="light"
                                     currentSenderType="LECTURER"

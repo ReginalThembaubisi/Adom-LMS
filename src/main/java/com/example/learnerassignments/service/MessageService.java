@@ -55,17 +55,39 @@ public class MessageService {
 
     @Transactional(readOnly = true)
     public List<PersonSummaryDto> getStudentsForLecturer(Long lecturerId) {
+        List<Learner> learners = getLearnersForLecturer(lecturerId);
+        List<PersonSummaryDto> summaries = new ArrayList<>();
+        for (Learner learner : learners) {
+            summaries.add(PersonSummaryDto.builder()
+                    .id(learner.getId())
+                    .fullName(learner.getFullName())
+                    .build());
+        }
+        return summaries;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Learner> getLearnersForLecturer(Long lecturerId) {
         List<Module> modules = moduleRepository.findByCategoryLecturerId(lecturerId);
-        Map<Long, PersonSummaryDto> byId = new LinkedHashMap<>();
+        Map<Long, Learner> byId = new LinkedHashMap<>();
         for (Module module : modules) {
             for (Learner learner : learnerRepository.findByModules_Id(module.getId())) {
-                byId.putIfAbsent(learner.getId(), PersonSummaryDto.builder()
-                        .id(learner.getId())
-                        .fullName(learner.getFullName())
-                        .build());
+                byId.putIfAbsent(learner.getId(), learner);
             }
         }
         return new ArrayList<>(byId.values());
+    }
+
+    // Sends the same message to every student the lecturer teaches — e.g. "online class
+    // starting now" — reusing the normal one-to-one sendMessage per learner so each still
+    // shows up correctly in that learner's own thread and gets their own email notification.
+    @Transactional
+    public int sendBroadcast(Lecturer lecturer, String body) {
+        List<Learner> learners = getLearnersForLecturer(lecturer.getId());
+        for (Learner learner : learners) {
+            sendMessage(learner, lecturer, SenderType.LECTURER, body);
+        }
+        return learners.size();
     }
 
     @Transactional(readOnly = true)

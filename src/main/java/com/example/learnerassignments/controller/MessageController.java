@@ -95,6 +95,15 @@ public class MessageController {
         return ResponseEntity.ok(Map.of("unreadCount", messageService.getUnreadCountForLecturer(lecturer.getId())));
     }
 
+    // e.g. "Online class starting now" — sends to every student enrolled in any of the
+    // lecturer's modules, each landing in that student's normal 1:1 thread with the lecturer.
+    @PostMapping("/api/lecturer/messages/broadcast")
+    public ResponseEntity<Map<String, Integer>> broadcastFromLecturer(@Valid @RequestBody SendMessageRequest request, Authentication auth) {
+        Lecturer lecturer = requireLecturer(auth.getName());
+        int sentCount = messageService.sendBroadcast(lecturer, request.getBody());
+        return ResponseEntity.ok(Map.of("sentCount", sentCount));
+    }
+
     @GetMapping("/api/lecturer/messages/{learnerId}")
     public ResponseEntity<?> getLecturerThread(@PathVariable Long learnerId, Authentication auth) {
         Lecturer lecturer = requireLecturer(auth.getName());
