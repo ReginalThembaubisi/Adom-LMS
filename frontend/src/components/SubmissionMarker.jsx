@@ -78,12 +78,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isPdf ? (
-                                // #toolbar=0 hides the browser's native PDF viewer chrome (which
-                                // otherwise adds its own print/save controls) — grading stays
-                                // strictly in-app, no download affordance. Multi-page documents
-                                // are still fully navigable via the viewer's own scroll/scrollbar.
+                                // Native toolbar left ON here (unlike the student's read-only
+                                // viewer) — its annotation/drawing tools are how graders actually
+                                // mark on the document. Chromium bundles that together with
+                                // print/save with no way to keep one and hide the other short of
+                                // a fully custom PDF viewer, and marking the work is the priority
+                                // for this specific view.
                                 <iframe
-                                    src={`${documentUrl}#toolbar=0`}
+                                    src={documentUrl}
                                     className="w-full h-full border-none"
                                     title="PDF Document Preview"
                                 />
