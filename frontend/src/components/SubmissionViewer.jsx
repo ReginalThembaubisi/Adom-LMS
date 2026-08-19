@@ -44,8 +44,11 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isPdf ? (
+                                // #toolbar=0 hides the browser's native PDF viewer chrome (which
+                                // otherwise adds its own print/save controls) — viewing stays
+                                // strictly in-app, no download affordance.
                                 <iframe
-                                    src={documentUrl}
+                                    src={`${documentUrl}#toolbar=0`}
                                     className="w-full h-full border-none"
                                     title="PDF Document Preview"
                                 />

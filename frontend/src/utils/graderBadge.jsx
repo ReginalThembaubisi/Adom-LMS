@@ -28,6 +28,9 @@ export const GraderBadge = ({ role, name, theme = 'dark' }) => {
     const label = ROLE_LABELS[role] || role;
     return (
         <span className={`inline-flex items-center gap-1 border text-[10px] font-bold px-2 py-0.5 rounded-full ${styles}`}>
+            <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.414L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
             {label}{name ? ` · ${name}` : ''}
         </span>
     );
