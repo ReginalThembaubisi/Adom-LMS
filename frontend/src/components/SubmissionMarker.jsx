@@ -68,8 +68,15 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
     // files — so the response always carries a Content-Type the browser can render inline.
     // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
-    // blank when linked to directly.
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view` + (token ? `?authToken=${encodeURIComponent(token)}` : '');
+    // blank when linked to directly. Load the marked copy when one exists — otherwise a
+    // different grader reopening this submission (or the same one, later) would always see
+    // the blank original with no sign anything was ever saved, and a second marking session
+    // would silently overwrite the first grader's marks instead of adding to them.
+    const hasMarkedCopy = !!submission.markedFilePath;
+    const viewParams = new URLSearchParams();
+    if (token) viewParams.set('authToken', token);
+    if (hasMarkedCopy) viewParams.set('marked', 'true');
+    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?${viewParams.toString()}`;
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -171,9 +178,9 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                     </div>
                                 )}
                                 {markedSaved ? (
-                                    <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to the student.</p>
+                                    <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to the student and other graders.</p>
                                 ) : submission.markedFilePath ? (
-                                    <p className="text-[10px] text-slate-500 pt-1">A marked-up copy from a previous session is on file. Use "Save Marked Copy" on the document to replace it.</p>
+                                    <p className="text-[10px] text-slate-500 pt-1">Showing a previously marked-up copy — any new marks you add and save will be added on top of it.</p>
                                 ) : null}
                             </div>
 
