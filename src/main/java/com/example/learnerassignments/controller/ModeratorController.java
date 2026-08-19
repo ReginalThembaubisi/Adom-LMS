@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,6 +75,13 @@ public class ModeratorController {
         Moderator moderator = getAuthenticatedModerator(auth);
         SubmissionResponse response = submissionService.gradeSubmission(id, request, "MODERATOR", moderator.getFullName());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/submissions/{id}/marked-copy", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file, Authentication auth) throws IOException {
+        getAuthenticatedModerator(auth);
+        String url = submissionService.uploadMarkedCopy(id, file);
+        return ResponseEntity.ok(java.util.Map.of("markedFilePath", url));
     }
 
     @GetMapping("/sessions")

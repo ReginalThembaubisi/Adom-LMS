@@ -195,6 +195,10 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS graded_by_role VARCHAR(20) NULL;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS graded_by_name VARCHAR(255) NULL;
 
+-- Numeric mark + a flattened, annotated copy of the document (2026-08-19)
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS marks_awarded INTEGER NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS marked_file_path VARCHAR(500) NULL;
+
 ALTER TABLE submission_sessions DROP CONSTRAINT IF EXISTS fk_session_assignment;
 ALTER TABLE submission_sessions ADD CONSTRAINT fk_session_assignment
     FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE RESTRICT;

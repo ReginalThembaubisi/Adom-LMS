@@ -114,6 +114,19 @@ const AssessorDashboard = () => {
         fetchSubmissions(selectedSessionId);
     };
 
+    const handleSaveMarkedCopy = async (submissionId, blob) => {
+        const formData = new FormData();
+        formData.append('file', blob, 'marked.pdf');
+        const res = await fetch(`/api/assessor/submissions/${submissionId}/marked-copy`, {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}` },
+            body: formData
+        });
+        if (!res.ok) {
+            throw new Error('Failed to save marked copy.');
+        }
+    };
+
     const handleSignout = () => {
         sessionStorage.removeItem('assessor_auth');
         navigate('/');
@@ -277,6 +290,7 @@ const AssessorDashboard = () => {
                         fetchSubmissions(selectedSessionId);
                     }}
                     onSaveGrade={handleSaveGrade}
+                    onSaveMarkedCopy={handleSaveMarkedCopy}
                     role="Assessor"
                 />
             )}

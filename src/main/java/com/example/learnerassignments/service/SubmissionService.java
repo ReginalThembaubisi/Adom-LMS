@@ -180,6 +180,8 @@ public class SubmissionService {
                         .gradedAt(latestSubmission.getGradedAt())
                         .gradedByRole(latestSubmission.getGradedByRole())
                         .gradedByName(latestSubmission.getGradedByName())
+                        .marksAwarded(latestSubmission.getMarksAwarded())
+                        .markedFilePath(latestSubmission.getMarkedFilePath())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -254,6 +256,8 @@ public class SubmissionService {
                         .gradedAt(latestSubmission.getGradedAt())
                         .gradedByRole(latestSubmission.getGradedByRole())
                         .gradedByName(latestSubmission.getGradedByName())
+                        .marksAwarded(latestSubmission.getMarksAwarded())
+                        .markedFilePath(latestSubmission.getMarkedFilePath())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -307,6 +311,7 @@ public class SubmissionService {
 
         submission.setStatus(request.getOutcome());
         submission.setFeedback(request.getFeedback());
+        submission.setMarksAwarded(request.getMarksAwarded());
         submission.setGradedAt(LocalDateTime.now());
         submission.setGradedByRole(graderRole);
         submission.setGradedByName(graderName);
@@ -322,6 +327,23 @@ public class SubmissionService {
                 .originalFilename(saved.getOriginalFilename())
                 .status(saved.getStatus())
                 .build();
+    }
+
+    // Uploads the flattened, annotated copy of a submission's document (drawn client-side)
+    // alongside the original — the original filePath is never overwritten, so the learner's
+    // untouched submission is always still there.
+    @Transactional
+    public String uploadMarkedCopy(Long submissionId, MultipartFile file) throws IOException {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
+
+        if (!cloudinaryService.isConfigured()) {
+            throw new IllegalStateException("File storage is not configured.");
+        }
+        String url = cloudinaryService.uploadFile(file);
+        submission.setMarkedFilePath(url);
+        submissionRepository.save(submission);
+        return url;
     }
 
     @Transactional(readOnly = true)

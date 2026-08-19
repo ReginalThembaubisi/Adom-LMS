@@ -335,6 +335,25 @@ public class LecturerController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(value = "/submissions/{id}/marked-copy", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file, Authentication auth) throws IOException {
+        Lecturer lecturer = getAuthenticatedLecturer(auth);
+        Submission submission = submissionRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Submission not found"));
+
+        SubmissionSession session = submission.getSession();
+        if (session == null || session.getAssignment() == null ||
+            session.getAssignment().getModule() == null ||
+            session.getAssignment().getModule().getCategory() == null ||
+            session.getAssignment().getModule().getCategory().getLecturer() == null ||
+            !session.getAssignment().getModule().getCategory().getLecturer().getId().equals(lecturer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        String url = submissionService.uploadMarkedCopy(id, file);
+        return ResponseEntity.ok(java.util.Map.of("markedFilePath", url));
+    }
+
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryResponseDto>> getMyCategories(Authentication auth) {
         Lecturer lecturer = getAuthenticatedLecturer(auth);

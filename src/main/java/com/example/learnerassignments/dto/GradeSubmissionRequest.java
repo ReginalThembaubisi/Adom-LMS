@@ -10,4 +10,7 @@ public class GradeSubmissionRequest {
     private SubmissionStatus outcome;
 
     private String feedback;
+
+    // Optional numeric mark alongside the Competent/Not Yet Competent outcome, e.g. 85 for 85%.
+    private Integer marksAwarded;
 }

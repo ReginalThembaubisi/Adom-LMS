@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
+import PdfAnnotator from './PdfAnnotator';
 
-const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
+const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, role }) => {
     const [outcome, setOutcome] = useState(submission.status === 'COMPETENT' || submission.status === 'NOT_YET_COMPETENT' ? submission.status : '');
     const [feedback, setFeedback] = useState(submission.feedback || '');
+    const [marksAwarded, setMarksAwarded] = useState(submission.marksAwarded ?? '');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [savingMarked, setSavingMarked] = useState(false);
+    const [markedError, setMarkedError] = useState('');
+    const [markedSaved, setMarkedSaved] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -21,7 +26,11 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
         setLoading(true);
 
         try {
-            await onSaveGrade(submission.submissionId, { outcome, feedback });
+            await onSaveGrade(submission.submissionId, {
+                outcome,
+                feedback,
+                marksAwarded: marksAwarded === '' ? null : Number(marksAwarded)
+            });
             setSuccess('Outcome and feedback saved successfully!');
             setTimeout(() => {
                 onClose();
@@ -30,6 +39,20 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
             setError(err.message || 'Failed to save outcome.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveMarkedCopy = async (blob) => {
+        setSavingMarked(true);
+        setMarkedError('');
+        setMarkedSaved(false);
+        try {
+            await onSaveMarkedCopy(submission.submissionId, blob);
+            setMarkedSaved(true);
+        } catch (err) {
+            setMarkedError(err.message || 'Failed to save marked copy.');
+        } finally {
+            setSavingMarked(false);
         }
     };
 
@@ -76,20 +99,21 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left Pane - Premium Document Viewer */}
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
+                        {isPdf ? (
+                            // Custom canvas-based viewer + annotation layer, replacing the
+                            // browser's native PDF plugin — that plugin runs isolated from the
+                            // page's JS, so anything drawn in it could never be captured or
+                            // saved. This one renders via pdf.js so drawn marks (pen + tick
+                            // stamp) can be flattened and uploaded as a real marked copy.
+                            <PdfAnnotator
+                                documentUrl={documentUrl}
+                                onSave={handleSaveMarkedCopy}
+                                saving={savingMarked}
+                                saveError={markedError}
+                            />
+                        ) : (
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
-                            {isPdf ? (
-                                // Native toolbar left ON here (unlike the student's read-only
-                                // viewer) — its annotation/drawing tools are how graders actually
-                                // mark on the document. Chromium bundles that together with
-                                // print/save with no way to keep one and hide the other short of
-                                // a fully custom PDF viewer, and marking the work is the priority
-                                // for this specific view.
-                                <iframe
-                                    src={documentUrl}
-                                    className="w-full h-full border-none"
-                                    title="PDF Document Preview"
-                                />
-                            ) : isDoc ? (
+                            {isDoc ? (
                                 isLocalhost ? (
                                     <div className="p-6 text-center space-y-4 max-w-md">
                                         <div className="w-12 h-12 bg-amber-500/15 text-amber-500 rounded-full flex items-center justify-center mx-auto">
@@ -131,6 +155,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                     {/* Right Pane - Grading Console */}
@@ -145,6 +170,11 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                         <GraderBadge role={submission.gradedByRole} name={submission.gradedByName} theme="dark" />
                                     </div>
                                 )}
+                                {markedSaved ? (
+                                    <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to the student.</p>
+                                ) : submission.markedFilePath ? (
+                                    <p className="text-[10px] text-slate-500 pt-1">A marked-up copy from a previous session is on file. Use "Save Marked Copy" on the document to replace it.</p>
+                                ) : null}
                             </div>
 
                             {error && (
@@ -188,6 +218,20 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                                             Not Yet Competent
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Marks (%)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={marksAwarded}
+                                        onChange={(e) => setMarksAwarded(e.target.value)}
+                                        placeholder="e.g. 85"
+                                        disabled={loading}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-600 transition-all font-sans"
+                                    />
                                 </div>
 
                                 <div className="space-y-1.5">

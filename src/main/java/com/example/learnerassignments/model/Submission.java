@@ -60,6 +60,16 @@ public class Submission {
     @Column(name = "graded_by_name")
     private String gradedByName;
 
+    // Numeric mark alongside the Competent/Not Yet Competent outcome — e.g. 85 for 85%.
+    @Column(name = "marks_awarded")
+    private Integer marksAwarded;
+
+    // A flattened copy of the original document with the grader's pen/tick annotations baked
+    // in as images, generated client-side and uploaded once grading is saved. Separate from
+    // filePath (the learner's original, untouched submission) so the original is never lost.
+    @Column(name = "marked_file_path", length = 500)
+    private String markedFilePath;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

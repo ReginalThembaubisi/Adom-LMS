@@ -1202,6 +1202,18 @@ const LecturerDashboard = () => {
                         }
                         inspectSubmissions(activeSessionId);
                     }}
+                    onSaveMarkedCopy={async (submissionId, blob) => {
+                        const formData = new FormData();
+                        formData.append('file', blob, 'marked.pdf');
+                        const res = await fetch(`/api/lecturer/submissions/${submissionId}/marked-copy`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Basic ${token}` },
+                            body: formData
+                        });
+                        if (!res.ok) {
+                            throw new Error('Failed to save marked copy.');
+                        }
+                    }}
                     role="Facilitator"
                 />
             )}

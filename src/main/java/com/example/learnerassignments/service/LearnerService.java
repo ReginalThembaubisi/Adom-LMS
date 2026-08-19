@@ -113,6 +113,8 @@ public class LearnerService {
                         .gradedAt(s.getGradedAt())
                         .gradedByRole(s.getGradedByRole())
                         .gradedByName(s.getGradedByName())
+                        .marksAwarded(s.getMarksAwarded())
+                        .markedFilePath(s.getMarkedFilePath())
                         .build())
                 .collect(Collectors.toList());
     }

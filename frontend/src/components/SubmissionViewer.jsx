@@ -5,14 +5,17 @@ import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
 // document in-app (no download) alongside its assessment outcome and feedback.
 const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
-    const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf');
-    const isDoc = submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx');
+    // A marked copy is always baked as a PDF regardless of the original format, since it's
+    // flattened from rendered pages.
+    const isPdf = !!submission.markedFilePath || submission.originalFilename?.toLowerCase().endsWith('.pdf');
+    const isDoc = !submission.markedFilePath && (submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx'));
 
     // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
     // files — so the response always carries a Content-Type the browser can render inline.
     // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
     // blank when linked to directly.
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}`;
+    const hasMarkedCopy = !!submission.markedFilePath;
+    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}${hasMarkedCopy ? '&marked=true' : ''}`;
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -104,6 +107,17 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                                     <div>
                                         <GraderBadge role={submission.gradedByRole} name={submission.gradedByName} theme="dark" />
                                     </div>
+                                )}
+
+                                {submission.marksAwarded != null && (
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Marks</label>
+                                        <p className="text-lg font-bold text-white">{submission.marksAwarded}%</p>
+                                    </div>
+                                )}
+
+                                {hasMarkedCopy && (
+                                    <p className="text-[10px] text-blue-400">Showing your facilitator's marked-up copy.</p>
                                 )}
 
                                 <div className="space-y-1.5">

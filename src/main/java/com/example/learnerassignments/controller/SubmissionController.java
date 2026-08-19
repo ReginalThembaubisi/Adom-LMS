@@ -133,6 +133,7 @@ public class SubmissionController {
             @PathVariable Long id,
             @RequestParam(value = "learnerCode", required = false) String learnerCode,
             @RequestParam(value = "authToken", required = false) String authToken,
+            @RequestParam(value = "marked", required = false, defaultValue = "false") boolean marked,
             Authentication auth) {
 
         Submission submission = submissionService.getSubmission(id);
@@ -140,8 +141,15 @@ public class SubmissionController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        String pathStr = submission.getFilePath();
-        String contentType = submissionService.resolveContentType(submission.getOriginalFilename());
+        // The marked (annotated) copy is always uploaded as a PDF regardless of the original
+        // format, since it's flattened from rendered pages — so it's served as one whenever
+        // present, rather than falling back to the original's filename-derived content type.
+        String pathStr = (marked && submission.getMarkedFilePath() != null)
+                ? submission.getMarkedFilePath()
+                : submission.getFilePath();
+        String contentType = (marked && submission.getMarkedFilePath() != null)
+                ? "application/pdf"
+                : submissionService.resolveContentType(submission.getOriginalFilename());
 
         Object body;
         if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
@@ -153,9 +161,13 @@ public class SubmissionController {
             body = submissionService.loadLocalResource(pathStr);
         }
 
+        String filename = (marked && submission.getMarkedFilePath() != null)
+                ? "marked_" + submission.getOriginalFilename()
+                : submission.getOriginalFilename();
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + submission.getOriginalFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(body);
     }
 }

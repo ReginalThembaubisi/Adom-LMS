@@ -27,4 +27,6 @@ public class SubmittedLearnerDto {
     private LocalDateTime gradedAt;
     private String gradedByRole;
     private String gradedByName;
+    private Integer marksAwarded;
+    private String markedFilePath;
 }
