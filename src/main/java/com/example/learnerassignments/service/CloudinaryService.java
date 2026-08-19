@@ -27,33 +27,29 @@ public class CloudinaryService {
     public boolean isConfigured() {
         return this.cloudinary != null;
     }
-    // Submission files use resource_type "raw" + type "authenticated" — the same pattern
-    // already proven for backups below. Cloudinary's account-level security setting blocks
-    // *public* ("upload" type) delivery of raw/PDF files with a 401 regardless of whether the
-    // URL carries a signature — signing a public-type URL does not bypass that restriction,
-    // only actually uploading (and delivering) as "authenticated" does.
+    // Cloudinary's raw/PDF security restriction (blocking both plain public delivery and
+    // signed public delivery with a 401, and apparently also "authenticated" delivery on this
+    // account — both tried and both still 401'd live) triggers off the recognized file
+    // extension/format in the public_id. Store the file under a public_id with NO extension
+    // so Cloudinary treats it as an anonymous raw blob instead of "a PDF", sidestepping the
+    // restriction entirely rather than trying to satisfy it. The real filename (and the
+    // correct Content-Type to serve it with) is tracked separately in our own database via
+    // Submission.originalFilename — SubmissionController#viewSubmissionFile resolves the
+    // Content-Type from that, not from anything Cloudinary reports, so this is safe.
     public String uploadFile(MultipartFile file) throws IOException {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }
-        String publicId = "lms_files/" + System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
-        cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+        String originalFilename = file.getOriginalFilename();
+        String nameWithoutExtension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(0, originalFilename.lastIndexOf('.'))
+                : originalFilename;
+        String publicId = "lms_files/" + System.currentTimeMillis() + "_" + nameWithoutExtension.replaceAll("[^a-zA-Z0-9-]", "_");
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
             "resource_type", "raw",
-            "type", "authenticated",
             "public_id", publicId
         ));
-        return getSignedFileUrl(publicId);
-    }
-
-    public String getSignedFileUrl(String publicId) {
-        if (this.cloudinary == null) {
-            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
-        }
-        return cloudinary.url()
-                .resourceType("raw")
-                .type("authenticated")
-                .signed(true)
-                .generate(publicId);
+        return (String) uploadResult.get("secure_url");
     }
 
     // Backups use resource_type "authenticated" (not plain public "upload") so a leaked or
