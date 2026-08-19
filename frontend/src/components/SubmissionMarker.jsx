@@ -7,8 +7,6 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [pdfPage, setPdfPage] = useState(1);
-    const [pdfZoom, setPdfZoom] = useState(100);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -78,50 +76,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, role }) => {
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left Pane - Premium Document Viewer */}
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
-                        {isPdf && (
-                            <div className="flex items-center justify-center gap-3 pb-3 flex-shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setPdfPage(p => Math.max(1, p - 1))}
-                                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                                >
-                                    ← Prev
-                                </button>
-                                <span className="text-xs text-slate-400 font-semibold min-w-[70px] text-center">Page {pdfPage}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setPdfPage(p => p + 1)}
-                                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                                >
-                                    Next →
-                                </button>
-                                <div className="w-px h-5 bg-slate-800 mx-1" />
-                                <button
-                                    type="button"
-                                    onClick={() => setPdfZoom(z => Math.max(50, z - 25))}
-                                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                                >
-                                    − Zoom
-                                </button>
-                                <span className="text-xs text-slate-400 font-semibold min-w-[45px] text-center">{pdfZoom}%</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setPdfZoom(z => Math.min(300, z + 25))}
-                                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                                >
-                                    + Zoom
-                                </button>
-                            </div>
-                        )}
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isPdf ? (
                                 // #toolbar=0 hides the browser's native PDF viewer chrome (which
                                 // otherwise adds its own print/save controls) — grading stays
-                                // strictly in-app, no download affordance. page/zoom fragment
-                                // params drive our own controls above since the native ones are
-                                // hidden along with the toolbar.
+                                // strictly in-app, no download affordance. Multi-page documents
+                                // are still fully navigable via the viewer's own scroll/scrollbar.
                                 <iframe
-                                    src={`${documentUrl}#toolbar=0&page=${pdfPage}&zoom=${pdfZoom}`}
+                                    src={`${documentUrl}#toolbar=0`}
                                     className="w-full h-full border-none"
                                     title="PDF Document Preview"
                                 />
