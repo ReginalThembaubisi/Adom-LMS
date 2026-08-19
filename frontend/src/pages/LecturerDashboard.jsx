@@ -1117,7 +1117,7 @@ const LecturerDashboard = () => {
                                     <p className="text-xs text-slate-500">Message students enrolled in your modules.</p>
                                 </div>
                                 <MessagesPanel
-                                    theme="dark"
+                                    theme="light"
                                     currentSenderType="LECTURER"
                                     fetchThreads={fetchLecturerThreads}
                                     fetchThread={fetchLecturerThread}
