@@ -12,7 +12,7 @@ function drawStroke(ctx, stroke) {
     if (stroke.tool === 'tick') {
         const { x, y, color, size } = stroke;
         ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(3, size * 0.6);
+        ctx.lineWidth = Math.max(2, size * 0.13);
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -25,7 +25,7 @@ function drawStroke(ctx, stroke) {
     if (stroke.tool === 'cross') {
         const { x, y, color, size } = stroke;
         ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(3, size * 0.6);
+        ctx.lineWidth = Math.max(2, size * 0.13);
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(x - size * 0.45, y - size * 0.45);
@@ -136,7 +136,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         e.preventDefault();
         const point = getCanvasPoint(e);
         if (tool === 'tick' || tool === 'cross') {
-            const stroke = { tool, color, x: point.x, y: point.y, size: 34 };
+            const stroke = { tool, color, x: point.x, y: point.y, size: 20 };
             if (!strokesByPageRef.current[currentPage]) strokesByPageRef.current[currentPage] = [];
             strokesByPageRef.current[currentPage].push(stroke);
             redrawAnnotations();

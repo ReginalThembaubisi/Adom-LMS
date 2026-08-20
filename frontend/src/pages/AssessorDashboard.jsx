@@ -245,9 +245,9 @@ const AssessorDashboard = () => {
                                         </thead>
                                         <tbody>
                                             {submissions.map(sub => (
-                                                <tr key={sub.submissionId} className="border-b border-slate-800/50 hover:bg-slate-850/30 transition-colors">
-                                                    <td className="py-3 px-4 font-semibold text-slate-300">{sub.learnerCode}</td>
-                                                    <td className="py-3 px-4 font-semibold text-slate-200">{sub.fullName}</td>
+                                                <tr key={sub.submissionId} className="border-b border-slate-800/50 hover:bg-black/5 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-[#0f172a]">{sub.learnerCode}</td>
+                                                    <td className="py-3 px-4 font-semibold text-[#0f172a]">{sub.fullName}</td>
                                                     <td className="py-3 px-4 text-slate-400 truncate max-w-[150px]" title={sub.originalFilename}>
                                                         {sub.originalFilename}
                                                     </td>

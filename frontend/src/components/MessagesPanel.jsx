@@ -122,7 +122,7 @@ const MessagesPanel = ({ theme = 'dark', currentSenderType, fetchThreads, fetchT
                                                 isMine
                                                     ? 'bg-blue-600 text-white rounded-br-sm'
                                                     : isDark
-                                                    ? 'bg-slate-800 text-slate-200 rounded-bl-sm'
+                                                    ? 'bg-slate-800 text-[#0f172a] rounded-bl-sm'
                                                     : 'bg-slate-100 text-slate-800 rounded-bl-sm'
                                             }`}>
                                                 <p className="whitespace-pre-wrap break-words">{m.body}</p>

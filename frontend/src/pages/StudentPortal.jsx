@@ -455,17 +455,17 @@ const StudentPortal = () => {
                     </div>
                 ) : (
                     /* Top Dark Hero Welcome Banner */
-                    <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
+                    <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-[#0f172a] to-indigo-950 text-[#f8fafc] p-6 rounded-2xl shadow-md mb-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/10 hover:bg-white/20 transition-all rounded-full flex items-center justify-center font-bold text-lg text-white border border-white/20 shadow-xs flex-shrink-0">
+                            <div className="w-12 h-12 bg-[#f8fafc]/10 hover:bg-[#f8fafc]/20 transition-all rounded-full flex items-center justify-center font-bold text-lg text-[#f8fafc] border border-[#f8fafc]/20 shadow-xs flex-shrink-0">
                                 {learner.fullName ? learner.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'S'}
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight">Welcome back, {learner.fullName}! 👋</h1>
-                                <p className="text-sm text-slate-300">Here is your academic overview for this term.</p>
+                                <p className="text-sm text-[#cbd5e1]">Here is your academic overview for this term.</p>
                             </div>
                         </div>
-                        <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 text-white transition-all shadow-xs">
+                        <button onClick={handleSignout} className="border border-[#f8fafc]/20 bg-[#f8fafc]/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#f8fafc]/20 text-[#f8fafc] transition-all shadow-xs">
                             Sign Out
                         </button>
                     </header>
@@ -1075,7 +1075,7 @@ const StudentPortal = () => {
                             </div>
                             <button
                                 onClick={() => setChatOpen(false)}
-                                className="text-slate-400 hover:text-slate-200 transition-colors"
+                                className="text-slate-400 hover:text-[#f8fafc] transition-colors"
                             >
                                 <X size={16} weight="bold" />
                             </button>
@@ -1092,7 +1092,7 @@ const StudentPortal = () => {
                                         className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[11px] leading-relaxed shadow-sm whitespace-pre-line ${
                                             msg.sender === 'user' 
                                                 ? 'bg-blue-600 text-white rounded-br-none' 
-                                                : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-none'
+                                                : 'bg-slate-800 text-[#0f172a] border border-slate-700/50 rounded-bl-none'
                                         }`}
                                     >
                                         {msg.text}

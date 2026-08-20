@@ -560,12 +560,12 @@ const AdminDashboard = () => {
         <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                 {/* Hero Header */}
-                <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6">
+                <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-[#0f172a] to-indigo-950 text-[#f8fafc] p-6 rounded-2xl shadow-md mb-6">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Admin Console ⚙️</h1>
-                        <p className="text-sm text-slate-300">System Administration & Facilitator Registrations</p>
+                        <p className="text-sm text-[#cbd5e1]">System Administration & Facilitator Registrations</p>
                     </div>
-                    <button onClick={handleSignout} className="border border-white/20 bg-white/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-white/20 hover:scale-[0.99] text-white transition-all shadow-xs">
+                    <button onClick={handleSignout} className="border border-[#f8fafc]/20 bg-[#f8fafc]/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#f8fafc]/20 hover:scale-[0.99] text-[#f8fafc] transition-all shadow-xs">
                         Sign Out
                     </button>
                 </header>
