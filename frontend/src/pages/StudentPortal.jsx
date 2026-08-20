@@ -17,6 +17,37 @@ import {
     PaperPlaneTilt
 } from '@phosphor-icons/react';
 
+// Module/slot titles come from the backend in ALL CAPS (SETA unit-standard convention);
+// normalize for display so long titles don't read as a wall of caps.
+const toSentenceCase = (str) => {
+    if (!str) return str;
+    const lower = str.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
+
+const groupTimelineByDay = (items) => {
+    const groups = new Map();
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowStr = tomorrow.toDateString();
+
+    items.forEach(item => {
+        const d = new Date(item.endTime);
+        const dStr = d.toDateString();
+        let label;
+        if (dStr === todayStr) label = 'Today';
+        else if (dStr === tomorrowStr) label = 'Tomorrow';
+        else label = d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+
+        if (!groups.has(label)) groups.set(label, []);
+        groups.get(label).push(item);
+    });
+
+    return Array.from(groups.entries());
+};
+
 const StudentPortal = () => {
     const { learner, logoutStudent } = useLearner();
     const navigate = useNavigate();
@@ -394,7 +425,7 @@ const StudentPortal = () => {
                             </button>
                             <span className="text-slate-300 hidden sm:inline">|</span>
                             <span className="text-sm font-extrabold text-slate-900">
-                                Code {selectedModule.moduleCode || 'N/A'}: {selectedModule.moduleName}
+                                Code {selectedModule.moduleCode || 'N/A'}: {toSentenceCase(selectedModule.moduleName)}
                             </span>
                         </div>
                         <div className="text-xs text-slate-500 font-semibold sm:text-right">
@@ -569,7 +600,7 @@ const StudentPortal = () => {
                                                                 >
                                                                     <div className="space-y-3">
                                                                         <div className="flex justify-between items-start gap-2">
-                                                                            <span className="font-bold text-slate-800 text-base block leading-snug line-clamp-2" title={m.moduleName}>{m.moduleName}</span>
+                                                                            <span className="font-bold text-slate-800 text-base block leading-snug line-clamp-2" title={m.moduleName}>{toSentenceCase(m.moduleName)}</span>
                                                                             <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
                                                                                 Code: {m.moduleCode || 'N/A'}
                                                                             </span>
@@ -602,41 +633,40 @@ const StudentPortal = () => {
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
-                                            {timeline.map((item, idx) => {
-                                                const closesAt = new Date(item.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                                                return (
-                                                    <div
-                                                        key={idx}
-                                                        className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-amber-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-4 space-y-3 relative overflow-hidden group animate-fadeInUp"
-                                                        style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
-                                                        onClick={() => {
-                                                            openModuleDetails(item.moduleId);
-                                                            setActiveUploadSessionId(item.sessionId);
-                                                        }}
-                                                    >
-                                                        {/* Left warning line indicator */}
-                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
-
-                                                        <div className="flex justify-between items-start gap-2 pl-2">
-                                                            <div className="space-y-1">
-                                                                <h4 className="text-xs font-bold text-slate-800 leading-tight group-hover:text-amber-700 transition-colors">
-                                                                    {item.moduleName}
-                                                                </h4>
-                                                                <p className="text-[11px] font-medium text-slate-500">
-                                                                    Slot: {item.slotTitle}
-                                                                </p>
-                                                            </div>
-                                                            <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex-shrink-0 flex items-center gap-1">
-                                                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                                                                Due Soon
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs text-amber-800 bg-amber-50/50 border border-amber-100 rounded-lg p-2 font-semibold flex items-center gap-1.5 pl-3">
-                                                            <Clock size={13} weight="bold" /> Closes {closesAt}
-                                                        </div>
+                                            {groupTimelineByDay(timeline).map(([dayLabel, items], groupIdx) => (
+                                                <div key={dayLabel}>
+                                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2 px-1">{dayLabel}</p>
+                                                    <div className="space-y-2">
+                                                        {items.map((item, idx) => {
+                                                            const closesTime = new Date(item.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                            return (
+                                                                <div
+                                                                    key={item.sessionId}
+                                                                    className="bg-white border border-slate-200/80 rounded-xl hover:border-amber-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-3 flex items-center gap-3 group animate-fadeInUp"
+                                                                    style={{ animationDelay: `${Math.min(groupIdx * 3 + idx, 8) * 40}ms` }}
+                                                                    onClick={() => {
+                                                                        openModuleDetails(item.moduleId);
+                                                                        setActiveUploadSessionId(item.sessionId);
+                                                                    }}
+                                                                >
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0 animate-pulse" />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-amber-700 transition-colors" title={item.moduleName}>
+                                                                            {toSentenceCase(item.moduleName)}
+                                                                        </p>
+                                                                        <p className="text-[10px] text-slate-500 truncate" title={item.slotTitle}>
+                                                                            {toSentenceCase(item.slotTitle)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex-shrink-0">
+                                                                        <Clock size={11} weight="bold" /> {closesTime}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                );
-                                            })}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -723,7 +753,7 @@ const StudentPortal = () => {
                                                                 {/* Slot Header with Badge */}
                                                                 <div className="flex justify-between items-start border-b border-slate-300 pb-3 w-full gap-2">
                                                                     <div>
-                                                                        <h4 className="text-xs font-bold text-slate-800 leading-tight">{s.title}</h4>
+                                                                        <h4 className="text-xs font-bold text-slate-800 leading-tight">{toSentenceCase(s.title)}</h4>
                                                                         <p className="text-[10px] text-slate-400 mt-1">
                                                                             Session: <strong className="text-slate-600 font-semibold">{s.sessionName}</strong>
                                                                         </p>
@@ -920,7 +950,7 @@ const StudentPortal = () => {
                                                         className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate flex items-center gap-1 transition-all"
                                                         title={`${dl.title} (${dl.moduleName})`}
                                                     >
-                                                        <Clock size={10} weight="bold" className="flex-shrink-0" /> {dl.title}
+                                                        <Clock size={10} weight="bold" className="flex-shrink-0" /> {toSentenceCase(dl.title)}
                                                     </button>
                                                 ))}
                                             </div>
