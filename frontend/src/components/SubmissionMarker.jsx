@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import PdfAnnotator from './PdfAnnotator';
 
@@ -12,6 +12,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const [savingMarked, setSavingMarked] = useState(false);
     const [markedError, setMarkedError] = useState('');
     const [markedSaved, setMarkedSaved] = useState(false);
+    const [gradingHistory, setGradingHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -80,6 +82,20 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    // Every past grading action, oldest first, so a grader opening a submission someone else
+    // already assessed sees what was decided before them instead of unknowingly overwriting it.
+    useEffect(() => {
+        let cancelled = false;
+        const historyUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/grading-history${token ? `?authToken=${encodeURIComponent(token)}` : ''}`;
+        setHistoryLoading(true);
+        fetch(historyUrl)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => { if (!cancelled) setGradingHistory(Array.isArray(data) ? data : []); })
+            .catch(() => { if (!cancelled) setGradingHistory([]); })
+            .finally(() => { if (!cancelled) setHistoryLoading(false); });
+        return () => { cancelled = true; };
+    }, [submission.submissionId, token]);
 
     return (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -169,7 +185,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                     <div className="w-1/4 bg-slate-900 p-6 flex flex-col justify-between overflow-y-auto">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-1">
-                                <h4 className="text-sm font-bold text-[#f8fafc] uppercase tracking-wider text-slate-400">Assessment Console</h4>
+                                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Assessment Console</h4>
                                 <p className="text-[11px] text-slate-500">Record a Competent / Not Yet Competent outcome and written feedback directly onto the student portal.</p>
                                 {submission.gradedByRole && (
                                     <div className="pt-2">
@@ -183,6 +199,29 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                     <p className="text-[10px] text-slate-500 pt-1">Showing a previously marked-up copy — any new marks you add and save will be added on top of it.</p>
                                 ) : null}
                             </div>
+
+                            {!historyLoading && gradingHistory.length > 0 && (
+                                <div className="space-y-2 border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+                                    <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Grading History</h5>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                        {gradingHistory.map((h, i) => (
+                                            <div key={i} className="text-[11px] border-b border-slate-800/60 last:border-0 pb-2 last:pb-0">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <GraderBadge role={h.gradedByRole} name={h.gradedByName} theme="dark" />
+                                                    <span className="text-slate-500 text-[10px] flex-shrink-0">
+                                                        {new Date(h.gradedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-slate-400 mt-1">
+                                                    {h.outcome === 'COMPETENT' ? 'Competent' : 'Not Yet Competent'}
+                                                    {h.marksAwarded != null ? ` · ${h.marksAwarded}%` : ''}
+                                                </p>
+                                                {h.feedback && <p className="text-slate-500 italic mt-0.5">"{h.feedback}"</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-medium text-center">

@@ -6,6 +6,7 @@ import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.repository.AssignmentRepository;
 import com.example.learnerassignments.repository.LearnerRepository;
+import com.example.learnerassignments.repository.SubmissionGradingHistoryRepository;
 import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.repository.SubmissionSessionRepository;
 import com.example.learnerassignments.service.CloudinaryService;
@@ -39,6 +40,7 @@ public class SubmissionService {
     private final LearnerRepository learnerRepository;
     private final AssignmentRepository assignmentRepository;
     private final CloudinaryService cloudinaryService;
+    private final SubmissionGradingHistoryRepository gradingHistoryRepository;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -309,14 +311,29 @@ public class SubmissionService {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
 
+        LocalDateTime now = LocalDateTime.now();
+
         submission.setStatus(request.getOutcome());
         submission.setFeedback(request.getFeedback());
         submission.setMarksAwarded(request.getMarksAwarded());
-        submission.setGradedAt(LocalDateTime.now());
+        submission.setGradedAt(now);
         submission.setGradedByRole(graderRole);
         submission.setGradedByName(graderName);
 
         Submission saved = submissionRepository.save(submission);
+
+        // Every grading action is appended here rather than only overwriting the fields above,
+        // so a later grader (e.g. a moderator reviewing a facilitator's mark) can see what came
+        // before instead of it being silently replaced with no trace.
+        gradingHistoryRepository.save(SubmissionGradingHistory.builder()
+                .submission(saved)
+                .outcome(request.getOutcome())
+                .feedback(request.getFeedback())
+                .marksAwarded(request.getMarksAwarded())
+                .gradedByRole(graderRole)
+                .gradedByName(graderName)
+                .gradedAt(now)
+                .build());
 
         return SubmissionResponse.builder()
                 .id(saved.getId())
@@ -350,6 +367,20 @@ public class SubmissionService {
     public Submission getSubmission(Long id) {
         return submissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<GradingHistoryEntryDto> getGradingHistory(Long submissionId) {
+        return gradingHistoryRepository.findBySubmission_IdOrderByGradedAtAsc(submissionId).stream()
+                .map(h -> GradingHistoryEntryDto.builder()
+                        .outcome(h.getOutcome())
+                        .feedback(h.getFeedback())
+                        .marksAwarded(h.getMarksAwarded())
+                        .gradedByRole(h.getGradedByRole())
+                        .gradedByName(h.getGradedByName())
+                        .gradedAt(h.getGradedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     public Resource loadLocalResource(String pathStr) {

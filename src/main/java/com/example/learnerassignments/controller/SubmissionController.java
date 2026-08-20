@@ -1,5 +1,6 @@
 package com.example.learnerassignments.controller;
 
+import com.example.learnerassignments.dto.GradingHistoryEntryDto;
 import com.example.learnerassignments.dto.SubmissionResponse;
 import com.example.learnerassignments.model.Submission;
 import com.example.learnerassignments.model.Lecturer;
@@ -17,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/submissions")
@@ -169,5 +172,24 @@ public class SubmissionController {
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(body);
+    }
+
+    // Every past grading action on this submission, oldest first, so a grader opening a
+    // submission someone else already assessed can see what was decided before them instead
+    // of unknowingly overwriting it. Shared across all grading roles via the same access
+    // checks as the file viewer above.
+    @GetMapping("/{id}/grading-history")
+    public ResponseEntity<List<GradingHistoryEntryDto>> getGradingHistory(
+            @PathVariable Long id,
+            @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
+            Authentication auth) {
+
+        Submission submission = submissionService.getSubmission(id);
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return ResponseEntity.ok(submissionService.getGradingHistory(id));
     }
 }
