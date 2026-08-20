@@ -22,6 +22,19 @@ function drawStroke(ctx, stroke) {
         ctx.stroke();
         return;
     }
+    if (stroke.tool === 'cross') {
+        const { x, y, color, size } = stroke;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(3, size * 0.6);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - size * 0.45, y - size * 0.45);
+        ctx.lineTo(x + size * 0.45, y + size * 0.45);
+        ctx.moveTo(x + size * 0.45, y - size * 0.45);
+        ctx.lineTo(x - size * 0.45, y + size * 0.45);
+        ctx.stroke();
+        return;
+    }
     if (stroke.points.length < 2) return;
     ctx.strokeStyle = stroke.color;
     ctx.lineWidth = stroke.thickness;
@@ -122,8 +135,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     const handlePointerDown = (e) => {
         e.preventDefault();
         const point = getCanvasPoint(e);
-        if (tool === 'tick') {
-            const stroke = { tool: 'tick', color, x: point.x, y: point.y, size: 34 };
+        if (tool === 'tick' || tool === 'cross') {
+            const stroke = { tool, color, x: point.x, y: point.y, size: 34 };
             if (!strokesByPageRef.current[currentPage]) strokesByPageRef.current[currentPage] = [];
             strokesByPageRef.current[currentPage].push(stroke);
             redrawAnnotations();
@@ -218,62 +231,66 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         <div className="flex-1 flex flex-col min-h-0">
             <div className="flex flex-wrap items-center gap-2 pb-3 flex-shrink-0">
                 <button type="button" onClick={() => setTool('pen')}
-                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'pen' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'pen' ? 'bg-blue-600 text-[#f8fafc]' : 'bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155]'}`}>
                     ✎ Pen
                 </button>
                 <button type="button" onClick={() => setTool('tick')}
-                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'tick' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'tick' ? 'bg-blue-600 text-[#f8fafc]' : 'bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155]'}`}>
                     ✓ Tick Stamp
                 </button>
+                <button type="button" onClick={() => setTool('cross')}
+                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'cross' ? 'bg-blue-600 text-[#f8fafc]' : 'bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155]'}`}>
+                    ✗ Wrong Stamp
+                </button>
 
-                <div className="flex items-center gap-1.5 bg-slate-800 rounded-lg px-2 py-1.5">
+                <div className="flex items-center gap-1.5 bg-[#1e293b] rounded-lg px-2 py-1.5">
                     {COLORS.map(c => (
                         <button key={c} type="button" onClick={() => setColor(c)}
-                            className={`w-5 h-5 rounded-full cursor-pointer transition-transform ${color === c ? 'ring-2 ring-white scale-110' : ''}`}
+                            className={`w-5 h-5 rounded-full cursor-pointer transition-transform ${color === c ? 'ring-2 ring-[#f8fafc] scale-110' : ''}`}
                             style={{ backgroundColor: c }} />
                     ))}
                 </div>
 
                 {tool === 'pen' && (
-                    <div className="flex items-center gap-1.5 bg-slate-800 rounded-lg px-2.5 py-1.5">
-                        <span className="text-[10px] text-slate-400 font-semibold">Thickness</span>
+                    <div className="flex items-center gap-1.5 bg-[#1e293b] rounded-lg px-2.5 py-1.5">
+                        <span className="text-[10px] text-[#94a3b8] font-semibold">Thickness</span>
                         <input type="range" min="1" max="8" value={thickness}
                             onChange={e => setThickness(Number(e.target.value))} className="w-16" />
                     </div>
                 )}
 
                 <button type="button" onClick={handleUndo} disabled={currentPageStrokeCount === 0}
-                    className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">
+                    className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                     Undo
                 </button>
                 <button type="button" onClick={handleClearPage} disabled={currentPageStrokeCount === 0}
-                    className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">
+                    className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                     Clear Page
                 </button>
 
                 {numPages > 1 && (
                     <div className="flex items-center gap-2 ml-auto">
                         <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                            className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">
+                            className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                             ← Prev
                         </button>
-                        <span className="text-xs text-slate-400 font-semibold min-w-[90px] text-center">Page {currentPage} of {numPages}</span>
+                        <span className="text-xs text-[#94a3b8] font-semibold min-w-[90px] text-center">Page {currentPage} of {numPages}</span>
                         <button type="button" onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))} disabled={currentPage === numPages}
-                            className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">
+                            className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                             Next →
                         </button>
                     </div>
                 )}
 
                 <button type="button" onClick={handleSave} disabled={saving || !hasAnyAnnotations}
-                    className={`text-xs font-bold py-1.5 px-4 rounded-lg cursor-pointer transition-colors disabled:opacity-40 ${numPages > 1 ? '' : 'ml-auto'} bg-emerald-600 hover:bg-emerald-700 text-white`}>
+                    className={`text-xs font-bold py-1.5 px-4 rounded-lg cursor-pointer transition-colors disabled:opacity-40 ${numPages > 1 ? '' : 'ml-auto'} bg-emerald-600 hover:bg-emerald-700 text-[#f8fafc]`}>
                     {saving ? 'Saving...' : 'Save Marked Copy'}
                 </button>
             </div>
 
             {saveError && <p className="text-[11px] text-rose-400 pb-2">{saveError}</p>}
 
-            <div className="flex-1 overflow-auto rounded-2xl border border-slate-800 bg-slate-900/40 flex items-start justify-center p-4">
+            <div className="flex-1 overflow-auto rounded-2xl border border-[#1e293b] bg-[#0f172a]/60 flex items-start justify-center p-4">
                 <div className="relative inline-block">
                     <canvas ref={pageCanvasRef} className="block" />
                     <canvas
