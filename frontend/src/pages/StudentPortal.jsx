@@ -25,6 +25,27 @@ const toSentenceCase = (str) => {
     return lower.charAt(0).toUpperCase() + lower.slice(1);
 };
 
+// Per-module color coding: each module gets a consistent accent so the dashboard
+// is easier to scan at a glance and different subjects feel visually distinct.
+// Amber stays reserved separately for urgency (due-soon/closes-at), never reused here.
+const MODULE_COLOR_PALETTE = [
+    { bar: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700 border-blue-200', hoverBorder: 'hover:border-blue-500', dot: 'bg-blue-500', icon: 'text-blue-500', hoverText: 'group-hover:text-blue-700' },
+    { bar: 'bg-violet-500', badge: 'bg-violet-50 text-violet-700 border-violet-200', hoverBorder: 'hover:border-violet-500', dot: 'bg-violet-500', icon: 'text-violet-500', hoverText: 'group-hover:text-violet-700' },
+    { bar: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', hoverBorder: 'hover:border-emerald-500', dot: 'bg-emerald-500', icon: 'text-emerald-500', hoverText: 'group-hover:text-emerald-700' },
+    { bar: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 border-rose-200', hoverBorder: 'hover:border-rose-500', dot: 'bg-rose-500', icon: 'text-rose-500', hoverText: 'group-hover:text-rose-700' },
+    { bar: 'bg-cyan-500', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', hoverBorder: 'hover:border-cyan-500', dot: 'bg-cyan-500', icon: 'text-cyan-500', hoverText: 'group-hover:text-cyan-700' },
+    { bar: 'bg-orange-500', badge: 'bg-orange-50 text-orange-700 border-orange-200', hoverBorder: 'hover:border-orange-500', dot: 'bg-orange-500', icon: 'text-orange-500', hoverText: 'group-hover:text-orange-700' },
+    { bar: 'bg-fuchsia-500', badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200', hoverBorder: 'hover:border-fuchsia-500', dot: 'bg-fuchsia-500', icon: 'text-fuchsia-500', hoverText: 'group-hover:text-fuchsia-700' },
+    { bar: 'bg-teal-500', badge: 'bg-teal-50 text-teal-700 border-teal-200', hoverBorder: 'hover:border-teal-500', dot: 'bg-teal-500', icon: 'text-teal-500', hoverText: 'group-hover:text-teal-700' },
+];
+
+const getModuleColor = (id) => {
+    const str = String(id ?? '');
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    return MODULE_COLOR_PALETTE[hash % MODULE_COLOR_PALETTE.length];
+};
+
 const groupTimelineByDay = (items) => {
     const groups = new Map();
     const now = new Date();
@@ -591,27 +612,31 @@ const StudentPortal = () => {
                                                             {type} Modules
                                                         </h3>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            {typeModules.map((m, i) => (
+                                                            {typeModules.map((m, i) => {
+                                                                const color = getModuleColor(m.id);
+                                                                return (
                                                                 <div
                                                                     key={m.id}
-                                                                    className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full animate-fadeInUp"
+                                                                    className={`bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 ${color.hoverBorder} hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full animate-fadeInUp relative overflow-hidden`}
                                                                     style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                                                                     onClick={() => openModuleDetails(m.id)}
                                                                 >
+                                                                    <div className={`absolute top-0 left-0 right-0 h-1 ${color.bar}`} />
                                                                     <div className="space-y-3">
                                                                         <div className="flex justify-between items-start gap-2">
                                                                             <span className="font-bold text-slate-800 text-base block leading-snug line-clamp-2" title={m.moduleName}>{toSentenceCase(m.moduleName)}</span>
-                                                                            <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
+                                                                            <span className={`${color.badge} border px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0`}>
                                                                                 Code: {m.moduleCode || 'N/A'}
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
-                                                                            <ChalkboardTeacher size={14} weight="bold" />
+                                                                            <ChalkboardTeacher size={14} weight="bold" className={color.icon} />
                                                                             <span className="text-slate-500">Facilitator: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 );
@@ -639,19 +664,20 @@ const StudentPortal = () => {
                                                     <div className="space-y-2">
                                                         {items.map((item, idx) => {
                                                             const closesTime = new Date(item.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                            const color = getModuleColor(item.moduleId);
                                                             return (
                                                                 <div
                                                                     key={item.sessionId}
-                                                                    className="bg-white border border-slate-200/80 rounded-xl hover:border-amber-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-3 flex items-center gap-3 group animate-fadeInUp"
+                                                                    className={`bg-white border border-slate-200/80 rounded-xl ${color.hoverBorder} hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-3 flex items-center gap-3 group animate-fadeInUp`}
                                                                     style={{ animationDelay: `${Math.min(groupIdx * 3 + idx, 8) * 40}ms` }}
                                                                     onClick={() => {
                                                                         openModuleDetails(item.moduleId);
                                                                         setActiveUploadSessionId(item.sessionId);
                                                                     }}
                                                                 >
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0 animate-pulse" />
+                                                                    <span className={`w-1.5 h-1.5 rounded-full ${color.dot} flex-shrink-0`} />
                                                                     <div className="min-w-0 flex-1">
-                                                                        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-amber-700 transition-colors" title={item.moduleName}>
+                                                                        <p className={`text-xs font-bold text-slate-800 truncate ${color.hoverText} transition-colors`} title={item.moduleName}>
                                                                             {toSentenceCase(item.moduleName)}
                                                                         </p>
                                                                         <p className="text-[10px] text-slate-500 truncate" title={item.slotTitle}>

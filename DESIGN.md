@@ -114,6 +114,8 @@ The palette is almost entirely achromatic (void black, glass white-on-black, neu
 ### Named Rules
 **The One Accent Rule.** Ion Blue is the only saturated color in the dark-mode system. Every other surface is void, glass, or neutral text — new UI should reach for glass/neutral first and spend the accent deliberately, not decoratively.
 
+**Scoped exception: per-module color coding (Student Portal only).** Module cards, their matching deadline entries, and the facilitator icon each carry a consistent accent drawn from a fixed 8-color palette (blue, violet, emerald, rose, cyan, orange, fuchsia, teal — see `MODULE_COLOR_PALETTE` in `StudentPortal.jsx`), assigned deterministically by hashing the module id. This is a deliberate, approved departure from the One Accent Rule for student-facing dashboard content specifically — it does not extend to auth chrome, staff dashboards, or any other surface. Amber stays reserved separately for urgency (due-soon badges, closes-at times) and is never reused as a module color, so the two signals — "which subject" vs. "how urgent" — stay visually distinct.
+
 ## Typography
 
 **Display Font:** Outfit (with `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` fallback)
