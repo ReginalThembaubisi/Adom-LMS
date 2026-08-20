@@ -1007,6 +1007,79 @@ input[type="button"]:active {
   animation: blob 8s infinite alternate ease-in-out;
 }
 
+/* Entrance motion: state transitions (tab switch, module open, alerts appearing) */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Skeleton loading state, matching final card shape rather than a generic spinner */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--input-bg) 25%, rgba(255, 255, 255, 0.06) 50%, var(--input-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Typing indicator: smooth opacity pulse, not a bounce (bounce reads as tacky, not "thinking") */
+@keyframes typingPulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-typing-pulse {
+  animation: typingPulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-fadeIn,
+  .animate-fadeInUp,
+  .animate-typing-pulse,
+  .skeleton {
+    animation: none !important;
+  }
+}
+
 .animation-delay-2000 {
   animation-delay: 2s;
 }

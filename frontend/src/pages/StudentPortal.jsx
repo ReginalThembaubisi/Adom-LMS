@@ -5,6 +5,17 @@ import SubmissionViewer from '../components/SubmissionViewer';
 import MessagesPanel from '../components/MessagesPanel';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel, getStatusDotClasses, getStatusContainerClasses } from '../utils/colors';
+import {
+    ChalkboardTeacher,
+    Clock,
+    CheckCircle,
+    ChatCircleDots,
+    ArrowLeft,
+    CaretLeft,
+    CaretRight,
+    X,
+    PaperPlaneTilt
+} from '@phosphor-icons/react';
 
 const StudentPortal = () => {
     const { learner, logoutStudent } = useLearner();
@@ -375,11 +386,11 @@ const StudentPortal = () => {
                     /* Cohesive Header Strip */
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
                         <div className="flex items-center gap-3">
-                            <button 
+                            <button
                                 className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-lg transition-colors flex items-center gap-1.5"
                                 onClick={() => setSelectedModule(null)}
                             >
-                                ← Back to Modules
+                                <ArrowLeft size={14} weight="bold" /> Back to Modules
                             </button>
                             <span className="text-slate-300 hidden sm:inline">|</span>
                             <span className="text-sm font-extrabold text-slate-900">
@@ -410,9 +421,9 @@ const StudentPortal = () => {
 
                 {/* Alert Banner */}
                 {alert.message && (
-                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border ${
-                        alert.type === 'error' 
-                            ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border animate-fadeIn ${
+                        alert.type === 'error'
+                            ? 'bg-rose-50 border-rose-200 text-rose-800'
                             : 'bg-blue-50 border-blue-200 text-blue-800'
                     }`}>
                         {alert.message}
@@ -489,7 +500,7 @@ const StudentPortal = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
-                                    <span>✓</span> Submission Successful!
+                                    <CheckCircle size={16} weight="fill" /> Submission Successful!
                                 </h3>
                                 <div className="text-xs text-emerald-700 mt-2 space-y-1">
                                     <p><strong>File Submitted:</strong> {lastSubmission.fileName}</p>
@@ -512,7 +523,7 @@ const StudentPortal = () => {
 
                 {/* TAB 1: My Modules */}
                 {activeTab === 'modules' && (
-                    <div className="space-y-6">
+                    <div key={selectedModule ? 'detail' : 'list'} className="space-y-6 animate-fadeIn">
                         {!selectedModule ? (
                             <div id="modules-list-view" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                 {/* Left Area (Active Modules - 8 Columns) */}
@@ -523,7 +534,17 @@ const StudentPortal = () => {
                                     </div>
 
                                     {loadingModules ? (
-                                        <p className="text-sm text-slate-500">Loading active modules...</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {[0, 1, 2, 3].map(i => (
+                                                <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="skeleton h-4 w-2/3 rounded-md" />
+                                                        <div className="skeleton h-5 w-16 rounded" />
+                                                    </div>
+                                                    <div className="skeleton h-3 w-1/2 rounded-md" />
+                                                </div>
+                                            ))}
+                                        </div>
                                     ) : modules.length === 0 ? (
                                         <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
                                             <p className="text-sm text-slate-400">You are not enrolled in any modules yet.</p>
@@ -539,10 +560,11 @@ const StudentPortal = () => {
                                                             {type} Modules
                                                         </h3>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            {typeModules.map((m) => (
-                                                                <div 
-                                                                    key={m.id} 
-                                                                    className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-blue-500 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full"
+                                                            {typeModules.map((m, i) => (
+                                                                <div
+                                                                    key={m.id}
+                                                                    className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full animate-fadeInUp"
+                                                                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                                                                     onClick={() => openModuleDetails(m.id)}
                                                                 >
                                                                     <div className="space-y-3">
@@ -553,7 +575,7 @@ const StudentPortal = () => {
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
-                                                                            <span className="text-[14px]">👨‍🏫</span>
+                                                                            <ChalkboardTeacher size={14} weight="bold" />
                                                                             <span className="text-slate-500">Facilitator: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
                                                                         </div>
                                                                     </div>
@@ -583,9 +605,10 @@ const StudentPortal = () => {
                                             {timeline.map((item, idx) => {
                                                 const closesAt = new Date(item.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                                                 return (
-                                                    <div 
-                                                        key={idx} 
-                                                        className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-amber-400 transition-all duration-200 cursor-pointer p-4 space-y-3 relative overflow-hidden group"
+                                                    <div
+                                                        key={idx}
+                                                        className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 hover:border-amber-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-4 space-y-3 relative overflow-hidden group animate-fadeInUp"
+                                                        style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
                                                         onClick={() => {
                                                             openModuleDetails(item.moduleId);
                                                             setActiveUploadSessionId(item.sessionId);
@@ -609,7 +632,7 @@ const StudentPortal = () => {
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-amber-800 bg-amber-50/50 border border-amber-100 rounded-lg p-2 font-semibold flex items-center gap-1.5 pl-3">
-                                                            <span>⏰</span> Closes {closesAt}
+                                                            <Clock size={13} weight="bold" /> Closes {closesAt}
                                                         </div>
                                                     </div>
                                                 );
@@ -835,27 +858,27 @@ const StudentPortal = () => {
 
                 {/* TAB 2: My Calendar */}
                 {activeTab === 'calendar' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 text-slate-800">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 text-slate-800 animate-fadeIn">
                         <div className="flex justify-between items-center border-b border-slate-200 pb-4">
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Assignment Calendar</h2>
                                 <p className="text-xs text-slate-500">Track and manage your upcoming assignment deadlines.</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                     onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors"
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors flex items-center gap-1"
                                 >
-                                    &larr; Prev
+                                    <CaretLeft size={12} weight="bold" /> Prev
                                 </button>
                                 <span className="text-xs font-bold text-slate-800 px-3 uppercase tracking-wider">
                                     {currentMonth.toLocaleString('default', { month: 'long' })} {year}
                                 </span>
-                                <button 
+                                <button
                                     onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors"
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors flex items-center gap-1"
                                 >
-                                    Next &rarr;
+                                    Next <CaretRight size={12} weight="bold" />
                                 </button>
                             </div>
                         </div>
@@ -894,10 +917,10 @@ const StudentPortal = () => {
                                                             // Auto navigate to module
                                                             fetchModuleDetails(dl.moduleId);
                                                         }}
-                                                        className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate block transition-all"
+                                                        className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate flex items-center gap-1 transition-all"
                                                         title={`${dl.title} (${dl.moduleName})`}
                                                     >
-                                                        ⏰ {dl.title}
+                                                        <Clock size={10} weight="bold" className="flex-shrink-0" /> {dl.title}
                                                     </button>
                                                 ))}
                                             </div>
@@ -911,7 +934,7 @@ const StudentPortal = () => {
 
                 {/* TAB 3: My Submissions */}
                 {activeTab === 'history' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 animate-fadeIn">
                         <div className="border-b border-slate-300 pb-3">
                             <h2 className="text-lg font-bold text-slate-900">My Submission History</h2>
                             <p className="text-xs text-slate-500">View all files you have previously uploaded and check grading status.</p>
@@ -920,8 +943,8 @@ const StudentPortal = () => {
                             {history.length === 0 ? (
                                 <p className="text-xs text-slate-500 text-center py-6">You haven't uploaded any assignments yet.</p>
                             ) : (
-                                history.map((sub) => (
-                                    <div key={sub.submissionId} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4 bg-slate-50/10">
+                                history.map((sub, i) => (
+                                    <div key={sub.submissionId} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4 bg-slate-50/10 animate-fadeInUp" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                                         <div className="space-y-1">
                                             <h4 className="text-sm font-bold text-slate-800">{sub.moduleName || 'General'}</h4>
                                             <p className="text-xs font-semibold text-slate-600">{sub.assignmentTitle || 'Assignment'} ({sub.sessionName})</p>
@@ -967,7 +990,7 @@ const StudentPortal = () => {
                 )}
 
                 {activeTab === 'messages' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4 animate-fadeIn">
                         <div className="border-b border-slate-300 pb-3">
                             <h2 className="text-lg font-bold text-slate-900">Messages</h2>
                             <p className="text-xs text-slate-500">Message the facilitators of your enrolled modules.</p>
@@ -994,13 +1017,11 @@ const StudentPortal = () => {
                                 <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
                                 <span className="text-xs font-bold uppercase tracking-wider">LMS Chat Assistant</span>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setChatOpen(false)}
                                 className="text-slate-400 hover:text-slate-200 transition-colors"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                                </svg>
+                                <X size={16} weight="bold" />
                             </button>
                         </div>
 
@@ -1025,9 +1046,9 @@ const StudentPortal = () => {
                             {chatLoading && (
                                 <div className="flex justify-start">
                                     <div className="bg-slate-800 text-slate-400 border border-slate-700/50 rounded-2xl rounded-bl-none px-3.5 py-2 text-[11px] flex items-center gap-1">
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce delay-100"></span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce delay-200"></span>
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '160ms' }}></span>
+                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '320ms' }}></span>
                                     </div>
                                 </div>
                             )}
@@ -1043,13 +1064,11 @@ const StudentPortal = () => {
                                 placeholder="Ask me something..."
                                 className="flex-1 bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
                             />
-                            <button 
+                            <button
                                 type="submit"
                                 className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-xl transition-all flex items-center justify-center shadow-md shadow-blue-500/20 active:scale-[0.98]"
                             >
-                                <svg className="w-4 h-4 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
+                                <PaperPlaneTilt size={16} weight="fill" />
                             </button>
                         </form>
                     </div>
@@ -1062,13 +1081,9 @@ const StudentPortal = () => {
                     title="Open LMS Chat Assistant"
                 >
                     {chatOpen ? (
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X size={22} weight="bold" />
                     ) : (
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
+                        <ChatCircleDots size={24} weight="fill" />
                     )}
                 </button>
             </div>
