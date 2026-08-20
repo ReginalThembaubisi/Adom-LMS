@@ -28,14 +28,14 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
             <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full h-[92vh] max-w-7xl flex flex-col overflow-hidden shadow-2xl animate-fade-in text-slate-100">
                 <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                     <div>
-                        <h3 className="text-base font-extrabold text-white">My Submission</h3>
-                        <p className="text-xs text-slate-300">
-                            File: <span className="font-semibold text-white">{submission.originalFilename}</span>
+                        <h3 className="text-base font-extrabold text-[#f8fafc]">My Submission</h3>
+                        <p className="text-xs text-[#cbd5e1]">
+                            File: <span className="font-semibold text-[#f8fafc]">{submission.originalFilename}</span>
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white p-2 rounded-xl transition-colors cursor-pointer"
+                        className="bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc] p-2 rounded-xl transition-colors cursor-pointer"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -122,7 +122,7 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
 
                                 <div className="space-y-1.5">
                                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Feedback</label>
-                                    <p className="text-xs text-slate-300 italic bg-slate-950 border border-slate-800 rounded-xl p-3.5">
+                                    <p className="text-xs text-[#cbd5e1] italic bg-slate-950 border border-slate-800 rounded-xl p-3.5">
                                         {isAssessed ? (submission.feedback || 'No written comments provided.') : 'Not yet assessed.'}
                                     </p>
                                 </div>

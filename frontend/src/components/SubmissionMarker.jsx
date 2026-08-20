@@ -87,14 +87,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                 {/* Header */}
                 <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
                     <div>
-                        <h3 className="text-base font-extrabold text-white">In-App Grading Workspace</h3>
-                        <p className="text-xs text-slate-300">
-                            Student: <span className="font-semibold text-white">{submission.learnerName} ({submission.learnerCode})</span> | File: <span className="font-semibold text-white">{submission.originalFilename}</span>
+                        <h3 className="text-base font-extrabold text-[#f8fafc]">In-App Grading Workspace</h3>
+                        <p className="text-xs text-[#cbd5e1]">
+                            Student: <span className="font-semibold text-[#f8fafc]">{submission.learnerName} ({submission.learnerCode})</span> | File: <span className="font-semibold text-[#f8fafc]">{submission.originalFilename}</span>
                         </p>
                     </div>
                     <button 
                         onClick={onClose}
-                        className="bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white p-2 rounded-xl transition-colors cursor-pointer"
+                        className="bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc] p-2 rounded-xl transition-colors cursor-pointer"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -128,7 +128,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                             </svg>
                                         </div>
-                                        <h4 className="text-sm font-bold text-white">Local Word Document Preview Sandbox</h4>
+                                        <h4 className="text-sm font-bold text-[#f8fafc]">Local Word Document Preview Sandbox</h4>
                                         <p className="text-xs text-slate-400">
                                             Google Document Viewer requires a public URL to fetch and render Word documents. In the deployed production site, this will render the document inside the browser automatically.
                                         </p>
@@ -136,7 +136,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                             href={documentUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-block bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all"
+                                            className="inline-block bg-slate-800 hover:bg-slate-700 text-[#f8fafc] font-semibold text-xs py-2 px-4 rounded-xl transition-all"
                                         >
                                             View document in new tab
                                         </a>
@@ -155,7 +155,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                         </svg>
                                     </div>
-                                    <h4 className="text-sm font-bold text-white">Unsupported file format preview</h4>
+                                    <h4 className="text-sm font-bold text-[#f8fafc]">Unsupported file format preview</h4>
                                     <p className="text-xs text-slate-400">
                                         This document format cannot be rendered inside the grading workspace.
                                     </p>
@@ -169,7 +169,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                     <div className="w-1/4 bg-slate-900 p-6 flex flex-col justify-between overflow-y-auto">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-1">
-                                <h4 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">Assessment Console</h4>
+                                <h4 className="text-sm font-bold text-[#f8fafc] uppercase tracking-wider text-slate-400">Assessment Console</h4>
                                 <p className="text-[11px] text-slate-500">Record a Competent / Not Yet Competent outcome and written feedback directly onto the student portal.</p>
                                 {submission.gradedByRole && (
                                     <div className="pt-2">
@@ -206,7 +206,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                             disabled={loading}
                                             className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                                 outcome === 'COMPETENT'
-                                                    ? 'bg-[#0ca30c] border-[#0ca30c] text-white'
+                                                    ? 'bg-[#0ca30c] border-[#0ca30c] text-[#f8fafc]'
                                                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-[#0ca30c]/50'
                                             }`}
                                         >
@@ -218,7 +218,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                             disabled={loading}
                                             className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                                 outcome === 'NOT_YET_COMPETENT'
-                                                    ? 'bg-[#d03b3b] border-[#d03b3b] text-white'
+                                                    ? 'bg-[#d03b3b] border-[#d03b3b] text-[#f8fafc]'
                                                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-[#d03b3b]/50'
                                             }`}
                                         >
@@ -237,7 +237,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                         onChange={(e) => setMarksAwarded(e.target.value)}
                                         placeholder="e.g. 85"
                                         disabled={loading}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-600 transition-all font-sans"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-[#f8fafc] focus:outline-none focus:border-blue-600 transition-all font-sans"
                                     />
                                 </div>
 
@@ -247,7 +247,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                         rows="8"
                                         value={feedback}
                                         onChange={(e) => setFeedback(e.target.value)}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-600 transition-all font-sans resize-none"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-[#f8fafc] focus:outline-none focus:border-blue-600 transition-all font-sans resize-none"
                                         placeholder="Write constructive evaluation notes here..."
                                         disabled={loading}
                                     />
@@ -256,7 +256,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
 
                             <button
                                 type="submit"
-                                className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-[#f8fafc] font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
                                 disabled={loading}
                             >
                                 {loading ? 'Saving...' : 'Save & Publish Outcome'}
