@@ -59,8 +59,8 @@ const AdminLogin = () => {
         <div className="auth-page-container bg-slate-50/80 min-h-screen text-slate-800 antialiased flex flex-col justify-center items-center p-4 relative overflow-hidden">
             {/* Ambient background blobs */}
             <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-600/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
 
             <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
                 <div className="text-center space-y-1">
@@ -69,7 +69,7 @@ const AdminLogin = () => {
                 </div>
 
                 {error && (
-                    <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-rose-50 border-rose-200 text-rose-800 text-center">
+                    <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-red-50 border-red-200 text-red-800 text-center">
                         {error}
                     </div>
                 )}
@@ -84,6 +84,7 @@ const AdminLogin = () => {
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                 required
+                                autoComplete="username"
                                 placeholder="e.g. admin"
                                 disabled={loading}
                             />
@@ -97,6 +98,7 @@ const AdminLogin = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                     required
+                                    autoComplete="current-password"
                                     placeholder="••••••••"
                                     disabled={loading}
                                 />

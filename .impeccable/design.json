@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-19T00:00:00Z",
+  "title": "Design System: Orbital",
+  "extensions": {
+    "colorMeta": {
+      "void-black": { "role": "neutral", "displayName": "Void Black", "canonical": "#030712", "tonalRamp": ["#020508", "#030712", "#0b1120", "#0f172a", "#1e293b", "#334155", "#64748b", "#94a3b8"] },
+      "glass-surface": { "role": "neutral", "displayName": "Glass Surface", "canonical": "rgba(15, 23, 42, 0.75)", "tonalRamp": ["rgba(15,23,42,0.95)", "rgba(15,23,42,0.85)", "rgba(15,23,42,0.75)", "rgba(15,23,42,0.6)", "rgba(15,23,42,0.5)", "rgba(15,23,42,0.35)", "rgba(15,23,42,0.2)", "rgba(15,23,42,0.08)"] },
+      "glass-surface-deep": { "role": "neutral", "displayName": "Glass Surface Deep", "canonical": "#0f172a", "tonalRamp": ["#020508", "#030712", "#0b1120", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b"] },
+      "glass-border": { "role": "neutral", "displayName": "Glass Border", "canonical": "rgba(255, 255, 255, 0.08)" },
+      "ion-blue": { "role": "primary", "displayName": "Ion Blue", "canonical": "#3b82f6", "tonalRamp": ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "ion-blue-deep": { "role": "primary", "displayName": "Ion Blue Deep", "canonical": "#2563eb" },
+      "ion-blue-pale": { "role": "primary", "displayName": "Ion Blue Pale", "canonical": "#eff6ff" },
+      "text-main": { "role": "neutral", "displayName": "Text Main", "canonical": "#f8fafc" },
+      "text-body": { "role": "neutral", "displayName": "Text Body", "canonical": "#cbd5e1" },
+      "text-muted": { "role": "neutral", "displayName": "Text Muted", "canonical": "#94a3b8" },
+      "auth-bg": { "role": "neutral", "displayName": "Auth Background", "canonical": "#f8fafc" },
+      "auth-surface": { "role": "neutral", "displayName": "Auth Surface", "canonical": "#ffffff" },
+      "auth-border": { "role": "neutral", "displayName": "Auth Border", "canonical": "#e2e8f0" },
+      "auth-text": { "role": "neutral", "displayName": "Auth Text", "canonical": "#0f172a" },
+      "success": { "role": "system", "displayName": "Success Green", "canonical": "#10b981", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#a7f3d0", "#ecfdf5"] },
+      "error": { "role": "system", "displayName": "Error Red", "canonical": "#ef4444", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fecaca", "#fef2f2"] },
+      "warning": { "role": "system", "displayName": "Warning Amber", "canonical": "#f59e0b" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Landing/auth hero heading only." },
+      "title": { "displayName": "Title", "purpose": "Dashboard section/card headers." },
+      "body": { "displayName": "Body", "purpose": "Form labels, descriptions, list content." },
+      "label": { "displayName": "Label", "purpose": "Uppercase tracked field labels and status badges." }
+    },
+    "shadows": [
+      { "name": "whisper", "value": "0 1px 3px rgba(0,0,0,0.02)", "purpose": "Inline list rows (submissions, timeline items) at rest." },
+      { "name": "card-dark", "value": "0 8px 32px rgba(0,0,0,0.45)", "purpose": "Default dark-mode glass panel." },
+      { "name": "card-light", "value": "0 10px 25px -5px rgba(37,99,235,0.05), 0 8px 10px -6px rgba(37,99,235,0.05)", "purpose": "Default light auth-mode panel." },
+      { "name": "hover-lift", "value": "0 8px 24px rgba(37,99,235,0.08)", "purpose": "Card/list-item hover, paired with translateY(-1px)." },
+      { "name": "hero", "value": "0 25px 50px -12px rgba(15,23,42,0.12), 0 10px 20px -10px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.05)", "purpose": "Landing/auth entry hero card only." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "all 0.2s ease", "purpose": "Default hover/state transition for buttons, cards, tabs." },
+      { "name": "press-scale", "value": "transform: scale(0.98); transition: transform 0.15s ease-in-out", "purpose": "Button active/press feedback." }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (dark)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default call-to-action inside the dark glass system (dashboards, Landing).",
+      "html": "<button class=\"ds-btn-primary\">Sign In</button>",
+      "css": ".ds-btn-primary { background: #3b82f6; color: #ffffff; font-weight: 600; font-size: 0.95rem; padding: 0.65rem 1.25rem; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15); transition: all 0.2s ease; } .ds-btn-primary:hover { background: #2563eb; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.25); } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary/back action; transparent with a hairline border, never carries the accent color.",
+      "html": "<button class=\"ds-btn-ghost\">← Back to Main Entry</button>",
+      "css": ".ds-btn-ghost { background: rgba(255,255,255,0.05); color: #cbd5e1; font-weight: 600; font-size: 0.85rem; padding: 0.55rem 1.1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; cursor: pointer; transition: all 0.2s ease; } .ds-btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); } .ds-btn-ghost:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "The default dark-mode surface: translucent, blurred, hairline-bordered panel used for dashboard cards and the Landing entry card.",
+      "html": "<div class=\"ds-card-glass\"><h3 class=\"ds-card-glass__title\">Module Overview</h3><p class=\"ds-card-glass__body\">Track progress across your active learnership modules.</p></div>",
+      "css": ".ds-card-glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 1.5rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); transition: all 0.2s ease; } .ds-card-glass:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08); } .ds-card-glass__title { margin: 0 0 0.35rem 0; font-size: 1.4rem; font-weight: 700; color: #f8fafc; font-family: 'Outfit', sans-serif; } .ds-card-glass__body { margin: 0; color: #94a3b8; font-size: 0.9rem; font-family: 'Outfit', sans-serif; }"
+    },
+    {
+      "name": "Auth Card",
+      "kind": "card",
+      "refersTo": "card-auth",
+      "description": "The light-mode surface used only by the six standalone login/register forms — observed as a distinct, currently-unresolved second mode (see DESIGN.md Overview).",
+      "html": "<div class=\"ds-card-auth\"><h2 class=\"ds-card-auth__title\">Admin Portal Login</h2><p class=\"ds-card-auth__subtitle\">Enter your administrator credentials to access system management</p></div>",
+      "css": ".ds-card-auth { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 25px -5px rgba(37,99,235,0.05), 0 8px 10px -6px rgba(37,99,235,0.05); font-family: 'Outfit', sans-serif; } .ds-card-auth__title { margin: 0 0 0.25rem 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; } .ds-card-auth__subtitle { margin: 0; font-size: 0.75rem; color: #64748b; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form field with an uppercase tracked caption label and an Ion Blue focus glow.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field__label\">Username</label><input class=\"ds-field__input\" type=\"text\" placeholder=\"e.g. admin\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.375rem; } .ds-field__label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; font-family: 'Outfit', sans-serif; } .ds-field__input { width: 100%; padding: 0.625rem 0.875rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 0.875rem; color: #0f172a; font-family: 'Outfit', sans-serif; box-sizing: border-box; transition: all 0.2s ease; } .ds-field__input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Pill-shaped submission-state indicator; hue family (green/blue/red) carries the meaning.",
+      "html": "<span class=\"ds-badge ds-badge--graded\">Graded</span>",
+      "css": ".ds-badge { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Outfit', sans-serif; } .ds-badge--submitted { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; } .ds-badge--graded { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; } .ds-badge--late { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Orbital: Deep Space Glass",
+    "overview": "Orbital renders its core experience — the Landing hub and every role dashboard (Admin, Facilitator, Moderator, Assessor) — as frosted glass instrument panels floating in a near-black void (#030712). Cards are translucent, blurred, and edge-lit with a hairline border (rgba(255,255,255,0.08)); Ion Blue is the only saturated color allowed to glow against that dark field, used for accents, active states, and calls to action. Outfit carries the entire type system on its own, doing all the work of hierarchy through weight (300–800) and size rather than a second typeface — a deliberately single-voice, technical register.\n\nThe six standalone auth forms (Admin/Facilitator/Moderator/Assessor login, Register, and the learner Login) currently render in a separate light blue-and-white mode instead of the dark glass field. This is recorded here as observed fact, not yet resolved as doctrine: a future pass should decide whether to fold auth into the dark glass system or keep it as a deliberate lighter \"arrival\" register before the operator steps into the dark instrument panel.\n\nThis is explicitly not playful or childish edtech: no bright primary colors, no cartoon iconography, no heavy rounding-as-personality. The restraint and the glow are the personality.",
+    "keyCharacteristics": [
+      "Near-black void background with frosted, blurred glass surfaces as the default operating field",
+      "Ion Blue as the single accent color — everything else is void, glass, or text-neutral",
+      "Outfit as the sole typeface, hierarchy carried by weight and size alone",
+      "Soft-and-refined component language: generous rounding, gentle shadows, no hard/instrument-panel sharpness despite the \"mission control\" backdrop",
+      "A confirmed but unresolved split: dark glass everywhere except the six auth forms, which are light blue-and-white"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Ion Blue is the only saturated color in the dark-mode system. Every other surface is void, glass, or neutral text — new UI should reach for glass/neutral first and spend the accent deliberately, not decoratively.", "section": "colors" },
+      { "name": "The Weight-Not-Voice Rule", "body": "New hierarchy needs are solved by moving up/down the Outfit weight and size scale, never by introducing a second typeface.", "section": "typography" },
+      { "name": "The Blur-Marks-Layer Rule", "body": "Blur radius scales with elevation (no blur → 16px → 24px); don't apply the hero card's 24px blur to a routine panel, and don't leave a floating/hero-level surface unblurred.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Ion Blue as the only saturated accent in dark-mode surfaces; reach for glass/neutral tones first.",
+      "Do scale blur and shadow together when introducing a new surface — never a deep shadow with no blur, or heavy blur with a whisper shadow, outside the defined three-layer scale.",
+      "Do carry all typographic hierarchy through Outfit's weight and size range rather than introducing a second typeface.",
+      "Do use the pill/segmented pattern (transparent inactive, solid Ion Blue active with its own shadow) for any new tab or toggle group."
+    ],
+    "donts": [
+      "Don't introduce a second accent color alongside Ion Blue for routine UI — reserve any additional hue for status semantics (success/error/warning) only.",
+      "Don't use hard, sharp corners or flat drop shadows; every surface in this system is soft-and-refined, not instrument-sharp, even though the North Star reads as \"deep space glass.\"",
+      "Don't silently resolve the dark-glass-vs-light-auth split while doing routine work on either side — it's recorded here as an open question, not a decision either mode should make unilaterally.",
+      "Don't drift toward bright, rounded, cartoonish edtech styling; the confirmed anti-reference is playful/childish edtech, not just \"generic corporate LMS.\""
+    ]
+  }
+}

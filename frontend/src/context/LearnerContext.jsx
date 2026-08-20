@@ -2,11 +2,34 @@ import React, { createContext, useState, useContext } from 'react';
 
 const LearnerContext = createContext(null);
 
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+
+const readStoredSession = () => {
+    const stored = localStorage.getItem('learner_session');
+    if (!stored) return null;
+
+    try {
+        const parsed = JSON.parse(stored);
+        if (!parsed.expiresAt || Date.now() > parsed.expiresAt) {
+            localStorage.removeItem('learner_session');
+            return null;
+        }
+        return parsed.data;
+    } catch {
+        localStorage.removeItem('learner_session');
+        return null;
+    }
+};
+
+const storeSession = (data) => {
+    localStorage.setItem('learner_session', JSON.stringify({
+        data,
+        expiresAt: Date.now() + SESSION_TTL_MS
+    }));
+};
+
 export const LearnerProvider = ({ children }) => {
-    const [learner, setLearner] = useState(() => {
-        const stored = localStorage.getItem('learner_session');
-        return stored ? JSON.parse(stored) : null;
-    });
+    const [learner, setLearner] = useState(readStoredSession);
 
     const loginStudent = async (studentNumber, password) => {
         const res = await fetch('/api/learners/login', {
@@ -14,14 +37,14 @@ export const LearnerProvider = ({ children }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ studentNumber, password })
         });
-        
+
         const data = await res.json();
         if (!res.ok) {
             throw new Error(data.message || 'Login failed.');
         }
-        
+
         setLearner(data);
-        localStorage.setItem('learner_session', JSON.stringify(data));
+        storeSession(data);
         return data;
     };
 
@@ -38,7 +61,7 @@ export const LearnerProvider = ({ children }) => {
         }
 
         setLearner(data);
-        localStorage.setItem('learner_session', JSON.stringify(data));
+        storeSession(data);
         return data;
     };
 

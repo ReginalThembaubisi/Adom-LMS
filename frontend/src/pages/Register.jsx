@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Register = () => {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
@@ -65,18 +67,16 @@ const Register = () => {
             errors.fullName = 'Full name is required.';
         }
 
-        // Basic email pattern check
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email.trim()) {
             errors.email = 'Email address is required.';
-        } else if (!emailRegex.test(email.trim())) {
+        } else if (!EMAIL_REGEX.test(email.trim())) {
             errors.email = 'Please enter a valid email address.';
         }
 
         if (!password) {
             errors.password = 'Password is required.';
-        } else if (password.length < 4) {
-            errors.password = 'Password must be at least 4 characters long.';
+        } else if (password.length < 8) {
+            errors.password = 'Password must be at least 8 characters long.';
         }
 
         if (!confirmPassword) {
@@ -113,14 +113,14 @@ const Register = () => {
         <div className="auth-page-container bg-slate-50/80 min-h-screen text-slate-800 antialiased flex flex-col justify-center items-center p-4 relative overflow-hidden">
             {/* Ambient background blobs */}
             <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-600/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
 
             <div className="max-w-xl w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
                 <div className="text-center space-y-1">
                     <h2 className="text-xl font-extrabold text-slate-900">New Student Registration</h2>
                     {!registrationOpen ? (
-                        <p className="text-xs font-bold text-rose-600">Registration is currently closed by the administrator.</p>
+                        <p className="text-xs font-bold text-red-600">Registration is currently closed by the administrator.</p>
                     ) : (
                         <p className="text-xs text-slate-500">Provide your personal details to register and receive a Student Number</p>
                     )}
@@ -141,7 +141,7 @@ const Register = () => {
                 ) : (
                     <>
                         {error && (
-                            <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-rose-50 border-rose-200 text-rose-800 text-center">
+                            <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-red-50 border-red-200 text-red-800 text-center">
                                 {error}
                             </div>
                         )}
@@ -159,10 +159,11 @@ const Register = () => {
                                         }}
                                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                         required
+                                        autoComplete="name"
                                         placeholder="e.g. Sipho Ndlovu"
                                         disabled={loading}
                                     />
-                                    {fieldErrors.fullName && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.fullName}</span>}
+                                    {fieldErrors.fullName && <span className="text-xs font-bold text-red-600 block mt-1">{fieldErrors.fullName}</span>}
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -174,11 +175,18 @@ const Register = () => {
                                             setEmail(e.target.value);
                                             if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: null }));
                                         }}
+                                        onBlur={() => {
+                                            const trimmed = email.trim();
+                                            if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+                                                setFieldErrors(prev => ({ ...prev, email: 'Please enter a valid email address.' }));
+                                            }
+                                        }}
                                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        autoComplete="email"
                                         placeholder="e.g. sipho@example.com"
                                         disabled={loading}
                                     />
-                                    {fieldErrors.email && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.email}</span>}
+                                    {fieldErrors.email && <span className="text-xs font-bold text-red-600 block mt-1">{fieldErrors.email}</span>}
                                 </div>
                             </div>
 
@@ -202,6 +210,7 @@ const Register = () => {
                                         value={phoneNumber}
                                         onChange={(e) => setPhoneNumber(e.target.value)}
                                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                        autoComplete="tel"
                                         placeholder="e.g. +27821234567"
                                         disabled={loading}
                                     />
@@ -252,6 +261,8 @@ const Register = () => {
                                             }}
                                             className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                             required
+                                            minLength={8}
+                                            autoComplete="new-password"
                                             placeholder="••••••••"
                                             disabled={loading}
                                         />
@@ -272,7 +283,11 @@ const Register = () => {
                                             )}
                                         </button>
                                     </div>
-                                    {fieldErrors.password && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.password}</span>}
+                                    {fieldErrors.password ? (
+                                        <span className="text-xs font-bold text-red-600 block mt-1">{fieldErrors.password}</span>
+                                    ) : (
+                                        <span className="text-xs text-slate-400 block mt-1">Minimum 8 characters</span>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -285,8 +300,14 @@ const Register = () => {
                                                 setConfirmPassword(e.target.value);
                                                 if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: null }));
                                             }}
+                                            onBlur={() => {
+                                                if (confirmPassword && password !== confirmPassword) {
+                                                    setFieldErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match.' }));
+                                                }
+                                            }}
                                             className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                             required
+                                            autoComplete="new-password"
                                             placeholder="••••••••"
                                             disabled={loading}
                                         />
@@ -307,7 +328,7 @@ const Register = () => {
                                             )}
                                         </button>
                                     </div>
-                                    {fieldErrors.confirmPassword && <span className="text-xs font-bold text-rose-600 block mt-1">{fieldErrors.confirmPassword}</span>}
+                                    {fieldErrors.confirmPassword && <span className="text-xs font-bold text-red-600 block mt-1">{fieldErrors.confirmPassword}</span>}
                                 </div>
                             </div>
 

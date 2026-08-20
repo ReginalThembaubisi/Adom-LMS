@@ -57,17 +57,18 @@ const ModeratorLogin = () => {
     return (
         <div className="auth-page-container bg-slate-50/80 min-h-screen text-slate-800 antialiased flex flex-col justify-center items-center p-4 relative overflow-hidden">
             {/* Ambient background blobs */}
-            <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-teal-400/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400/10 rounded-full filter blur-3xl opacity-70 animate-blob pointer-events-none"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-600/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000 pointer-events-none"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300/10 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 pointer-events-none"></div>
 
             <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md/50 transition-all duration-200 space-y-6 relative z-10">
                 <div className="text-center space-y-1">
-                    <h2 className="text-xl font-extrabold text-slate-900 font-display">Moderator Portal Login</h2>
-                    <p className="text-xs text-slate-500 font-sans">Enter your moderator credentials to access submission reviews</p>
+                    <h2 className="text-xl font-extrabold text-slate-900">Moderator Portal Login</h2>
+                    <p className="text-xs text-slate-500">Enter your moderator credentials to access submission reviews</p>
                 </div>
 
                 {error && (
-                    <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-rose-50 border-rose-200 text-rose-800 text-center">
+                    <div className="p-4 rounded-xl text-xs font-semibold shadow-xs border bg-red-50 border-red-200 text-red-800 text-center">
                         {error}
                     </div>
                 )}
@@ -75,26 +76,28 @@ const ModeratorLogin = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5 font-sans">Username</label>
+                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Username</label>
                             <input
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-2xs font-sans"
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                 required
+                                autoComplete="username"
                                 placeholder="e.g. moderator"
                                 disabled={loading}
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5 font-sans">Password</label>
+                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-2xs font-sans"
+                                    className="w-full bg-white border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
                                     required
+                                    autoComplete="current-password"
                                     placeholder="••••••••"
                                     disabled={loading}
                                 />
@@ -119,7 +122,7 @@ const ModeratorLogin = () => {
                     </div>
                     <button 
                         type="submit" 
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-emerald-500/20 hover:shadow-md hover:shadow-emerald-500/25 transition-all duration-150 font-sans"
+                        className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150"
                         disabled={loading}
                     >
                         {loading ? 'Authenticating...' : 'Sign In as Moderator'}
@@ -129,7 +132,7 @@ const ModeratorLogin = () => {
                 <div className="text-center pt-2 border-t border-slate-100">
                     <button 
                         onClick={() => navigate('/')} 
-                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-1 mt-4 w-full font-sans"
+                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-1 mt-4 w-full"
                     >
                         ← Back to Main Entry
                     </button>
