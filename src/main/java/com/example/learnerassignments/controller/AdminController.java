@@ -261,6 +261,47 @@ public class AdminController {
         return ResponseEntity.ok(list);
     }
 
+    @PutMapping("/learners/{id}")
+    public ResponseEntity<LearnerResponse> updateLearner(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateLearnerRequest request,
+            Authentication auth) {
+        com.example.learnerassignments.model.Learner learner = learnerRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found"));
+
+        learner.setFullName(request.getFullName());
+        learner.setEmail(request.getEmail());
+        learner.setIdNumber(request.getIdNumber());
+        learner.setPhoneNumber(request.getPhoneNumber());
+        learner.setCohort(request.getCohort());
+
+        if (request.getLearnershipId() != null) {
+            com.example.learnerassignments.model.Learnership learnership = learnershipRepository.findById(request.getLearnershipId())
+                    .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Learnership not found"));
+            learner.setLearnership(learnership);
+        } else {
+            learner.setLearnership(null);
+        }
+
+        com.example.learnerassignments.model.Learner saved = learnerRepository.save(learner);
+        auditLogService.log(auth, "UPDATE_LEARNER", "Learner", id,
+                "Student '" + saved.getFullName() + "' (" + saved.getLearnerCode() + ") profile updated");
+
+        LearnerResponse response = LearnerResponse.builder()
+                .id(saved.getId())
+                .learnerCode(saved.getLearnerCode())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .idNumber(saved.getIdNumber())
+                .phoneNumber(saved.getPhoneNumber())
+                .cohort(saved.getCohort())
+                .learnershipId(saved.getLearnership() != null ? saved.getLearnership().getId() : null)
+                .learnershipName(saved.getLearnership() != null ? saved.getLearnership().getName() : "Unassigned")
+                .createdAt(saved.getCreatedAt())
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/learners/{id}/reset-password")
     public ResponseEntity<Void> adminResetPassword(
             @PathVariable Long id,

@@ -30,6 +30,7 @@ const AdminDashboard = () => {
     const [editingLecturer, setEditingLecturer] = useState(null);
     const [editingModerator, setEditingModerator] = useState(null);
     const [editingAssessor, setEditingAssessor] = useState(null);
+    const [editingLearner, setEditingLearner] = useState(null);
     const [staffRole, setStaffRole] = useState('LECTURER');
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -516,6 +517,36 @@ const AdminDashboard = () => {
             showMsg('error', 'Network error.');
         }
     };;
+
+    const handleUpdateLearner = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`/api/admin/learners/${editingLearner.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({
+                    fullName: editingLearner.fullName,
+                    email: editingLearner.email || '',
+                    idNumber: editingLearner.idNumber || '',
+                    phoneNumber: editingLearner.phoneNumber || '',
+                    cohort: editingLearner.cohort || '',
+                    learnershipId: editingLearner.learnershipId || null
+                })
+            });
+            if (res.ok) {
+                showMsg('success', 'Student updated successfully!');
+                setEditingLearner(null);
+                fetchLearners();
+            } else {
+                showMsg('error', 'Failed to update student.');
+            }
+        } catch (err) {
+            showMsg('error', 'Network error.');
+        }
+    };
 
     const handleCreateModule = async (e) => {
         e.preventDefault();
@@ -1127,7 +1158,21 @@ const AdminDashboard = () => {
                                             <td className="p-3 text-slate-500">{l.cohort || 'N/A'}</td>
                                             <td className="p-3 text-slate-600 font-medium">{l.learnershipName || 'Unassigned'}</td>
                                             <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                                                <button 
+                                                <button
+                                                    onClick={() => setEditingLearner({
+                                                        id: l.id,
+                                                        fullName: l.fullName,
+                                                        email: l.email || '',
+                                                        idNumber: l.idNumber || '',
+                                                        phoneNumber: l.phoneNumber || '',
+                                                        cohort: l.cohort || '',
+                                                        learnershipId: l.learnershipId || ''
+                                                    })}
+                                                    className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200/80 hover:text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
                                                     onClick={() => handleResetPassword(l.id, l.fullName)}
                                                     className="bg-blue-50 text-blue-600 border border-blue-200/50 hover:bg-blue-100 hover:text-blue-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
                                                 >
@@ -1395,6 +1440,101 @@ const AdminDashboard = () => {
                                     Cancel
                                 </button>
                                 <button 
+                                    type="submit"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingLearner && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xl w-full max-w-md space-y-6 relative text-slate-800">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-base font-extrabold text-slate-900">Edit Student</h3>
+                            <button
+                                onClick={() => setEditingLearner(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateLearner} className="space-y-4 text-left">
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={editingLearner.fullName}
+                                    onChange={e => setEditingLearner({...editingLearner, fullName: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Email</label>
+                                <input
+                                    type="email"
+                                    value={editingLearner.email || ''}
+                                    onChange={e => setEditingLearner({...editingLearner, email: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">ID / Passport Number</label>
+                                <input
+                                    type="text"
+                                    value={editingLearner.idNumber || ''}
+                                    onChange={e => setEditingLearner({...editingLearner, idNumber: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Phone Number</label>
+                                <input
+                                    type="text"
+                                    value={editingLearner.phoneNumber || ''}
+                                    onChange={e => setEditingLearner({...editingLearner, phoneNumber: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Cohort</label>
+                                <input
+                                    type="text"
+                                    value={editingLearner.cohort || ''}
+                                    onChange={e => setEditingLearner({...editingLearner, cohort: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Learnership</label>
+                                <select
+                                    value={editingLearner.learnershipId || ''}
+                                    onChange={e => setEditingLearner({...editingLearner, learnershipId: e.target.value})}
+                                    className="w-full px-3.5 py-2 text-xs border rounded-xl"
+                                >
+                                    <option value="">-- Unassigned --</option>
+                                    {learnerships.map(l => (
+                                        <option key={l.id} value={l.id}>{l.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingLearner(null)}
+                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
                                     type="submit"
                                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm"
                                 >
