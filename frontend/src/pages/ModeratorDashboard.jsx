@@ -144,21 +144,21 @@ const ModeratorDashboard = () => {
     if (!token) return null;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
             {/* Header */}
-            <header className="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between sticky top-0 z-40">
+            <header className="px-6 py-4 bg-linear-to-r from-slate-900 to-emerald-950 border-b border-slate-800 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center font-extrabold text-lg shadow-sm border border-emerald-500/15">
+                    <div className="w-10 h-10 bg-emerald-500/10 text-emerald-300 rounded-2xl flex items-center justify-center font-extrabold text-lg shadow-sm border border-emerald-500/15">
                         M
                     </div>
                     <div>
                         <h1 className="text-base font-extrabold text-white">Moderator Evaluation Portal</h1>
-                        <p className="text-[10px] text-slate-500 font-sans tracking-wide uppercase">Review and Moderation console</p>
+                        <p className="text-[10px] text-slate-300 font-sans tracking-wide uppercase">Review and Moderation console</p>
                     </div>
                 </div>
-                <button 
+                <button
                     onClick={handleSignout}
-                    className="bg-slate-800 hover:bg-slate-700/80 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer"
+                    className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer"
                 >
                     Sign Out
                 </button>
@@ -167,7 +167,7 @@ const ModeratorDashboard = () => {
             {/* Alert toast */}
             {alert.message && (
                 <div className={`fixed top-18 right-6 z-50 p-4 rounded-2xl text-xs font-semibold shadow-xl border ${
-                    alert.type === 'success' ? 'bg-emerald-950/80 border-emerald-800 text-emerald-400' : 'bg-rose-950/80 border-rose-800 text-rose-400'
+                    alert.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'
                 }`}>
                     {alert.message}
                 </div>
@@ -177,16 +177,16 @@ const ModeratorDashboard = () => {
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Left Side Filter Panels */}
                 <div className="md:col-span-1 space-y-6">
-                    <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 space-y-4">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Filters</h3>
-                        
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Filters</h3>
+
                         {/* Modules Filter */}
                         <div className="space-y-1.5">
                             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Select Module</label>
                             <select
                                 value={selectedModuleId}
                                 onChange={(e) => handleSelectModule(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 transition-colors"
                             >
                                 <option value="">-- All Modules --</option>
                                 {modules.map(m => (
@@ -201,7 +201,7 @@ const ModeratorDashboard = () => {
                             <select
                                 value={selectedSessionId}
                                 onChange={(e) => handleSelectSession(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 transition-colors"
                             >
                                 <option value="">-- Select Active Window --</option>
                                 {filteredSessions.map(s => (
@@ -214,28 +214,28 @@ const ModeratorDashboard = () => {
 
                 {/* Right Side Submissions List */}
                 <div className="md:col-span-3">
-                    <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-6 h-full flex flex-col justify-between min-h-[60vh]">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 h-full flex flex-col justify-between min-h-[60vh] shadow-sm">
                         <div className="space-y-6">
-                            <div className="border-b border-slate-800/80 pb-4">
-                                <h2 className="text-base font-extrabold text-white">Student Submissions</h2>
-                                <p className="text-xs text-slate-400 mt-1">Review, inspect, and mark submitted documents for the selected session.</p>
+                            <div className="border-b border-slate-200 pb-4">
+                                <h2 className="text-base font-extrabold text-slate-900">Student Submissions</h2>
+                                <p className="text-xs text-slate-500 mt-1">Review, inspect, and mark submitted documents for the selected session.</p>
                             </div>
 
                             {loading ? (
                                 <div className="text-center py-12 text-slate-400 text-xs animate-pulse">Loading submissions...</div>
                             ) : !selectedSessionId ? (
-                                <div className="text-center py-16 text-slate-500 text-xs">
+                                <div className="text-center py-16 text-slate-400 text-xs">
                                     Please select an Intake Window from the sidebar to inspect student submissions.
                                 </div>
                             ) : submissions.length === 0 ? (
-                                <div className="text-center py-16 text-slate-500 text-xs">
+                                <div className="text-center py-16 text-slate-400 text-xs">
                                     No student submissions have been made for this intake session yet.
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-xs border-collapse">
                                         <thead>
-                                            <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                                            <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                                                 <th className="py-3 px-4">Learner Code</th>
                                                 <th className="py-3 px-4">Full Name</th>
                                                 <th className="py-3 px-4">File Submitted</th>
@@ -247,22 +247,22 @@ const ModeratorDashboard = () => {
                                         </thead>
                                         <tbody>
                                             {submissions.map(sub => (
-                                                <tr key={sub.submissionId} className="border-b border-slate-800/50 hover:bg-black/5 transition-colors">
-                                                    <td className="py-3 px-4 font-semibold text-[#0f172a]">{sub.learnerCode}</td>
-                                                    <td className="py-3 px-4 font-semibold text-[#0f172a]">{sub.fullName}</td>
-                                                    <td className="py-3 px-4 text-slate-400 truncate max-w-[150px]" title={sub.originalFilename}>
+                                                <tr key={sub.submissionId} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-slate-700">{sub.learnerCode}</td>
+                                                    <td className="py-3 px-4 font-semibold text-slate-900">{sub.fullName}</td>
+                                                    <td className="py-3 px-4 text-slate-500 truncate max-w-[150px]" title={sub.originalFilename}>
                                                         {sub.originalFilename}
                                                     </td>
-                                                    <td className="py-3 px-4 text-slate-500">
+                                                    <td className="py-3 px-4 text-slate-400">
                                                         {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : 'N/A'}
                                                     </td>
                                                     <td className="py-3 px-4">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${getStatusBadgeClasses(sub.status, 'dark')}`}>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${getStatusBadgeClasses(sub.status, 'light')}`}>
                                                             {getStatusLabel(sub.status)}
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-4">
-                                                        <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="dark" />
+                                                        <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />
                                                     </td>
                                                     <td className="py-3 px-4 text-right">
                                                         <button
