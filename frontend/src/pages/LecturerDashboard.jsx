@@ -596,7 +596,7 @@ const LecturerDashboard = () => {
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all relative ${
                                         activeTab === tab.id
-                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                            ? 'bg-[#C8F25A] text-slate-900 shadow-md shadow-black/20'
                                             : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                                     }`}
                                 >

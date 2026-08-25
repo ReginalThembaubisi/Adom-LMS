@@ -21,6 +21,11 @@
   --color-blue-700: #3B2ECC; /* Indigo hover/darker */
   --color-blue-800: #2E2499;
   --color-blue-900: #211A6B;
+  --color-indigo-50: #EEECFF;
+  --color-indigo-300: #6C5DFF;
+  --color-indigo-500: #6C5DFF;
+  --color-indigo-600: #4A3AFF;
+  --color-indigo-700: #3B2ECC;
 }
 
 :root {
@@ -168,7 +173,7 @@ input:focus, select:focus, textarea:focus {
 .tab-btn.active {
   color: #fff;
   background: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  box-shadow: var(--glow-shadow);
 }
 
 /* Card base style */
@@ -222,7 +227,7 @@ input:focus, select:focus, textarea:focus {
   transform: translateY(-1px);
   border-color: var(--primary-color);
   background: #fff;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+  box-shadow: var(--glow-shadow);
 }
 
 .module-meta-info {
@@ -360,7 +365,7 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--border-radius);
   font-weight: 600;
   font-size: 0.85rem;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  box-shadow: var(--glow-shadow);
   transition: all 0.2s ease;
 }
 
@@ -430,13 +435,13 @@ input:focus, select:focus, textarea:focus {
   font-weight: 600;
   border-radius: var(--border-radius);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  box-shadow: var(--glow-shadow);
   transition: all 0.2s ease;
 }
 
 .inline-submit-btn:hover {
   background: var(--primary-hover);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 14px 28px -14px rgba(74, 58, 255, 0.6);
 }
 
 /* Submission Form */
