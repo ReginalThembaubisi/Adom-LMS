@@ -409,23 +409,17 @@ const StudentPortal = () => {
         days.push(new Date(year, month, d));
     }
 
-    const deadlines = [];
-    modules.forEach(m => {
-        if (m.activeSessions) {
-            m.activeSessions.forEach(s => {
-                if (s.endTime) {
-                    deadlines.push({
-                        id: s.id,
-                        title: s.assignmentTitle || s.sessionName,
-                        moduleName: m.moduleName,
-                        moduleCode: m.moduleCode,
-                        moduleId: m.id,
-                        dueDate: new Date(s.endTime)
-                    });
-                }
-            });
-        }
-    });
+    // Sourced from the same real timeline data as Upcoming Deadlines, so the
+    // calendar always reflects actual open submission windows.
+    const deadlines = timeline
+        .filter(item => item.endTime)
+        .map(item => ({
+            id: item.sessionId,
+            title: item.slotTitle,
+            moduleName: item.moduleName,
+            moduleId: item.moduleId,
+            dueDate: new Date(item.endTime)
+        }));
 
     if (!learner) return null;
 
@@ -578,8 +572,8 @@ const StudentPortal = () => {
                     <div key={selectedModule ? 'detail' : 'list'} className="space-y-6 animate-fadeIn">
                         {!selectedModule ? (
                             <div id="modules-list-view" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                {/* Left Area (Active Modules - 8 Columns) */}
-                                <div className="lg:col-span-8 space-y-6">
+                                {/* Left Area (Active Modules - 8 Columns). Ordered after Deadlines on mobile. */}
+                                <div className="order-2 lg:order-1 lg:col-span-8 space-y-6">
                                     <div className="border-b border-slate-300 pb-3">
                                         <h2 className="text-lg font-bold text-slate-900">My Active Modules</h2>
                                         <p className="text-xs text-slate-500">Select a module to see active courses, learning materials, and grades.</p>
@@ -645,8 +639,8 @@ const StudentPortal = () => {
                                     )}
                                 </div>
 
-                                {/* Right Area (Upcoming Deadlines - 4 Columns) */}
-                                <div className="lg:col-span-4 space-y-6">
+                                {/* Right Area (Upcoming Deadlines - 4 Columns). Ordered first on mobile. */}
+                                <div className="order-1 lg:order-2 lg:col-span-4 space-y-6">
                                     <div className="border-b border-slate-300 pb-3">
                                         <h2 className="text-lg font-bold text-slate-900">Upcoming Deadlines</h2>
                                         <p className="text-xs text-slate-500">Keep track of your upcoming submissions.</p>
@@ -966,12 +960,12 @@ const StudentPortal = () => {
                                         {dayDeadlines.length > 0 && (
                                             <div className="space-y-1 w-full mt-1.5 z-10">
                                                 {dayDeadlines.map(dl => (
-                                                    <button 
+                                                    <button
                                                         key={dl.id}
                                                         onClick={() => {
-                                                            setSelectedModule(null);
-                                                            // Auto navigate to module
-                                                            fetchModuleDetails(dl.moduleId);
+                                                            setActiveTab('modules');
+                                                            openModuleDetails(dl.moduleId);
+                                                            setActiveUploadSessionId(dl.id);
                                                         }}
                                                         className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate flex items-center gap-1 transition-all"
                                                         title={`${dl.title} (${dl.moduleName})`}
