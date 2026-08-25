@@ -651,6 +651,55 @@ const LecturerDashboard = () => {
                                     <h2 className="text-lg font-bold text-slate-900">Module Materials</h2>
                                     <p className="text-xs text-slate-500">Upload syllabus materials, resource worksheets, and manage documents.</p>
                                 </div>
+                                {/* Step 1: Create Module Section */}
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">1. Create Module</h2>
+                                    <p className="text-xs text-slate-500">Add a new module under one of your assigned categories.</p>
+                                </div>
+                                <form onSubmit={handleCreateModule} className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Name *</label>
+                                            <input
+                                                type="text"
+                                                value={moduleName}
+                                                onChange={e => setModuleName(e.target.value)}
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                                required
+                                                placeholder="e.g. System Analysis & Design"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Code</label>
+                                            <input
+                                                type="text"
+                                                value={moduleCode}
+                                                onChange={e => setModuleCode(e.target.value)}
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                                placeholder="e.g. SAD2026"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Category *</label>
+                                        <select
+                                            value={categoryId}
+                                            onChange={e => setCategoryId(e.target.value)}
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                            required
+                                        >
+                                            <option value="">-- Choose Category --</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.categoryType}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
+                                        Create Module
+                                    </button>
+                                </form>
+                            </div>
                                 {/* Step 2: My Assigned Modules */}
                             <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
@@ -838,59 +887,10 @@ const LecturerDashboard = () => {
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                     <div className="lg:col-span-6 space-y-6">
-                                        {/* Step 1: Create Module Section */}
+                                        {/* Step 1: Schedule Intake Session */}
                             <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900">1. Create Module</h2>
-                                    <p className="text-xs text-slate-500">Add a new module under one of your assigned categories.</p>
-                                </div>
-                                <form onSubmit={handleCreateModule} className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Name *</label>
-                                            <input 
-                                                type="text" 
-                                                value={moduleName} 
-                                                onChange={e => setModuleName(e.target.value)} 
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                                required 
-                                                placeholder="e.g. System Analysis & Design" 
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Module Code</label>
-                                            <input 
-                                                type="text" 
-                                                value={moduleCode} 
-                                                onChange={e => setModuleCode(e.target.value)} 
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                                placeholder="e.g. SAD2026" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Category *</label>
-                                        <select 
-                                            value={categoryId} 
-                                            onChange={e => setCategoryId(e.target.value)} 
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs" 
-                                            required
-                                        >
-                                            <option value="">-- Choose Category --</option>
-                                            {categories.map(c => (
-                                                <option key={c.id} value={c.id}>{c.categoryType}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150">
-                                        Create Module
-                                    </button>
-                                </form>
-                            </div>
-                                        {/* Step 3: Schedule Intake Session */}
-                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
-                                <div>
-                                    <h2 className="text-lg font-bold text-slate-900">3. Schedule Intake Session</h2>
+                                    <h2 className="text-lg font-bold text-slate-900">1. Schedule Intake Session</h2>
                                     <p className="text-xs text-slate-500">Open a timing slot where students can upload files for their module assignments.</p>
                                 </div>
                                 {modules.length === 0 ? (
@@ -985,10 +985,10 @@ const LecturerDashboard = () => {
                             </div>
                                     </div>
                                     <div className="lg:col-span-6">
-                                        {/* Step 4: Active Intake Windows */}
+                                        {/* Step 2: Active Intake Windows */}
                             <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 flex flex-col space-y-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900">4. Active Intake Windows</h2>
+                                    <h2 className="text-lg font-bold text-slate-900">2. Active Intake Windows</h2>
                                     <p className="text-xs text-slate-500">Manage ongoing submission slots.</p>
                                 </div>
                                 <div className="space-y-4 max-h-[720px] overflow-y-auto pr-1">
