@@ -45,9 +45,11 @@ public class CloudinaryService {
                 ? originalFilename.substring(0, originalFilename.lastIndexOf('.'))
                 : originalFilename;
         String publicId = "lms_files/" + System.currentTimeMillis() + "_" + nameWithoutExtension.replaceAll("[^a-zA-Z0-9-]", "_");
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+        // Stream directly to Cloudinary instead of loading the entire file into heap
+        Map uploadResult = cloudinary.uploader().uploadLarge(file.getInputStream(), ObjectUtils.asMap(
             "resource_type", "raw",
-            "public_id", publicId
+            "public_id", publicId,
+            "chunk_size", 6_000_000
         ));
         return (String) uploadResult.get("secure_url");
     }

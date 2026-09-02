@@ -16,6 +16,19 @@ export default defineConfig({
   },
   build: {
     outDir: '../src/main/resources/static',
-    emptyOutDir: true
+    emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // pdfjs worker + core — only loaded for grader routes
+          'pdf-engine': ['pdfjs-dist'],
+          // jsPDF annotation flattener — same routes
+          'pdf-export': ['jspdf'],
+          // React runtime — shared across all routes
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        }
+      }
+    }
   }
 })

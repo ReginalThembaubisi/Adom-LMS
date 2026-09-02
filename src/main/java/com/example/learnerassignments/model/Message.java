@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 // (learner_id, lecturer_id) is the thread's identity — there's exactly one thread
 // per student/facilitator relationship, not per module or session.
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {
+    @Index(name = "idx_message_thread",     columnList = "learner_id,lecturer_id"),
+    @Index(name = "idx_message_sender",     columnList = "sender_type"),
+    @Index(name = "idx_message_read",       columnList = "read_at")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
