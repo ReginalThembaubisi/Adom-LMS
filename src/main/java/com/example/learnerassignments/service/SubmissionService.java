@@ -152,7 +152,10 @@ public class SubmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Submission session not found with id: " + sessionId));
 
         Assignment assignment = session.getAssignment();
-        List<Learner> allLearners = learnerRepository.findAll();
+        Long moduleId = assignment.getModule() != null ? assignment.getModule().getId() : null;
+        List<Learner> allLearners = moduleId != null
+                ? learnerRepository.findByModules_Id(moduleId)
+                : learnerRepository.findAll();
         List<Submission> submissions = submissionRepository.findBySessionId(sessionId);
 
         Map<Long, List<Submission>> submissionsByLearnerMap = submissions.stream()
@@ -217,12 +220,12 @@ public class SubmissionService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with id: " + assignmentId));
 
-        List<Learner> allLearners = learnerRepository.findAll();
+        Long moduleId = assignment.getModule() != null ? assignment.getModule().getId() : null;
+        List<Learner> allLearners = moduleId != null
+                ? learnerRepository.findByModules_Id(moduleId)
+                : learnerRepository.findAll();
 
-        // Get all submissions for sessions linked to this assignment
-        List<SubmissionSession> sessions = sessionRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(s -> s.getAssignment().getId().equals(assignmentId))
-                .collect(Collectors.toList());
+        List<SubmissionSession> sessions = sessionRepository.findByAssignmentId(assignmentId);
 
         List<Long> sessionIds = sessions.stream().map(SubmissionSession::getId).collect(Collectors.toList());
 
