@@ -26,4 +26,5 @@ public class StudentSubmissionHistoryDto {
     private String gradedByName;
     private Integer marksAwarded;
     private String markedFilePath;
+    private boolean hasAnnotations;
 }

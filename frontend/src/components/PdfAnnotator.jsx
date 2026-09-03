@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { drawStroke } from '../utils/pdfAnnotations';
 
 let _pdfjsLib = null;
 async function getPdfjs() {
@@ -16,53 +17,15 @@ const COLORS = ['#e34948', '#0ca30c', '#2a78d6', '#111111'];
 const RENDER_SCALE = 1.5;
 const WINDOW_BUFFER = 2; // pages beyond the visible area to keep rendered
 
-function drawStroke(ctx, stroke) {
-    if (stroke.tool === 'tick') {
-        const { x, y, color, size } = stroke;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(2.5, size * 0.16);
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x - size * 0.5, y);
-        ctx.lineTo(x - size * 0.15, y + size * 0.4);
-        ctx.lineTo(x + size * 0.55, y - size * 0.5);
-        ctx.stroke();
-        return;
-    }
-    if (stroke.tool === 'cross') {
-        const { x, y, color, size } = stroke;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(2.5, size * 0.16);
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x - size * 0.45, y - size * 0.45);
-        ctx.lineTo(x + size * 0.45, y + size * 0.45);
-        ctx.moveTo(x + size * 0.45, y - size * 0.45);
-        ctx.lineTo(x - size * 0.45, y + size * 0.45);
-        ctx.stroke();
-        return;
-    }
-    if (stroke.points.length < 2) return;
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.thickness;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    stroke.points.forEach((p, i) => {
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-    });
-    ctx.stroke();
-}
-
 // Continuous-scroll annotator: all pages stacked vertically in one scrollable container.
 // Three canvas layers per page — pdf (rendered page), annot (committed strokes, static),
 // live (current in-progress stroke only) — so pointer-move only touches one cheap canvas
 // instead of clearing and replaying all history on every frame. An IntersectionObserver
 // manages a render window of visible±WINDOW_BUFFER pages; pages outside it are replaced by
 // correctly-sized placeholder divs so the scrollbar height never jumps.
-const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
+// initialStrokes: pre-loaded annotation data from the server ({pageNum: [{...},...], ...})
+// onSave(annotationsJson): called with the plain stroke object (not a Blob) when grader saves
+const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }) => {
     const [pdfDoc, setPdfDoc] = useState(null);
     const [numPages, setNumPages] = useState(0);
     const [loadError, setLoadError] = useState('');
@@ -70,7 +33,6 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     const [color, setColor] = useState(COLORS[0]);
     const [thickness, setThickness] = useState(3);
     const [, bumpVersion] = useState(0);
-    const [saveProgress, setSaveProgress] = useState(null);
     // [null, {width, height}, ...] — 1-indexed so pageViewports[pageNum] works directly
     const [pageViewports, setPageViewports] = useState([]);
     const [windowedPages, setWindowedPages] = useState(new Set());
@@ -111,7 +73,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         setCenterPage(1);
         visiblePagesRef.current.clear();
         lastAnnotatedPageRef.current = 1;
-        strokesByPageRef.current = {};
+        // Seed with pre-loaded strokes so a grader reopening a submission sees their prior marks
+        strokesByPageRef.current = initialStrokes ? JSON.parse(JSON.stringify(initialStrokes)) : {};
         pageBitmapCacheRef.current.clear();
         renderedPagesRef.current.clear();
 
@@ -349,43 +312,12 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    // Save: unchanged from paged version — jsPDF, ImageBitmap cache, per-page yield, progress %
-    const handleSave = async () => {
+    // Save: pass the stroke data as a plain JSON object (keyed by page number) instead of
+    // building a rasterized PDF — the parent posts it to /api/submissions/{id}/annotations
+    // and viewers replay the strokes over the original via pdf.js, avoiding size bloat.
+    const handleSave = () => {
         if (!pdfDoc) return;
-        setSaveProgress(0);
-        try {
-            const { jsPDF } = await import('jspdf');
-            const firstPage = await pdfDoc.getPage(1);
-            const firstView = firstPage.getViewport({ scale: 1 });
-            const doc = new jsPDF({ unit: 'pt', format: [firstView.width, firstView.height] });
-
-            for (let i = 1; i <= numPages; i++) {
-                setSaveProgress(Math.round((i - 1) / numPages * 100));
-                await new Promise(r => setTimeout(r, 0));
-                const page = await pdfDoc.getPage(i);
-                const renderViewport = page.getViewport({ scale: RENDER_SCALE });
-                const canvas = document.createElement('canvas');
-                canvas.width = renderViewport.width;
-                canvas.height = renderViewport.height;
-                const ctx = canvas.getContext('2d');
-                const cached = pageBitmapCacheRef.current.get(i);
-                if (cached) {
-                    ctx.drawImage(cached, 0, 0);
-                } else {
-                    await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
-                }
-                (strokesByPageRef.current[i] || []).forEach(s => drawStroke(ctx, s));
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                const pageView1 = page.getViewport({ scale: 1 });
-                if (i > 1) doc.addPage([pageView1.width, pageView1.height]);
-                doc.addImage(dataUrl, 'JPEG', 0, 0, pageView1.width, pageView1.height);
-            }
-
-            setSaveProgress(100);
-            onSave(doc.output('blob'));
-        } finally {
-            setSaveProgress(null);
-        }
+        onSave(strokesByPageRef.current);
     };
 
     // Derived values for toolbar
@@ -455,9 +387,9 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                 </button>
 
                 <button type="button" onClick={handleSave}
-                    disabled={saving || saveProgress !== null || !hasAnyAnnotations}
+                    disabled={saving || !hasAnyAnnotations}
                     className="ml-auto text-xs font-bold py-1.5 px-4 rounded-lg cursor-pointer transition-colors disabled:opacity-40 bg-emerald-600 hover:bg-emerald-700 text-[#f8fafc]">
-                    {saving ? 'Saving...' : saveProgress !== null ? `Saving ${saveProgress}%` : 'Save Marked Copy'}
+                    {saving ? 'Saving...' : 'Save Marked Copy'}
                 </button>
             </div>
 

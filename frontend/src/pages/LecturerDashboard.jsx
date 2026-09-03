@@ -1215,16 +1215,17 @@ const LecturerDashboard = () => {
                         }
                         inspectSubmissions(activeSessionId);
                     }}
-                    onSaveMarkedCopy={async (submissionId, blob) => {
-                        const formData = new FormData();
-                        formData.append('file', blob, 'marked.pdf');
-                        const res = await fetch(`/api/lecturer/submissions/${submissionId}/marked-copy`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Basic ${token}` },
-                            body: formData
+                    onSaveMarkedCopy={async (submissionId, annotationsJson) => {
+                        const res = await fetch(`/api/submissions/${submissionId}/annotations`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Basic ${token}`,
+                            },
+                            body: JSON.stringify(annotationsJson),
                         });
                         if (!res.ok) {
-                            throw new Error('Failed to save marked copy.');
+                            throw new Error('Failed to save annotations.');
                         }
                     }}
                     role="Facilitator"

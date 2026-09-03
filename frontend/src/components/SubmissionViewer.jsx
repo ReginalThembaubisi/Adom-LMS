@@ -1,20 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
+const PdfReplay = lazy(() => import('./PdfReplay'));
 
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
 // document in-app (no download) alongside its assessment outcome and feedback.
 const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
-    // A marked copy is always baked as a PDF regardless of the original format, since it's
-    // flattened from rendered pages.
-    const isPdf = !!submission.markedFilePath || submission.originalFilename?.toLowerCase().endsWith('.pdf');
-    const isDoc = !submission.markedFilePath && (submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx'));
+    const [annotationStrokes, setAnnotationStrokes] = useState(null);
+    const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
+
+    // Fetch saved stroke data when the submission has vector annotations (new path).
+    useEffect(() => {
+        if (!submission.hasAnnotations) return;
+        let cancelled = false;
+        const url = `${window.location.origin}/api/submissions/${submission.submissionId}/annotations?learnerCode=${encodeURIComponent(learnerCode)}`;
+        fetch(url)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { if (!cancelled) setAnnotationStrokes(data || {}); })
+            .catch(() => { if (!cancelled) setAnnotationStrokes({}); })
+            .finally(() => { if (!cancelled) setAnnotationsLoading(false); });
+        return () => { cancelled = true; };
+    }, [submission.submissionId, submission.hasAnnotations, learnerCode]);
+
+    // hasAnnotations → PdfReplay (original PDF + vector strokes replayed client-side)
+    // hasMarkedCopy (legacy) → iframe serving the rasterized marked PDF
+    // else → iframe serving the original file
+    const hasAnnotations = submission.hasAnnotations;
+    const hasMarkedCopy = !!submission.markedFilePath && !hasAnnotations;
+    const isPdf = hasAnnotations || hasMarkedCopy || submission.originalFilename?.toLowerCase().endsWith('.pdf');
+    const isDoc = !hasAnnotations && !hasMarkedCopy && (submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx'));
 
     // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
     // files — so the response always carries a Content-Type the browser can render inline.
     // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
     // blank when linked to directly.
-    const hasMarkedCopy = !!submission.markedFilePath;
     const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}${hasMarkedCopy ? '&marked=true' : ''}`;
     const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
@@ -46,11 +65,24 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                 <div className="flex-1 flex overflow-hidden">
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
-                            {isPdf ? (
+                            {hasAnnotations ? (
+                                // Vector annotations path: render original PDF + replay strokes.
+                                // No re-download of a large rasterized file — strokes load as JSON.
+                                annotationsLoading ? (
+                                    <p className="text-xs text-slate-500">Loading marked copy...</p>
+                                ) : (
+                                    <Suspense fallback={<p className="text-xs text-slate-500">Loading viewer...</p>}>
+                                        <PdfReplay
+                                            documentUrl={documentUrl}
+                                            strokes={annotationStrokes || {}}
+                                        />
+                                    </Suspense>
+                                )
+                            ) : isPdf ? (
+                                // Legacy path (rasterized marked copy) or unmarked original PDF.
                                 // #toolbar=0 hides the browser's native PDF viewer chrome (which
                                 // otherwise adds its own print/save controls) — viewing stays
-                                // strictly in-app, no download affordance. Multi-page documents
-                                // are still fully navigable via the viewer's own scroll/scrollbar.
+                                // strictly in-app, no download affordance.
                                 <iframe
                                     src={`${documentUrl}#toolbar=0`}
                                     className="w-full h-full border-none"
@@ -116,7 +148,7 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                                     </div>
                                 )}
 
-                                {hasMarkedCopy && (
+                                {(hasAnnotations || hasMarkedCopy) && (
                                     <p className="text-[10px] text-blue-400">Showing your facilitator's marked-up copy.</p>
                                 )}
 

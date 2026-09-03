@@ -113,6 +113,7 @@ public class LearnerService {
                         .gradedByName(s.getGradedByName())
                         .marksAwarded(s.getMarksAwarded())
                         .markedFilePath(s.getMarkedFilePath())
+                        .hasAnnotations(s.getAnnotationsJson() != null)
                         .build())
                 .collect(Collectors.toList());
     }

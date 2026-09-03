@@ -69,8 +69,16 @@ public class Submission {
     // A flattened copy of the original document with the grader's pen/tick annotations baked
     // in as images, generated client-side and uploaded once grading is saved. Separate from
     // filePath (the learner's original, untouched submission) so the original is never lost.
+    // Legacy path — new submissions store strokes in annotationsJson instead.
     @Column(name = "marked_file_path", length = 500)
     private String markedFilePath;
+
+    // Vector stroke data saved by the in-app annotator: JSON object keyed by page number,
+    // each value an array of stroke descriptors ({tool, color, thickness, points}).
+    // Stored instead of a rasterized PDF so the original file is never re-encoded and the
+    // marked view loads by replaying strokes over the original via pdf.js client-side.
+    @Column(name = "annotations_json", columnDefinition = "TEXT")
+    private String annotationsJson;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

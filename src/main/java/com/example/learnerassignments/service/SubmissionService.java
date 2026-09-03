@@ -187,6 +187,7 @@ public class SubmissionService {
                         .gradedByName(latestSubmission.getGradedByName())
                         .marksAwarded(latestSubmission.getMarksAwarded())
                         .markedFilePath(latestSubmission.getMarkedFilePath())
+                        .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -263,6 +264,7 @@ public class SubmissionService {
                         .gradedByName(latestSubmission.getGradedByName())
                         .marksAwarded(latestSubmission.getMarksAwarded())
                         .markedFilePath(latestSubmission.getMarkedFilePath())
+                        .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -437,6 +439,21 @@ public class SubmissionService {
         } catch (IOException | InterruptedException e) {
             throw new ResourceNotFoundException("Could not retrieve file from storage: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    public void saveAnnotations(Long id, String json) {
+        Submission s = submissionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
+        s.setAnnotationsJson(json);
+        submissionRepository.save(s);
+    }
+
+    @Transactional(readOnly = true)
+    public String getAnnotationsJson(Long id) {
+        return submissionRepository.findById(id)
+                .map(Submission::getAnnotationsJson)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
     }
 
     public String resolveContentType(String originalFilename) {
