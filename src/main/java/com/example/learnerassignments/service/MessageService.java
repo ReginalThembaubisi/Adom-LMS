@@ -5,11 +5,9 @@ import com.example.learnerassignments.dto.MessageThreadSummaryDto;
 import com.example.learnerassignments.dto.PersonSummaryDto;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.*;
-import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.LearnerRepository;
 import com.example.learnerassignments.repository.LecturerRepository;
 import com.example.learnerassignments.repository.MessageRepository;
-import com.example.learnerassignments.repository.ModuleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +23,6 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final LearnerRepository learnerRepository;
     private final LecturerRepository lecturerRepository;
-    private final ModuleRepository moduleRepository;
     private final EmailService emailService;
 
     // A facilitator "owns" a learner only if the learner is enrolled in at least one
@@ -68,14 +65,7 @@ public class MessageService {
 
     @Transactional(readOnly = true)
     public List<Learner> getLearnersForLecturer(Long lecturerId) {
-        List<Module> modules = moduleRepository.findByCategoryLecturerId(lecturerId);
-        Map<Long, Learner> byId = new LinkedHashMap<>();
-        for (Module module : modules) {
-            for (Learner learner : learnerRepository.findByModules_Id(module.getId())) {
-                byId.putIfAbsent(learner.getId(), learner);
-            }
-        }
-        return new ArrayList<>(byId.values());
+        return learnerRepository.findDistinctByModulesCategoryLecturerId(lecturerId);
     }
 
     // Sends the same message to every student the lecturer teaches — e.g. "online class
@@ -93,18 +83,28 @@ public class MessageService {
     @Transactional(readOnly = true)
     public List<MessageThreadSummaryDto> getThreadSummariesForLearner(Learner learner) {
         List<PersonSummaryDto> facilitators = getFacilitatorsForLearner(learner);
+        if (facilitators.isEmpty()) return List.of();
+
+        List<Message> allMessages = messageRepository.findByLearnerIdOrderByCreatedAtDesc(learner.getId());
+        Map<Long, Message> lastByLecturer = new LinkedHashMap<>();
+        Map<Long, Long> unreadByLecturer = new HashMap<>();
+        for (Message m : allMessages) {
+            Long lid = m.getLecturer().getId();
+            lastByLecturer.putIfAbsent(lid, m);
+            if (m.getSenderType() == SenderType.LECTURER && m.getReadAt() == null) {
+                unreadByLecturer.merge(lid, 1L, Long::sum);
+            }
+        }
+
         List<MessageThreadSummaryDto> summaries = new ArrayList<>();
         for (PersonSummaryDto facilitator : facilitators) {
-            List<Message> thread = messageRepository.findByLearnerIdAndLecturerIdOrderByCreatedAtAsc(learner.getId(), facilitator.getId());
-            Message last = thread.isEmpty() ? null : thread.get(thread.size() - 1);
-            long unread = messageRepository.countByLearnerIdAndLecturerIdAndSenderTypeAndReadAtIsNull(
-                    learner.getId(), facilitator.getId(), SenderType.LECTURER);
+            Message last = lastByLecturer.get(facilitator.getId());
             summaries.add(MessageThreadSummaryDto.builder()
                     .partnerId(facilitator.getId())
                     .partnerName(facilitator.getFullName())
                     .lastMessage(last != null ? last.getBody() : null)
                     .lastMessageAt(last != null ? last.getCreatedAt() : null)
-                    .unreadCount(unread)
+                    .unreadCount(unreadByLecturer.getOrDefault(facilitator.getId(), 0L))
                     .build());
         }
         summaries.sort((a, b) -> {
@@ -117,19 +117,28 @@ public class MessageService {
 
     @Transactional(readOnly = true)
     public List<MessageThreadSummaryDto> getThreadSummariesForLecturer(Long lecturerId) {
-        List<PersonSummaryDto> students = getStudentsForLecturer(lecturerId);
+        List<Learner> learners = learnerRepository.findDistinctByModulesCategoryLecturerId(lecturerId);
+        List<Message> allMessages = messageRepository.findByLecturerIdOrderByCreatedAtDesc(lecturerId);
+
+        Map<Long, Message> lastByLearner = new LinkedHashMap<>();
+        Map<Long, Long> unreadByLearner = new HashMap<>();
+        for (Message m : allMessages) {
+            Long lid = m.getLearner().getId();
+            lastByLearner.putIfAbsent(lid, m);
+            if (m.getSenderType() == SenderType.LEARNER && m.getReadAt() == null) {
+                unreadByLearner.merge(lid, 1L, Long::sum);
+            }
+        }
+
         List<MessageThreadSummaryDto> summaries = new ArrayList<>();
-        for (PersonSummaryDto student : students) {
-            List<Message> thread = messageRepository.findByLearnerIdAndLecturerIdOrderByCreatedAtAsc(student.getId(), lecturerId);
-            Message last = thread.isEmpty() ? null : thread.get(thread.size() - 1);
-            long unread = messageRepository.countByLearnerIdAndLecturerIdAndSenderTypeAndReadAtIsNull(
-                    student.getId(), lecturerId, SenderType.LEARNER);
+        for (Learner learner : learners) {
+            Message last = lastByLearner.get(learner.getId());
             summaries.add(MessageThreadSummaryDto.builder()
-                    .partnerId(student.getId())
-                    .partnerName(student.getFullName())
+                    .partnerId(learner.getId())
+                    .partnerName(learner.getFullName())
                     .lastMessage(last != null ? last.getBody() : null)
                     .lastMessageAt(last != null ? last.getCreatedAt() : null)
-                    .unreadCount(unread)
+                    .unreadCount(unreadByLearner.getOrDefault(learner.getId(), 0L))
                     .build());
         }
         summaries.sort((a, b) -> {

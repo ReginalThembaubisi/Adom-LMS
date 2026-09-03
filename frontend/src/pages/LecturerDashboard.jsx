@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SubmissionMarker from '../components/SubmissionMarker';
 import { GraderBadge } from '../utils/graderBadge';
@@ -55,23 +55,36 @@ const LecturerDashboard = () => {
 
     // Grading state
     const [activeTab, setActiveTab] = useState('overview');
+    const fetchedTabsRef = useRef(new Set());
     const [activeSubmission, setActiveSubmission] = useState(null);
     const [profile, setProfile] = useState(null);
     const [editingProfile, setEditingProfile] = useState(null);
     const [unreadMessages, setUnreadMessages] = useState(0);
 
+    // Unread badge poll — always active regardless of active tab
     useEffect(() => {
-        if (token) {
+        if (!token) return;
+        fetchUnreadMessages();
+        const interval = setInterval(fetchUnreadMessages, 30000);
+        return () => clearInterval(interval);
+    }, [token]);
+
+    // Per-tab data fetch — fires only on first visit to each tab
+    useEffect(() => {
+        if (!token) return;
+        if (fetchedTabsRef.current.has(activeTab)) return;
+        fetchedTabsRef.current.add(activeTab);
+        if (activeTab === 'overview') {
+            fetchProfile();
+            fetchCategories();
+        } else if (activeTab === 'materials') {
             fetchModules();
+        } else if (activeTab === 'setup') {
             fetchSessions();
             fetchAssignments();
-            fetchCategories();
-            fetchProfile();
-            fetchUnreadMessages();
-            const interval = setInterval(fetchUnreadMessages, 30000);
-            return () => clearInterval(interval);
+            fetchModules();
         }
-    }, [token]);
+    }, [activeTab, token]);
 
     const fetchUnreadMessages = async () => {
         try {

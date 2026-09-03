@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
@@ -33,6 +33,7 @@ const AdminDashboard = () => {
     const [editingLearner, setEditingLearner] = useState(null);
     const [staffRole, setStaffRole] = useState('LECTURER');
     const [activeTab, setActiveTab] = useState('overview');
+    const fetchedTabsRef = useRef(new Set());
 
     // Learnership form
     const [learnershipName, setLearnershipName] = useState('');
@@ -54,18 +55,27 @@ const AdminDashboard = () => {
     const [categoryId, setCategoryId] = useState('');
 
     useEffect(() => {
-        if (token) {
+        if (!token) return;
+        if (fetchedTabsRef.current.has(activeTab)) return;
+        fetchedTabsRef.current.add(activeTab);
+        if (activeTab === 'overview') {
             fetchOverview();
+            fetchRegistrationStatus();
+        } else if (activeTab === 'programs') {
+            fetchLearnerships();
+            fetchCategories();
+            fetchLecturers();
+        } else if (activeTab === 'modules') {
+            fetchModules();
+            fetchLearnerships();
+        } else if (activeTab === 'staff') {
             fetchLecturers();
             fetchModerators();
             fetchAssessors();
-            fetchModules();
-            fetchCategories();
-            fetchLearnerships();
-            fetchRegistrationStatus();
+        } else if (activeTab === 'students') {
             fetchLearners();
         }
-    }, [token]);
+    }, [activeTab, token]);
 
     const showMsg = (type, message) => {
         setAlert({ type, message });

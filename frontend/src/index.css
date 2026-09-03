@@ -67,17 +67,6 @@ code, .font-mono, .mono {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Responsive Table Wrapper Rule */
-table {
-  display: block !important;
-  width: 100% !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-table th, table td {
-  white-space: nowrap !important;
-}
-
 /* General classes */
 input, select, textarea {
   background-color: #ffffff;
@@ -808,82 +797,6 @@ table th {
 table td {
   color: var(--text-body) !important;
   border-bottom: 1px solid #EFF0F5 !important;
-}
-
-/* ==========================================================================
-   INLINE STYLE COMPATIBILITY OVERRIDES (WITH HIGH SPECIFICITY / !IMPORTANT)
-   ========================================================================== */
-
-/* Overrides for text highlights and metrics */
-.portal-card span[style*="color: rgb(129, 140, 248)"],
-.portal-card span[style*="color: #818cf8"],
-.portal-card span[style*="color: rgb(192, 132, 252)"],
-.portal-card span[style*="color: #c084fc"] {
-  color: var(--primary-color) !important;
-}
-
-/* Override inline background gradients for custom toggle widgets */
-.portal-card div[style*="background: rgba(255, 255, 255, 0.02)"],
-.portal-card div[style*="background: rgba(255,255,255,0.02)"] {
-  background: #F6F7FB !important;
-  border-color: var(--card-border) !important;
-}
-
-/* Table container styling overrides */
-div[style*="background: rgba(255, 255, 255, 0.02)"],
-div[style*="background: rgba(255,255,255,0.02)"] {
-  background: #F6F7FB !important;
-}
-
-div[style*="background: rgba(15, 23, 42, 0.45)"],
-div[style*="background: rgba(15,23,42,0.45)"] {
-  background: #ffffff !important;
-  border-color: var(--card-border) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
-}
-
-/* Text overrides on cards */
-h2[style*="color: #fff"],
-h2[style*="color: rgb(255, 255, 255)"],
-h3[style*="color: #fff"],
-h3[style*="color: rgb(255, 255, 255)"],
-h4[style*="color: #fff"],
-h4[style*="color: rgb(255, 255, 255)"] {
-  color: var(--text-main) !important;
-}
-
-h3[style*="color: #818cf8"],
-h3[style*="color: rgb(129, 140, 248)"] {
-  color: var(--primary-color) !important;
-  border-bottom: 1px solid var(--card-border) !important;
-}
-
-strong[style*="color: #818cf8"],
-strong[style*="color: rgb(129, 140, 248)"] {
-  color: var(--primary-color) !important;
-}
-
-span[style*="color: #cbd5e1"],
-span[style*="color: rgb(203, 213, 225)"] {
-  color: var(--text-body) !important;
-}
-
-a[style*="color: #818cf8"] {
-  color: var(--primary-color) !important;
-}
-
-/* Welcome prominent card override */
-.portal-card[style*="background: rgba(255, 255, 255, 0.01)"],
-.portal-card[style*="background: rgba(255,255,255,0.01)"] {
-  background: var(--card-bg) !important;
-  border-color: var(--card-border) !important;
-}
-
-/* Option dropdown fields styling */
-select.form-input[style*="color: rgb(255, 255, 255)"],
-select.form-input[style*="color: #fff"] {
-  color: var(--text-main) !important;
-  background-color: var(--input-bg) !important;
 }
 
 /* Mouse reactions and pointer for buttons and links */

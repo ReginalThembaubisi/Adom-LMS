@@ -18,7 +18,7 @@ public class EmailService {
     @Value("${brevo.sender.email:adomtechnologies12@gmail.com}")
     private String fromEmail;
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendRegistrationEmail(String toEmail, String fullName, String studentNumber) {
         if (toEmail == null || toEmail.isBlank()) {
             log.debug("No email address provided for student {}, skipping automated email.", fullName);
@@ -74,7 +74,7 @@ public class EmailService {
         log.info("Successfully dispatched password reset email to {}", toEmail);
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendAssignmentReminderEmail(String toEmail, String fullName, String assignmentTitle, String dueDateStr) {
         if (toEmail == null || toEmail.isBlank()) {
             log.debug("No email address provided for student {}, skipping reminder email.", fullName);
@@ -101,7 +101,7 @@ public class EmailService {
         }
     }
 
-    @Async
+    @Async("emailTaskExecutor")
     public void sendNewMessageEmail(String toEmail, String recipientName, String senderName, String messagePreview) {
         if (toEmail == null || toEmail.isBlank()) {
             log.debug("No email address provided for {}, skipping new-message email.", recipientName);

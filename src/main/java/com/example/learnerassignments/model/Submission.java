@@ -9,7 +9,9 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "submissions")
+@Table(name = "submissions", indexes = {
+    @Index(name = "idx_submission_learner_session", columnList = "learner_id, session_id")
+})
 @SQLRestriction("deleted_at IS NULL")
 @Data
 @NoArgsConstructor

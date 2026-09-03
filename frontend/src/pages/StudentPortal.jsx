@@ -85,6 +85,7 @@ const StudentPortal = () => {
 
     // UI Tab State: 'modules' | 'submit' | 'history'
     const [activeTab, setActiveTab] = useState('modules');
+    const fetchedTabsRef = useRef(new Set());
     const [alert, setAlert] = useState({ type: '', message: '' });
 
     // Modules state
@@ -127,17 +128,26 @@ const StudentPortal = () => {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Fetch initial data
+    // Unread badge poll — always active regardless of active tab
     useEffect(() => {
-        if (studentNumber) {
+        if (!studentNumber) return;
+        fetchUnreadMessages();
+        const interval = setInterval(fetchUnreadMessages, 30000);
+        return () => clearInterval(interval);
+    }, [studentNumber]);
+
+    // Per-tab data fetch — fires only on first visit to each tab
+    useEffect(() => {
+        if (!studentNumber) return;
+        if (fetchedTabsRef.current.has(activeTab)) return;
+        fetchedTabsRef.current.add(activeTab);
+        if (activeTab === 'modules') {
             fetchModules();
             fetchTimeline();
+        } else if (activeTab === 'history') {
             fetchHistory();
-            fetchUnreadMessages();
-            const interval = setInterval(fetchUnreadMessages, 30000);
-            return () => clearInterval(interval);
         }
-    }, [studentNumber]);
+    }, [activeTab, studentNumber]);
 
     const fetchUnreadMessages = async () => {
         try {

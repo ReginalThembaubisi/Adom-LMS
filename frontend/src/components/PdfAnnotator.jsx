@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { jsPDF } from 'jspdf';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+let _pdfjsLib = null;
+async function getPdfjs() {
+    if (_pdfjsLib) return _pdfjsLib;
+    const [lib, workerUrl] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+    ]);
+    lib.GlobalWorkerOptions.workerSrc = workerUrl.default;
+    _pdfjsLib = lib;
+    return lib;
+}
 
 const COLORS = ['#e34948', '#0ca30c', '#2a78d6', '#111111'];
 const RENDER_SCALE = 1.5;
@@ -63,19 +70,22 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     const [color, setColor] = useState(COLORS[0]);
     const [thickness, setThickness] = useState(3);
     const [, bumpVersion] = useState(0);
+    const [saveProgress, setSaveProgress] = useState(null);
 
     const pageCanvasRef = useRef(null);
     const annotationCanvasRef = useRef(null);
     const strokesByPageRef = useRef({});
     const isDrawingRef = useRef(false);
     const currentStrokeRef = useRef(null);
+    const pageBitmapCacheRef = useRef(new Map());
 
     useEffect(() => {
         let cancelled = false;
         setLoadError('');
         setPdfDoc(null);
         strokesByPageRef.current = {};
-        pdfjsLib.getDocument({ url: documentUrl }).promise.then(doc => {
+        pageBitmapCacheRef.current.clear();
+        getPdfjs().then(pdfjsLib => pdfjsLib.getDocument({ url: documentUrl }).promise).then(doc => {
             if (cancelled) return;
             setPdfDoc(doc);
             setNumPages(doc.numPages);
@@ -98,7 +108,25 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     useEffect(() => {
         if (!pdfDoc) return;
         let cancelled = false;
-        pdfDoc.getPage(currentPage).then(page => {
+        const pageNum = currentPage;
+        const cached = pageBitmapCacheRef.current.get(pageNum);
+        if (cached) {
+            const pageCanvas = pageCanvasRef.current;
+            const annCanvas = annotationCanvasRef.current;
+            if (!pageCanvas || !annCanvas) return;
+            pageCanvas.width = cached.width;
+            pageCanvas.height = cached.height;
+            pageCanvas.style.width = `${cached.width}px`;
+            pageCanvas.style.height = `${cached.height}px`;
+            annCanvas.width = cached.width;
+            annCanvas.height = cached.height;
+            annCanvas.style.width = `${cached.width}px`;
+            annCanvas.style.height = `${cached.height}px`;
+            pageCanvas.getContext('2d').drawImage(cached, 0, 0);
+            redrawAnnotations();
+            return;
+        }
+        pdfDoc.getPage(pageNum).then(page => {
             if (cancelled) return;
             const viewport = page.getViewport({ scale: RENDER_SCALE });
             const pageCanvas = pageCanvasRef.current;
@@ -118,7 +146,11 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
             annCanvas.style.height = `${viewport.height}px`;
             const ctx = pageCanvas.getContext('2d');
             page.render({ canvasContext: ctx, viewport }).promise.then(() => {
-                if (!cancelled) redrawAnnotations();
+                if (cancelled) return;
+                createImageBitmap(pageCanvas).then(bm => {
+                    pageBitmapCacheRef.current.set(pageNum, bm);
+                }).catch(() => {});
+                redrawAnnotations();
             });
         });
         return () => { cancelled = true; };
@@ -187,28 +219,42 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
 
     const handleSave = async () => {
         if (!pdfDoc) return;
-        const firstPage = await pdfDoc.getPage(1);
-        const firstView = firstPage.getViewport({ scale: 1 });
-        const doc = new jsPDF({ unit: 'pt', format: [firstView.width, firstView.height] });
+        setSaveProgress(0);
+        try {
+            const { jsPDF } = await import('jspdf');
+            const firstPage = await pdfDoc.getPage(1);
+            const firstView = firstPage.getViewport({ scale: 1 });
+            const doc = new jsPDF({ unit: 'pt', format: [firstView.width, firstView.height] });
 
-        for (let i = 1; i <= numPages; i++) {
-            const page = await pdfDoc.getPage(i);
-            const renderViewport = page.getViewport({ scale: RENDER_SCALE });
-            const canvas = document.createElement('canvas');
-            canvas.width = renderViewport.width;
-            canvas.height = renderViewport.height;
-            const ctx = canvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
-            (strokesByPageRef.current[i] || []).forEach(s => drawStroke(ctx, s));
+            for (let i = 1; i <= numPages; i++) {
+                setSaveProgress(Math.round((i - 1) / numPages * 100));
+                await new Promise(r => setTimeout(r, 0));
+                const page = await pdfDoc.getPage(i);
+                const renderViewport = page.getViewport({ scale: RENDER_SCALE });
+                const canvas = document.createElement('canvas');
+                canvas.width = renderViewport.width;
+                canvas.height = renderViewport.height;
+                const ctx = canvas.getContext('2d');
+                const cached = pageBitmapCacheRef.current.get(i);
+                if (cached) {
+                    ctx.drawImage(cached, 0, 0);
+                } else {
+                    await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
+                }
+                (strokesByPageRef.current[i] || []).forEach(s => drawStroke(ctx, s));
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            const pageView1 = page.getViewport({ scale: 1 });
-            if (i > 1) doc.addPage([pageView1.width, pageView1.height]);
-            doc.addImage(dataUrl, 'JPEG', 0, 0, pageView1.width, pageView1.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                const pageView1 = page.getViewport({ scale: 1 });
+                if (i > 1) doc.addPage([pageView1.width, pageView1.height]);
+                doc.addImage(dataUrl, 'JPEG', 0, 0, pageView1.width, pageView1.height);
+            }
+
+            setSaveProgress(100);
+            const blob = doc.output('blob');
+            onSave(blob);
+        } finally {
+            setSaveProgress(null);
         }
-
-        const blob = doc.output('blob');
-        onSave(blob);
     };
 
     if (loadError) {
@@ -282,9 +328,9 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                     </div>
                 )}
 
-                <button type="button" onClick={handleSave} disabled={saving || !hasAnyAnnotations}
+                <button type="button" onClick={handleSave} disabled={saving || saveProgress !== null || !hasAnyAnnotations}
                     className={`text-xs font-bold py-1.5 px-4 rounded-lg cursor-pointer transition-colors disabled:opacity-40 ${numPages > 1 ? '' : 'ml-auto'} bg-emerald-600 hover:bg-emerald-700 text-[#f8fafc]`}>
-                    {saving ? 'Saving...' : 'Save Marked Copy'}
+                    {saving ? 'Saving...' : saveProgress !== null ? `Saving ${saveProgress}%` : 'Save Marked Copy'}
                 </button>
             </div>
 

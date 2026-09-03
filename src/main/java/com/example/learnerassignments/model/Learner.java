@@ -60,7 +60,11 @@ public class Learner {
     @JoinTable(
         name = "learner_modules",
         joinColumns = @JoinColumn(name = "learner_id"),
-        inverseJoinColumns = @JoinColumn(name = "module_id")
+        inverseJoinColumns = @JoinColumn(name = "module_id"),
+        indexes = {
+            @Index(name = "idx_learner_modules_learner", columnList = "learner_id"),
+            @Index(name = "idx_learner_modules_module", columnList = "module_id")
+        }
     )
     private java.util.Set<Module> modules;
 
