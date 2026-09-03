@@ -96,6 +96,9 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     const visiblePagesRef = useRef(new Set());
     // Tracks which pages have had their PDF raster drawn; entries cleared when canvas is unmounted
     const renderedPagesRef = useRef(new Set());
+    // Tracks where the grader last placed a mark — Undo/Clear target this, not scroll position.
+    // centerPage drives the display indicator only; destructive actions follow annotation intent.
+    const lastAnnotatedPageRef = useRef(1);
 
     // Load PDF and fetch all page viewport dimensions before rendering anything,
     // so placeholder divs have correct heights and the scrollbar never jumps.
@@ -107,6 +110,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         setWindowedPages(new Set());
         setCenterPage(1);
         visiblePagesRef.current.clear();
+        lastAnnotatedPageRef.current = 1;
         strokesByPageRef.current = {};
         pageBitmapCacheRef.current.clear();
         renderedPagesRef.current.clear();
@@ -279,6 +283,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
             const stroke = { tool, color, x: point.x, y: point.y, size: 28 };
             if (!strokesByPageRef.current[pageNum]) strokesByPageRef.current[pageNum] = [];
             strokesByPageRef.current[pageNum].push(stroke);
+            lastAnnotatedPageRef.current = pageNum;
             // Draw directly onto the static layer — no clear/replay needed for a new stamp
             const annotCanvas = annotCanvasRefs.current[pageNum];
             if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke);
@@ -313,6 +318,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         if (stroke && stroke.points.length > 1) {
             if (!strokesByPageRef.current[pageNum]) strokesByPageRef.current[pageNum] = [];
             strokesByPageRef.current[pageNum].push(stroke);
+            lastAnnotatedPageRef.current = pageNum;
             // Accumulate onto static layer (no clear+replay — just draw the new stroke)
             const annotCanvas = annotCanvasRefs.current[pageNum];
             if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke);
@@ -320,18 +326,21 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         bumpVersion(n => n + 1);
     };
 
-    // Undo and clear operate on the page nearest the viewport centre
+    // Undo and clear target the page the grader last annotated, not the scroll position.
+    // centerPage is display-only so it doesn't matter whether the grader has scrolled away.
     const handleUndo = () => {
-        const strokes = strokesByPageRef.current[centerPage] || [];
+        const target = lastAnnotatedPageRef.current;
+        const strokes = strokesByPageRef.current[target] || [];
         if (!strokes.length) return;
         strokes.pop();
-        redrawStaticLayer(centerPage); // full replay needed to remove the last stroke
+        redrawStaticLayer(target); // full replay needed to remove the last stroke
         bumpVersion(n => n + 1);
     };
 
     const handleClearPage = () => {
-        strokesByPageRef.current[centerPage] = [];
-        redrawStaticLayer(centerPage);
+        const target = lastAnnotatedPageRef.current;
+        strokesByPageRef.current[target] = [];
+        redrawStaticLayer(target);
         bumpVersion(n => n + 1);
     };
 
@@ -380,7 +389,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     };
 
     // Derived values for toolbar
-    const centerPageStrokes = (strokesByPageRef.current[centerPage] || []).length;
+    const lastAnnotatedPageStrokes = (strokesByPageRef.current[lastAnnotatedPageRef.current] || []).length;
     const hasAnyAnnotations = Object.values(strokesByPageRef.current).some(s => s && s.length > 0);
     const markedPageNums = Object.entries(strokesByPageRef.current)
         .filter(([, s]) => s && s.length > 0)
@@ -436,11 +445,11 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                     </div>
                 )}
 
-                <button type="button" onClick={handleUndo} disabled={centerPageStrokes === 0}
+                <button type="button" onClick={handleUndo} disabled={lastAnnotatedPageStrokes === 0}
                     className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                     Undo
                 </button>
-                <button type="button" onClick={handleClearPage} disabled={centerPageStrokes === 0}
+                <button type="button" onClick={handleClearPage} disabled={lastAnnotatedPageStrokes === 0}
                     className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155] disabled:opacity-40 cursor-pointer">
                     Clear Page
                 </button>
