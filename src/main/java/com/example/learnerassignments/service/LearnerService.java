@@ -49,9 +49,7 @@ public class LearnerService {
         if (request.getLearnershipId() != null) {
             learnership = learnershipRepository.findById(request.getLearnershipId()).orElse(null);
             if (learnership != null) {
-                learnershipModules = moduleRepository.findAll().stream()
-                        .filter(m -> m.getCategory() != null && m.getCategory().getLearnership() != null && m.getCategory().getLearnership().getId().equals(request.getLearnershipId()))
-                        .collect(Collectors.toList());
+                learnershipModules = moduleRepository.findByCategoryLearnershipId(request.getLearnershipId());
             }
         }
 
