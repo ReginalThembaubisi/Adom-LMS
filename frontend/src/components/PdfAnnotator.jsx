@@ -320,6 +320,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         onSave(strokesByPageRef.current);
     };
 
+
     // Derived values for toolbar
     const lastAnnotatedPageStrokes = (strokesByPageRef.current[lastAnnotatedPageRef.current] || []).length;
     const hasAnyAnnotations = Object.values(strokesByPageRef.current).some(s => s && s.length > 0);
