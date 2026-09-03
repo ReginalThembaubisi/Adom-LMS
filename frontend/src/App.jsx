@@ -15,6 +15,7 @@ const ModeratorLogin = lazy(() => import('./pages/ModeratorLogin'));
 const ModeratorDashboard = lazy(() => import('./pages/ModeratorDashboard'));
 const AssessorLogin = lazy(() => import('./pages/AssessorLogin'));
 const AssessorDashboard = lazy(() => import('./pages/AssessorDashboard'));
+const AnnotatorTest = lazy(() => import('./pages/AnnotatorTest'));
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
             <Route path="/assessor" element={<Navigate to="/assessor-login" replace />} />
             <Route path="/assessor-login" element={<AssessorLogin />} />
             <Route path="/assessor-dashboard" element={<AssessorDashboard />} />
+            <Route path="/annotator-test" element={<AnnotatorTest />} />
           </Routes>
         </Suspense>
       </Router>
