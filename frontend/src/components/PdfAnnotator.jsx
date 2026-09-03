@@ -94,8 +94,6 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
 
     // IntersectionObserver state tracked in refs to avoid stale closures in callbacks
     const visiblePagesRef = useRef(new Set());
-    // Tracks intersection ratios for the center-strip observer so we pick the most-visible page
-    const centerRatiosRef = useRef(new Map());
     // Tracks which pages have had their PDF raster drawn; entries cleared when canvas is unmounted
     const renderedPagesRef = useRef(new Set());
 
@@ -109,7 +107,6 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         setWindowedPages(new Set());
         setCenterPage(1);
         visiblePagesRef.current.clear();
-        centerRatiosRef.current.clear();
         strokesByPageRef.current = {};
         pageBitmapCacheRef.current.clear();
         renderedPagesRef.current.clear();
@@ -200,9 +197,10 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         });
     }, [pdfDoc, windowedPages, renderPage]);
 
-    // Set up two IntersectionObservers once the page dimensions are known:
-    // 1. mainObserver — manages the render window (visible ± WINDOW_BUFFER)
-    // 2. centerObserver — identifies the page closest to the viewport center for the indicator
+    // Set up IntersectionObserver once the page dimensions are known.
+    // Manages the render window (visible ± WINDOW_BUFFER pages).
+    // Center-page tracking uses a scroll listener instead — IO intersection ratios
+    // are unreliable when a single page is taller than the scroll container.
     useEffect(() => {
         if (!numPages || pageViewports.length < 2) return;
 
@@ -226,30 +224,42 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
             setWindowedPages(computeWindow());
         }, { root: scrollContainerRef.current, rootMargin: '0px', threshold: 0 });
 
-        // rootMargin clips to the centre strip so only pages crossing the middle fire
-        const centerObserver = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                const p = Number(entry.target.dataset.page);
-                if (entry.isIntersecting) centerRatiosRef.current.set(p, entry.intersectionRatio);
-                else centerRatiosRef.current.delete(p);
-            });
-            let best = { ratio: -1, page: 1 };
-            centerRatiosRef.current.forEach((ratio, page) => {
-                if (ratio > best.ratio) best = { ratio, page };
-            });
-            setCenterPage(best.page);
-        }, {
-            root: scrollContainerRef.current,
-            rootMargin: '-40% 0px -40% 0px',
-            threshold: [0, 0.25, 0.5, 0.75, 1],
-        });
-
         for (let i = 1; i <= numPages; i++) {
             const el = pageWrapperRefs.current[i];
-            if (el) { mainObserver.observe(el); centerObserver.observe(el); }
+            if (el) mainObserver.observe(el);
         }
-        return () => { mainObserver.disconnect(); centerObserver.disconnect(); };
+        return () => mainObserver.disconnect();
     }, [numPages, pageViewports]);
+
+    // Compute center page from scroll position. Arithmetic against accumulated page heights
+    // is accurate regardless of page-to-container-height ratio. Runs once on mount (scroll=0
+    // → page 1) and on every scroll event.
+    useEffect(() => {
+        if (pageViewports.length < 2) return;
+        const el = scrollContainerRef.current;
+        if (!el) return;
+
+        const STACK_PAD_TOP = 52; // py value of the inner page-stack div
+        const PAGE_GAP = 24;      // gap-6 between pages
+
+        const computeCenter = () => {
+            const centerY = el.scrollTop + el.clientHeight / 2;
+            let accumulated = STACK_PAD_TOP;
+            let bestPage = 1;
+            let bestDist = Infinity;
+            for (let i = 1; i < pageViewports.length; i++) {
+                const pageCenter = accumulated + pageViewports[i].height / 2;
+                const dist = Math.abs(pageCenter - centerY);
+                if (dist < bestDist) { bestDist = dist; bestPage = i; }
+                accumulated += pageViewports[i].height + PAGE_GAP;
+            }
+            setCenterPage(bestPage);
+        };
+
+        computeCenter(); // initialise on mount
+        el.addEventListener('scroll', computeCenter, { passive: true });
+        return () => el.removeEventListener('scroll', computeCenter);
+    }, [pageViewports]);
 
     // --- Pointer handlers (per-page, coordinate-mapped to each page's live canvas) ---
 
@@ -470,8 +480,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                     </div>
                 </div>
 
-                {/* Vertically stacked pages */}
-                <div className="flex flex-col items-center py-4 gap-6 px-4">
+                {/* Vertically stacked pages — py-[52px] / gap-6 gives the "sheets on a dark desk" look */}
+                <div className="flex flex-col items-center gap-6" style={{ padding: '52px 62px' }}>
                     {pageViewports.slice(1).map((vp, idx) => {
                         const pageNum = idx + 1;
                         const inWindow = windowedPages.has(pageNum);
@@ -480,25 +490,31 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                                 key={pageNum}
                                 ref={el => { pageWrapperRefs.current[pageNum] = el; }}
                                 data-page={pageNum}
-                                style={{ width: vp.width, height: vp.height }}
-                                className="relative flex-shrink-0 shadow-lg rounded"
+                                style={{
+                                    width: vp.width,
+                                    height: vp.height,
+                                    borderRadius: '5px',
+                                    boxShadow: '0 16px 40px -18px rgba(0,0,0,.6)',
+                                }}
+                                className="relative flex-shrink-0"
                             >
                                 {inWindow ? (
                                     <>
                                         {/* Layer 1: rendered PDF page */}
                                         <canvas
                                             ref={el => { pdfCanvasRefs.current[pageNum] = el; }}
-                                            className="absolute inset-0 block rounded"
+                                            className="absolute inset-0 block"
+                                            style={{ borderRadius: '5px' }}
                                         />
                                         {/* Layer 2: committed annotation strokes (static) */}
                                         <canvas
                                             ref={el => { annotCanvasRefs.current[pageNum] = el; }}
-                                            className="absolute inset-0 rounded"
+                                            className="absolute inset-0"
                                         />
                                         {/* Layer 3: in-progress stroke only (cleared each move) */}
                                         <canvas
                                             ref={el => { liveCanvasRefs.current[pageNum] = el; }}
-                                            className="absolute inset-0 touch-none rounded"
+                                            className="absolute inset-0 touch-none"
                                             style={{ cursor: 'crosshair' }}
                                             onPointerDown={e => handlePointerDown(e, pageNum)}
                                             onPointerMove={e => handlePointerMove(e, pageNum)}
@@ -508,7 +524,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
                                     </>
                                 ) : (
                                     // Placeholder keeps correct height so scrollbar doesn't jump
-                                    <div className="w-full h-full bg-slate-900/40 rounded" />
+                                    <div className="w-full h-full bg-slate-900/40" style={{ borderRadius: '5px' }} />
                                 )}
                             </div>
                         );

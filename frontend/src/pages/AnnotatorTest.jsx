@@ -8,7 +8,7 @@ const AnnotatorTest = () => {
         setTimeout(() => setSaved(false), 3000);
     };
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col p-6" style={{ fontFamily: 'system-ui, sans-serif' }}>
+        <div className="h-screen bg-slate-950 text-slate-100 flex flex-col p-6" style={{ fontFamily: 'system-ui, sans-serif' }}>
             <div className="mb-4">
                 <h1 className="text-lg font-bold text-slate-100">PdfAnnotator — Continuous Scroll Test</h1>
                 <p className="text-xs text-slate-400 mt-1">3-page test document. Scroll through pages, place ticks/crosses, draw with pen, then Save Marked Copy.</p>
