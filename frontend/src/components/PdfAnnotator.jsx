@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { jsPDF } from 'jspdf';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+let _pdfjsLib = null;
+async function getPdfjs() {
+    if (_pdfjsLib) return _pdfjsLib;
+    const [lib, workerUrl] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+    ]);
+    lib.GlobalWorkerOptions.workerSrc = workerUrl.default;
+    _pdfjsLib = lib;
+    return lib;
+}
 
 const COLORS = ['#e34948', '#0ca30c', '#2a78d6', '#111111'];
 const RENDER_SCALE = 1.5;
@@ -75,7 +82,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         setLoadError('');
         setPdfDoc(null);
         strokesByPageRef.current = {};
-        pdfjsLib.getDocument({ url: documentUrl }).promise.then(doc => {
+        getPdfjs().then(pdfjsLib => pdfjsLib.getDocument({ url: documentUrl }).promise).then(doc => {
             if (cancelled) return;
             setPdfDoc(doc);
             setNumPages(doc.numPages);
@@ -187,6 +194,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
 
     const handleSave = async () => {
         if (!pdfDoc) return;
+        const { jsPDF } = await import('jspdf');
         const firstPage = await pdfDoc.getPage(1);
         const firstView = firstPage.getViewport({ scale: 1 });
         const doc = new jsPDF({ unit: 'pt', format: [firstView.width, firstView.height] });

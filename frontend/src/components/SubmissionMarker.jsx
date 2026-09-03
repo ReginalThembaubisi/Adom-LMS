@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
-import PdfAnnotator from './PdfAnnotator';
+const PdfAnnotator = lazy(() => import('./PdfAnnotator'));
 
 const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, role }) => {
     const [outcome, setOutcome] = useState(submission.status === 'COMPETENT' || submission.status === 'NOT_YET_COMPETENT' ? submission.status : '');
@@ -128,12 +128,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                             // page's JS, so anything drawn in it could never be captured or
                             // saved. This one renders via pdf.js so drawn marks (pen + tick
                             // stamp) can be flattened and uploaded as a real marked copy.
-                            <PdfAnnotator
-                                documentUrl={documentUrl}
-                                onSave={handleSaveMarkedCopy}
-                                saving={savingMarked}
-                                saveError={markedError}
-                            />
+                            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading PDF viewer...</div>}>
+                                <PdfAnnotator
+                                    documentUrl={documentUrl}
+                                    onSave={handleSaveMarkedCopy}
+                                    saving={savingMarked}
+                                    saveError={markedError}
+                                />
+                            </Suspense>
                         ) : (
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isDoc ? (
