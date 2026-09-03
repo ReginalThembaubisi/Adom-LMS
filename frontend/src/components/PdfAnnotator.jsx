@@ -96,6 +96,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
     const visiblePagesRef = useRef(new Set());
     // Tracks intersection ratios for the center-strip observer so we pick the most-visible page
     const centerRatiosRef = useRef(new Map());
+    // Tracks which pages have had their PDF raster drawn; entries cleared when canvas is unmounted
+    const renderedPagesRef = useRef(new Set());
 
     // Load PDF and fetch all page viewport dimensions before rendering anything,
     // so placeholder divs have correct heights and the scrollbar never jumps.
@@ -110,6 +112,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         centerRatiosRef.current.clear();
         strokesByPageRef.current = {};
         pageBitmapCacheRef.current.clear();
+        renderedPagesRef.current.clear();
 
         getPdfjs()
             .then(lib => lib.getDocument({ url: documentUrl }).promise)
@@ -178,12 +181,22 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError }) => {
         (strokesByPageRef.current[pageNum] || []).forEach(s => drawStroke(annotCtx, s));
     }, []);
 
-    // Render any pages that just entered the window (their canvases are freshly mounted, width=0)
+    // Render pages that just entered the render window. Pages leaving the window have their
+    // canvas elements unmounted, so we clear their entry from renderedPagesRef so they get
+    // re-rendered on re-entry.
     useEffect(() => {
         if (!pdfDoc) return;
+        // Clear tracking for pages no longer in the window (canvases are now unmounted)
+        renderedPagesRef.current.forEach(p => {
+            if (!windowedPages.has(p)) renderedPagesRef.current.delete(p);
+        });
+        // Render pages newly added to the window
         windowedPages.forEach(pageNum => {
             const c = pdfCanvasRefs.current[pageNum];
-            if (c && c.width === 0) renderPage(pdfDoc, pageNum);
+            if (c && !renderedPagesRef.current.has(pageNum)) {
+                renderedPagesRef.current.add(pageNum);
+                renderPage(pdfDoc, pageNum);
+            }
         });
     }, [pdfDoc, windowedPages, renderPage]);
 
