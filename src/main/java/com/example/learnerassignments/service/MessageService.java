@@ -5,6 +5,7 @@ import com.example.learnerassignments.dto.MessageThreadSummaryDto;
 import com.example.learnerassignments.dto.PersonSummaryDto;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.*;
+import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.LearnerRepository;
 import com.example.learnerassignments.repository.LecturerRepository;
 import com.example.learnerassignments.repository.MessageRepository;

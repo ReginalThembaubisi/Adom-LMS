@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -601,5 +602,24 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("message", "Failed to list backups: " + e.getMessage()));
         }
+    }
+
+    // --- MARKING BACKLOG ---
+
+    @GetMapping("/marking-backlog")
+    public ResponseEntity<List<MarkingBacklogEntryDto>> getMarkingBacklog() {
+        // Facilitators: real per-lecturer counts via FK chain pushed into the DB query.
+        List<MarkingBacklogEntryDto> result = new ArrayList<>(submissionRepository.findFacilitatorMarkingBacklog());
+
+        // Moderators and assessors have no FK chain to individual submissions in this schema,
+        // so they are included with zero counts to confirm their presence in the system.
+        moderatorRepository.findAll().forEach(m ->
+            result.add(new MarkingBacklogEntryDto(m.getId(), m.getFullName(), "MODERATOR", 0L, 0L, null))
+        );
+        assessorRepository.findAll().forEach(a ->
+            result.add(new MarkingBacklogEntryDto(a.getId(), a.getFullName(), "ASSESSOR", 0L, 0L, null))
+        );
+
+        return ResponseEntity.ok(result);
     }
 }
