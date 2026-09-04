@@ -42,6 +42,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
 
     const renderScaleRef = useRef(1.5);
     const naturalPageWidthRef = useRef(null);
+    const activeRendersRef = useRef(new Map()); // pageNum -> pdf.js RenderTask
+    const resizeTimerRef = useRef(null);
 
     const strokesByPageRef = useRef({});
     const pageBitmapCacheRef = useRef(new Map());
@@ -149,9 +151,13 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
             setWindowedPages(prev => new Set(prev));
         };
 
-        const ro = new ResizeObserver(recompute);
+        const debouncedRecompute = () => {
+            clearTimeout(resizeTimerRef.current);
+            resizeTimerRef.current = setTimeout(recompute, 250);
+        };
+        const ro = new ResizeObserver(debouncedRecompute);
         ro.observe(el);
-        return () => { cancelled = true; ro.disconnect(); };
+        return () => { cancelled = true; clearTimeout(resizeTimerRef.current); ro.disconnect(); };
     }, [pdfDoc]);
 
     // Clear + replay all committed strokes onto the static annotation canvas for one page.
@@ -167,6 +173,11 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
     // Render one page's PDF content onto its canvas triple. Uses the bitmap cache when
     // available; falls back to pdf.js render and stores a new bitmap for next time.
     const renderPage = useCallback(async (doc, pageNum) => {
+        // Cancel any in-flight render for this page before starting a new one.
+        // Without this, concurrent render() calls on the same canvas corrupt the output.
+        const existing = activeRendersRef.current.get(pageNum);
+        if (existing) { existing.cancel(); activeRendersRef.current.delete(pageNum); }
+
         const pdfCanvas = pdfCanvasRefs.current[pageNum];
         const annotCanvas = annotCanvasRefs.current[pageNum];
         const liveCanvas = liveCanvasRefs.current[pageNum];
@@ -184,7 +195,15 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         if (cached) {
             pdfCtx.drawImage(cached, 0, 0);
         } else {
-            await page.render({ canvasContext: pdfCtx, viewport: vp }).promise;
+            const task = page.render({ canvasContext: pdfCtx, viewport: vp });
+            activeRendersRef.current.set(pageNum, task);
+            try {
+                await task.promise;
+            } catch (e) {
+                if (e?.name === 'RenderingCancelledException') return;
+                return;
+            }
+            activeRendersRef.current.delete(pageNum);
             createImageBitmap(pdfCanvas).then(bm => {
                 pageBitmapCacheRef.current.set(pageNum, bm);
             }).catch(() => {});
