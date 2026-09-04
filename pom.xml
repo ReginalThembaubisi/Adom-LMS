@@ -53,6 +53,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- PostgreSQL Driver (Render managed database) -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
 		<!-- MySQL Driver (for production or local MySQL if available) -->
 		<dependency>
 			<groupId>com.mysql</groupId>
