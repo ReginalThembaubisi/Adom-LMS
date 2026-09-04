@@ -14,8 +14,10 @@ async function getPdfjs() {
 }
 
 const COLORS = ['#e34948', '#0ca30c', '#2a78d6', '#111111'];
-const RENDER_SCALE = 1.5;
-const WINDOW_BUFFER = 2; // pages beyond the visible area to keep rendered
+const WINDOW_BUFFER = 2;
+const HORIZONTAL_PAD = 32; // 16px per side — matches page-stack horizontal padding
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 4.0;
 
 // Continuous-scroll annotator: all pages stacked vertically in one scrollable container.
 // Three canvas layers per page — pdf (rendered page), annot (committed strokes, static),
@@ -37,6 +39,9 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
     const [pageViewports, setPageViewports] = useState([]);
     const [windowedPages, setWindowedPages] = useState(new Set());
     const [centerPage, setCenterPage] = useState(1);
+
+    const renderScaleRef = useRef(1.5);
+    const naturalPageWidthRef = useRef(null);
 
     const strokesByPageRef = useRef({});
     const pageBitmapCacheRef = useRef(new Map());
@@ -83,10 +88,19 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
             .then(async doc => {
                 if (cancelled) return;
                 const n = doc.numPages;
+
+                // Compute fit-to-width scale from first page natural dimensions
+                const firstPage = await doc.getPage(1);
+                const naturalW = firstPage.getViewport({ scale: 1 }).width;
+                naturalPageWidthRef.current = naturalW;
+                const containerW = scrollContainerRef.current?.clientWidth ?? 800;
+                const fitScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, (containerW - HORIZONTAL_PAD) / naturalW));
+                renderScaleRef.current = fitScale;
+
                 const vps = [null]; // 1-indexed
                 for (let i = 1; i <= n; i++) {
                     const page = await doc.getPage(i);
-                    const vp = page.getViewport({ scale: RENDER_SCALE });
+                    const vp = page.getViewport({ scale: fitScale });
                     vps.push({ width: vp.width, height: vp.height });
                 }
                 if (cancelled) return;
@@ -103,6 +117,42 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
             });
         return () => { cancelled = true; };
     }, [documentUrl]);
+
+    // Re-scale pages when the container resizes (e.g. sidebar toggled).
+    // Clears the bitmap cache and forces a full re-render at the new scale.
+    useEffect(() => {
+        if (!pdfDoc) return;
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        let cancelled = false;
+
+        const recompute = async () => {
+            const naturalW = naturalPageWidthRef.current;
+            if (!naturalW) return;
+            const available = el.clientWidth - HORIZONTAL_PAD;
+            if (available <= 50) return;
+            const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, available / naturalW));
+            if (Math.abs(newScale - renderScaleRef.current) < 0.02) return;
+
+            renderScaleRef.current = newScale;
+            pageBitmapCacheRef.current.clear();
+            renderedPagesRef.current.clear();
+
+            const newVps = [null];
+            for (let i = 1; i <= numPagesRef.current; i++) {
+                const page = await pdfDoc.getPage(i);
+                const vp = page.getViewport({ scale: newScale });
+                newVps.push({ width: vp.width, height: vp.height });
+            }
+            if (cancelled) return;
+            setPageViewports(newVps);
+            setWindowedPages(prev => new Set(prev));
+        };
+
+        const ro = new ResizeObserver(recompute);
+        ro.observe(el);
+        return () => { cancelled = true; ro.disconnect(); };
+    }, [pdfDoc]);
 
     // Clear + replay all committed strokes onto the static annotation canvas for one page.
     // Called on undo, clear, and when a page re-enters the render window after eviction.
@@ -122,7 +172,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         const liveCanvas = liveCanvasRefs.current[pageNum];
         if (!pdfCanvas || !annotCanvas || !liveCanvas) return;
         const page = await doc.getPage(pageNum);
-        const vp = page.getViewport({ scale: RENDER_SCALE });
+        const vp = page.getViewport({ scale: renderScaleRef.current });
         [pdfCanvas, annotCanvas, liveCanvas].forEach(c => {
             c.width = vp.width;
             c.height = vp.height;
@@ -422,8 +472,8 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
                     </div>
                 </div>
 
-                {/* Vertically stacked pages — py-[52px] / gap-6 gives the "sheets on a dark desk" look */}
-                <div className="flex flex-col items-center gap-6" style={{ padding: '52px 62px' }}>
+                {/* Vertically stacked pages */}
+                <div className="flex flex-col items-center gap-6" style={{ padding: '24px 16px' }}>
                     {pageViewports.slice(1).map((vp, idx) => {
                         const pageNum = idx + 1;
                         const inWindow = windowedPages.has(pageNum);

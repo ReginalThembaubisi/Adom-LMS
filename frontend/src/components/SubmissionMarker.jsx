@@ -16,6 +16,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const [historyLoading, setHistoryLoading] = useState(true);
     const [initialStrokes, setInitialStrokes] = useState(null);
     const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -113,30 +114,41 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     }, [submission.submissionId, submission.hasAnnotations, token]);
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full h-[92vh] max-w-7xl flex flex-col overflow-hidden shadow-2xl animate-fade-in text-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col overflow-hidden text-slate-100">
                 {/* Header */}
-                <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-base font-extrabold text-[#f8fafc]">In-App Grading Workspace</h3>
-                        <p className="text-xs text-[#cbd5e1]">
+                <div className="px-6 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-extrabold text-[#f8fafc]">In-App Grading Workspace</h3>
+                        <p className="text-xs text-[#cbd5e1] truncate">
                             Student: <span className="font-semibold text-[#f8fafc]">{submission.learnerName} ({submission.learnerCode})</span> | File: <span className="font-semibold text-[#f8fafc]">{submission.originalFilename}</span>
                         </p>
                     </div>
-                    <button 
-                        onClick={onClose}
-                        className="bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc] p-2 rounded-xl transition-colors cursor-pointer"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                        {/* Toggle assessment panel */}
+                        <button
+                            onClick={() => setSidebarOpen(s => !s)}
+                            title={sidebarOpen ? 'Hide assessment panel' : 'Show assessment panel'}
+                            className="bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc] p-2 rounded-xl transition-colors cursor-pointer"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d={sidebarOpen ? 'M4 6h16M4 12h10M4 18h16' : 'M4 6h16M4 12h16M4 18h16'} />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc] p-2 rounded-xl transition-colors cursor-pointer"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Workspace Split Panes */}
-                <div className="flex-1 flex overflow-hidden">
-                    {/* Left Pane - Premium Document Viewer */}
-                    <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
+                <div className="flex-1 flex overflow-hidden min-h-0">
+                    {/* Left Pane - Document Viewer (fills all available space) */}
+                    <div className="flex-1 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4 min-w-0">
                         {isPdf ? (
                             // Custom canvas-based viewer + annotation layer, replacing the
                             // browser's native PDF plugin — that plugin runs isolated from the
@@ -203,8 +215,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                         )}
                     </div>
 
-                    {/* Right Pane - Grading Console */}
-                    <div className="w-1/4 bg-slate-900 p-6 flex flex-col justify-between overflow-y-auto">
+                    {/* Right Pane - Grading Console (collapsible) */}
+                    <div className={`bg-slate-900 flex flex-col justify-between overflow-y-auto transition-all duration-200 flex-shrink-0 ${sidebarOpen ? 'w-80 p-6' : 'w-0 p-0 overflow-hidden'}`}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-1">
                                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Assessment Console</h4>
@@ -329,7 +341,6 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     );
 };
