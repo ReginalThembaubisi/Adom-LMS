@@ -29,4 +29,5 @@ public class SubmittedLearnerDto {
     private String gradedByName;
     private Integer marksAwarded;
     private String markedFilePath;
+    private boolean hasAnnotations;
 }

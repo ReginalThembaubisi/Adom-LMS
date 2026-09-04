@@ -152,7 +152,10 @@ public class SubmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Submission session not found with id: " + sessionId));
 
         Assignment assignment = session.getAssignment();
-        List<Learner> allLearners = learnerRepository.findAll();
+        Long moduleId = assignment.getModule() != null ? assignment.getModule().getId() : null;
+        List<Learner> allLearners = moduleId != null
+                ? learnerRepository.findByModules_Id(moduleId)
+                : learnerRepository.findAll();
         List<Submission> submissions = submissionRepository.findBySessionId(sessionId);
 
         Map<Long, List<Submission>> submissionsByLearnerMap = submissions.stream()
@@ -184,6 +187,7 @@ public class SubmissionService {
                         .gradedByName(latestSubmission.getGradedByName())
                         .marksAwarded(latestSubmission.getMarksAwarded())
                         .markedFilePath(latestSubmission.getMarkedFilePath())
+                        .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -217,12 +221,12 @@ public class SubmissionService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with id: " + assignmentId));
 
-        List<Learner> allLearners = learnerRepository.findAll();
+        Long moduleId = assignment.getModule() != null ? assignment.getModule().getId() : null;
+        List<Learner> allLearners = moduleId != null
+                ? learnerRepository.findByModules_Id(moduleId)
+                : learnerRepository.findAll();
 
-        // Get all submissions for sessions linked to this assignment
-        List<SubmissionSession> sessions = sessionRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(s -> s.getAssignment().getId().equals(assignmentId))
-                .collect(Collectors.toList());
+        List<SubmissionSession> sessions = sessionRepository.findByAssignmentId(assignmentId);
 
         List<Long> sessionIds = sessions.stream().map(SubmissionSession::getId).collect(Collectors.toList());
 
@@ -260,6 +264,7 @@ public class SubmissionService {
                         .gradedByName(latestSubmission.getGradedByName())
                         .marksAwarded(latestSubmission.getMarksAwarded())
                         .markedFilePath(latestSubmission.getMarkedFilePath())
+                        .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -434,6 +439,21 @@ public class SubmissionService {
         } catch (IOException | InterruptedException e) {
             throw new ResourceNotFoundException("Could not retrieve file from storage: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    public void saveAnnotations(Long id, String json) {
+        Submission s = submissionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
+        s.setAnnotationsJson(json);
+        submissionRepository.save(s);
+    }
+
+    @Transactional(readOnly = true)
+    public String getAnnotationsJson(Long id) {
+        return submissionRepository.findById(id)
+                .map(Submission::getAnnotationsJson)
+                .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
     }
 
     public String resolveContentType(String originalFilename) {

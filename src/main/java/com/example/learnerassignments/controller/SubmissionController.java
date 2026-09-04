@@ -168,10 +168,57 @@ public class SubmissionController {
                 ? "marked_" + submission.getOriginalFilename()
                 : submission.getOriginalFilename();
 
+        // Original files never change after upload; marked rasters are replaced atomically.
+        // Both qualify for long-lived private caching keyed by submission id + variant.
+        String etag = "\"sub-" + id + "-" + (marked ? "m" : "o") + "\"";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "private, immutable, max-age=31536000")
+                .header(HttpHeaders.ETAG, etag)
                 .body(body);
+    }
+
+    // Stores vector stroke data (JSON) in place of a rasterized marked-copy blob.
+    // Only authenticated graders (via token or session) may write; learners may read.
+    @PutMapping(value = "/{id}/annotations", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> saveAnnotations(
+            @PathVariable Long id,
+            @RequestParam(value = "authToken", required = false) String authToken,
+            @RequestBody String json,
+            Authentication auth) {
+
+        Submission submission = submissionService.getSubmission(id);
+        boolean graderAuth = checkTokenAccess(submission, authToken) ||
+                (auth != null && auth.isAuthenticated() &&
+                 auth.getAuthorities().stream().anyMatch(a ->
+                         a.getAuthority().equals("ROLE_ADMIN") ||
+                         a.getAuthority().equals("ROLE_LECTURER") ||
+                         a.getAuthority().equals("ROLE_ASSESSOR") ||
+                         a.getAuthority().equals("ROLE_MODERATOR")));
+        if (!graderAuth) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        submissionService.saveAnnotations(id, json);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/annotations")
+    public ResponseEntity<String> getAnnotations(
+            @PathVariable Long id,
+            @RequestParam(value = "learnerCode", required = false) String learnerCode,
+            @RequestParam(value = "authToken", required = false) String authToken,
+            Authentication auth) {
+
+        Submission submission = submissionService.getSubmission(id);
+        if (!checkAccess(submission, learnerCode, auth) && !checkTokenAccess(submission, authToken)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        String json = submissionService.getAnnotationsJson(id);
+        if (json == null) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json);
     }
 
     // Every past grading action on this submission, oldest first, so a grader opening a

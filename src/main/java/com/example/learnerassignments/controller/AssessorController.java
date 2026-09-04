@@ -87,7 +87,7 @@ public class AssessorController {
     @GetMapping("/sessions")
     public ResponseEntity<List<SessionResponse>> getSessions(Authentication auth) {
         getAuthenticatedAssessor(auth);
-        List<SessionResponse> list = sessionRepository.findAll().stream()
+        List<SessionResponse> list = sessionRepository.findAllByOrderByCreatedAtDesc().stream()
                 .filter(ss -> ss.getAssignment() != null && ss.getAssignment().getModule() != null)
                 .map(ss -> SessionResponse.builder()
                         .id(ss.getId())

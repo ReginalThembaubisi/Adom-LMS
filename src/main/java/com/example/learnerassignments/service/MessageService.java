@@ -3,7 +3,6 @@ package com.example.learnerassignments.service;
 import com.example.learnerassignments.dto.MessageDto;
 import com.example.learnerassignments.dto.MessageThreadSummaryDto;
 import com.example.learnerassignments.dto.PersonSummaryDto;
-import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.repository.LearnerRepository;
 import com.example.learnerassignments.repository.LecturerRepository;
@@ -25,29 +24,16 @@ public class MessageService {
     private final LecturerRepository lecturerRepository;
     private final EmailService emailService;
 
-    // A facilitator "owns" a learner only if the learner is enrolled in at least one
-    // module under a category that facilitator teaches — the same relationship that
-    // already gates module/session ownership elsewhere in the app.
     @Transactional(readOnly = true)
     public boolean facilitatorOwnsLearner(Long lecturerId, Learner learner) {
-        return learner.getModules() != null && learner.getModules().stream()
-                .anyMatch(m -> m.getCategory() != null && m.getCategory().getLecturer() != null
-                        && m.getCategory().getLecturer().getId().equals(lecturerId));
+        return lecturerRepository.isFacilitatorOfLearner(lecturerId, learner.getId());
     }
 
     @Transactional(readOnly = true)
     public List<PersonSummaryDto> getFacilitatorsForLearner(Learner learner) {
-        if (learner.getModules() == null) return List.of();
-        Map<Long, PersonSummaryDto> byId = new LinkedHashMap<>();
-        for (Module module : learner.getModules()) {
-            if (module.getCategory() == null || module.getCategory().getLecturer() == null) continue;
-            Lecturer lecturer = module.getCategory().getLecturer();
-            byId.putIfAbsent(lecturer.getId(), PersonSummaryDto.builder()
-                    .id(lecturer.getId())
-                    .fullName(lecturer.getFullName())
-                    .build());
-        }
-        return new ArrayList<>(byId.values());
+        return lecturerRepository.findFacilitatorsForLearner(learner.getId()).stream()
+                .map(l -> PersonSummaryDto.builder().id(l.getId()).fullName(l.getFullName()).build())
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

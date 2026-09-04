@@ -14,6 +14,8 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const [markedSaved, setMarkedSaved] = useState(false);
     const [gradingHistory, setGradingHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [initialStrokes, setInitialStrokes] = useState(null);
+    const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -44,13 +46,14 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
         }
     };
 
-    const handleSaveMarkedCopy = async (blob) => {
+    const handleSaveMarkedCopy = async (annotationsJson) => {
         setSavingMarked(true);
         setMarkedError('');
         setMarkedSaved(false);
         try {
-            await onSaveMarkedCopy(submission.submissionId, blob);
+            await onSaveMarkedCopy(submission.submissionId, annotationsJson);
             setMarkedSaved(true);
+            setInitialStrokes(annotationsJson);
         } catch (err) {
             setMarkedError(err.message || 'Failed to save marked copy.');
         } finally {
@@ -69,12 +72,10 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
 
     // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
     // files — so the response always carries a Content-Type the browser can render inline.
-    // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
-    // blank when linked to directly. Load the marked copy when one exists — otherwise a
-    // different grader reopening this submission (or the same one, later) would always see
-    // the blank original with no sign anything was ever saved, and a second marking session
-    // would silently overwrite the first grader's marks instead of adding to them.
-    const hasMarkedCopy = !!submission.markedFilePath;
+    // When hasAnnotations, load the original and replay strokes client-side via PdfAnnotator.
+    // Only fall back to the rasterized marked copy for legacy submissions that have one but
+    // no annotationsJson (so old marks are still visible while new saves use the JSON path).
+    const hasMarkedCopy = !!submission.markedFilePath && !submission.hasAnnotations;
     const viewParams = new URLSearchParams();
     if (token) viewParams.set('authToken', token);
     if (hasMarkedCopy) viewParams.set('marked', 'true');
@@ -96,6 +97,20 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
             .finally(() => { if (!cancelled) setHistoryLoading(false); });
         return () => { cancelled = true; };
     }, [submission.submissionId, token]);
+
+    // Pre-load saved annotation strokes so the grader sees their previous marks on re-open.
+    useEffect(() => {
+        if (!submission.hasAnnotations) return;
+        let cancelled = false;
+        const url = `${window.location.origin}/api/submissions/${submission.submissionId}/annotations${token ? `?authToken=${encodeURIComponent(token)}` : ''}`;
+        setAnnotationsLoading(true);
+        fetch(url)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { if (!cancelled) setInitialStrokes(data); })
+            .catch(() => { if (!cancelled) setInitialStrokes(null); })
+            .finally(() => { if (!cancelled) setAnnotationsLoading(false); });
+        return () => { cancelled = true; };
+    }, [submission.submissionId, submission.hasAnnotations, token]);
 
     return (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -126,16 +141,21 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                             // Custom canvas-based viewer + annotation layer, replacing the
                             // browser's native PDF plugin — that plugin runs isolated from the
                             // page's JS, so anything drawn in it could never be captured or
-                            // saved. This one renders via pdf.js so drawn marks (pen + tick
-                            // stamp) can be flattened and uploaded as a real marked copy.
+                            // saved. This one renders via pdf.js so strokes can be saved as
+                            // vector JSON and replayed without re-encoding the original PDF.
+                            annotationsLoading ? (
+                                <div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading annotations...</div>
+                            ) : (
                             <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading PDF viewer...</div>}>
                                 <PdfAnnotator
                                     documentUrl={documentUrl}
                                     onSave={handleSaveMarkedCopy}
                                     saving={savingMarked}
                                     saveError={markedError}
+                                    initialStrokes={initialStrokes}
                                 />
                             </Suspense>
+                            )
                         ) : (
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isDoc ? (

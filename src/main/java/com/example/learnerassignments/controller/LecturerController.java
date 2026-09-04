@@ -85,21 +85,20 @@ public class LecturerController {
                 .map(Module::getId)
                 .collect(Collectors.toList());
 
-        List<SessionResponse> filtered = sessionRepository.findAll().stream()
-                .filter(ss -> ss.getAssignment() != null &&
-                        ss.getAssignment().getModule() != null &&
-                        myModuleIds.contains(ss.getAssignment().getModule().getId()))
-                .map(ss -> SessionResponse.builder()
-                        .id(ss.getId())
-                        .sessionName(ss.getSessionName())
-                        .assignmentId(ss.getAssignment().getId())
-                        .assignmentTitle("[" + ss.getAssignment().getModule().getModuleName() + "] " + ss.getAssignment().getTitle())
-                        .startTime(ss.getStartTime())
-                        .endTime(ss.getEndTime())
-                        .status(ss.getStatus())
-                        .createdAt(ss.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        List<SessionResponse> filtered = myModuleIds.isEmpty()
+                ? java.util.Collections.emptyList()
+                : sessionRepository.findByAssignmentModuleIdInOrderByCreatedAtDesc(myModuleIds).stream()
+                        .map(ss -> SessionResponse.builder()
+                                .id(ss.getId())
+                                .sessionName(ss.getSessionName())
+                                .assignmentId(ss.getAssignment().getId())
+                                .assignmentTitle("[" + ss.getAssignment().getModule().getModuleName() + "] " + ss.getAssignment().getTitle())
+                                .startTime(ss.getStartTime())
+                                .endTime(ss.getEndTime())
+                                .status(ss.getStatus())
+                                .createdAt(ss.getCreatedAt())
+                                .build())
+                        .collect(Collectors.toList());
         return ResponseEntity.ok(filtered);
     }
 

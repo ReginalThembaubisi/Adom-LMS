@@ -23,6 +23,7 @@ const AdminDashboard = () => {
     const [learnerships, setLearnerships] = useState([]);
     const [selectedLearnershipId, setSelectedLearnershipId] = useState('');
     const [overview, setOverview] = useState({ lecturersCount: 0, modulesCount: 0, submissionsCount: 0 });
+    const [backlog, setBacklog] = useState([]);
     const [alert, setAlert] = useState({ type: '', message: '' });
     const [registrationOpen, setRegistrationOpen] = useState(true);
     const [loadingRegStatus, setLoadingRegStatus] = useState(false);
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
         fetchedTabsRef.current.add(activeTab);
         if (activeTab === 'overview') {
             fetchOverview();
+            fetchMarkingBacklog();
             fetchRegistrationStatus();
         } else if (activeTab === 'programs') {
             fetchLearnerships();
@@ -76,6 +78,14 @@ const AdminDashboard = () => {
             fetchLearners();
         }
     }, [activeTab, token]);
+
+    const relativeTime = (iso) => {
+        if (!iso) return '—';
+        const days = Math.floor((Date.now() - new Date(iso)) / 86400000);
+        if (days === 0) return 'today';
+        if (days === 1) return '1 day';
+        return `${days} days`;
+    };
 
     const showMsg = (type, message) => {
         setAlert({ type, message });
@@ -137,6 +147,21 @@ const AdminDashboard = () => {
             if (res.ok) {
                 const data = await res.json();
                 setOverview(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchMarkingBacklog = async () => {
+        try {
+            const res = await fetch('/api/admin/marking-backlog', {
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                const data = await res.json();
+                setBacklog(data);
             }
         } catch (e) {
             console.error(e);
@@ -703,6 +728,74 @@ const AdminDashboard = () => {
                         </button>
                     </div>
                 </div>
+
+                                {/* Marking Backlog Table */}
+                                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-900">Marking Backlog by Facilitator</h2>
+                                        <p className="text-xs text-slate-500">Unmarked submissions per staff member, sorted by volume. Facilitator counts reflect real module ownership; moderator and assessor scope is not yet modelled per person.</p>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-xs">
+                                            <thead>
+                                                <tr className="bg-slate-100/70 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-300">
+                                                    <th className="p-3 text-left rounded-l-lg">Staff Member</th>
+                                                    <th className="p-3 text-left">Role</th>
+                                                    <th className="p-3 text-right">Modules</th>
+                                                    <th className="p-3 text-right">Unmarked</th>
+                                                    <th className="p-3 text-right">Oldest</th>
+                                                    <th className="p-3 text-right rounded-r-lg">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {backlog.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="6" className="p-4 text-center text-slate-400 font-medium italic">No backlog data available.</td>
+                                                    </tr>
+                                                ) : (
+                                                    [...backlog]
+                                                        .sort((a, b) => (b.unmarkedCount || 0) - (a.unmarkedCount || 0))
+                                                        .map(entry => (
+                                                            <tr key={`${entry.role}-${entry.staffId}`} className="hover:bg-slate-50/60 transition-colors">
+                                                                <td className="p-3 font-semibold text-slate-900">{entry.fullName}</td>
+                                                                <td className="p-3">
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                                                        entry.role === 'FACILITATOR'
+                                                                            ? 'bg-blue-50 text-blue-700 border-blue-200/60'
+                                                                            : entry.role === 'MODERATOR'
+                                                                            ? 'bg-violet-50 text-violet-700 border-violet-200/60'
+                                                                            : 'bg-amber-50 text-amber-700 border-amber-200/60'
+                                                                    }`}>
+                                                                        {entry.role === 'FACILITATOR' ? 'Facilitator' : entry.role === 'MODERATOR' ? 'Moderator' : 'Assessor'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3 text-right text-slate-500">{entry.moduleCount != null ? entry.moduleCount : '—'}</td>
+                                                                <td className="p-3 text-right">
+                                                                    <span className={`font-bold ${(entry.unmarkedCount || 0) > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                                                                        {entry.unmarkedCount || 0}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3 text-right text-slate-500">{relativeTime(entry.oldestUnmarkedAt)}</td>
+                                                                <td className="p-3 text-right">
+                                                                    {(entry.unmarkedCount || 0) > 0 ? (
+                                                                        <button
+                                                                            disabled
+                                                                            title="Notify feature coming soon"
+                                                                            className="bg-slate-100 text-slate-400 border border-slate-200 font-semibold px-2.5 py-1 rounded-lg cursor-not-allowed"
+                                                                        >
+                                                                            Nudge
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="text-slate-300">—</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
