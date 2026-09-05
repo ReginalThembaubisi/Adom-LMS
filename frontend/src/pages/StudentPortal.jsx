@@ -549,7 +549,7 @@ const StudentPortal = () => {
                                         }, {})
                                     ).map(([category, categoryFiles]) => (
                                         <div key={category}>
-                                            <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8] mb-2 px-1">{category}</p>
+                                            <p className="text-[9.5px] uppercase text-[#8A90A8] mb-2 px-1" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>{category}</p>
                                             <div className="space-y-2">
                                                 {categoryFiles.map(file => (
                                                     <div key={file.id} className="bg-white rounded-2xl p-4 flex justify-between items-center gap-3" style={{boxShadow:'var(--card-shadow)'}}>
@@ -685,14 +685,14 @@ const StudentPortal = () => {
                 {/* ── Home Tab ── */}
                 {activeTab === 'home' && !selectedModule && (
                     <div className="animate-fadeIn">
-                        {/* Dark greeting banner */}
-                        <div className="relative overflow-hidden px-5 pt-14 pb-7" style={{background:'#101425', borderRadius:'0 0 24px 24px'}}>
+                        {/* Greeting banner — inset card on page bg */}
+                        <div className="relative overflow-hidden mx-4 mt-4 px-5 pt-8 pb-7" style={{background:'#101425', borderRadius:'24px'}}>
                             <div className="absolute top-0 right-0 w-52 h-52 rounded-full pointer-events-none"
                                 style={{background:'radial-gradient(circle, rgba(107,78,255,0.45) 0%, transparent 65%)', transform:'translate(28%, -28%)'}} />
                             <div className="flex justify-between items-start relative z-10">
                                 <div>
-                                    <p className="text-white/50 text-xs font-medium">Good to see you,</p>
-                                    <h1 className="text-white font-bold text-2xl leading-tight mt-0.5">{learner.fullName?.split(' ')[0] || 'Student'}</h1>
+                                    <p className="text-white/50 text-xs" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:500}}>Good to see you,</p>
+                                    <h1 className="text-white text-2xl leading-tight mt-1" style={{fontWeight:800, letterSpacing:'-0.02em'}}>{learner.fullName?.split(' ')[0] || 'Student'}</h1>
                                 </div>
                                 <div className="w-10 h-10 flex items-center justify-center text-sm font-bold text-[#101425] flex-shrink-0"
                                     style={{background:'#C8F25A', borderRadius:'14px'}}>
@@ -704,26 +704,22 @@ const StudentPortal = () => {
                         <div className="px-4 pt-4 pb-2 space-y-4">
                             {/* Stats row */}
                             <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
-                                    <p className="text-2xl font-bold" style={{color:'#C8F25A', WebkitTextFillColor:'#101425', textShadow:'none'}}>
-                                        <span style={{color:'#101425'}}>{history.filter(s => s.status === 'COMPETENT').length}</span>
-                                    </p>
-                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Competent</p>
-                                </div>
-                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
-                                    <p className="text-2xl font-bold text-[#101425]">{timeline.length}</p>
-                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Slots Open</p>
-                                </div>
-                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
-                                    <p className="text-2xl font-bold text-[#101425]">{history.length}</p>
-                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Uploads</p>
-                                </div>
+                                {[
+                                    { val: history.filter(s => s.status === 'COMPETENT').length, label: 'Competent' },
+                                    { val: timeline.length, label: 'Slots Open' },
+                                    { val: history.length, label: 'Uploads' },
+                                ].map(({ val, label }) => (
+                                    <div key={label} className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
+                                        <p className="text-2xl font-bold text-[#101425]" style={{fontVariantNumeric:'tabular-nums', letterSpacing:'-0.02em'}}>{val}</p>
+                                        <p className="text-[9.5px] text-[#8A90A8] mt-1 uppercase" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>{label}</p>
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Due next card */}
                             {timeline.length > 0 && (
                                 <div className="bg-white rounded-2xl p-4 space-y-3" style={{boxShadow:'var(--card-shadow)'}}>
-                                    <p className="font-mono text-[10px] uppercase tracking-wider text-[#8A90A8]">Due next</p>
+                                    <p className="text-[9.5px] uppercase text-[#8A90A8]" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>Due next</p>
                                     <div className="flex justify-between items-center gap-3">
                                         <div className="min-w-0">
                                             <p className="font-bold text-[13px] text-[#101425] truncate">{toSentenceCase(timeline[0].moduleName)}</p>
@@ -754,7 +750,7 @@ const StudentPortal = () => {
 
                             {/* Upcoming deadlines */}
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A90A8] mb-3 px-1">Upcoming Deadlines</p>
+                                <p className="text-[9.5px] uppercase text-[#8A90A8] mb-3 px-1" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>Upcoming Deadlines</p>
                                 {timeline.length === 0 ? (
                                     <p className="text-center py-8 text-sm text-[#8A90A8]">No upcoming deadlines — you're all caught up!</p>
                                 ) : (
@@ -812,7 +808,7 @@ const StudentPortal = () => {
                                     const typeModules = filteredModules.filter(m => (m.moduleType || 'General') === type);
                                     return (
                                         <div key={type}>
-                                            <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8] mb-2 px-1">{type} Modules</p>
+                                            <p className="text-[9.5px] uppercase text-[#8A90A8] mb-2 px-1" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>{type} Modules</p>
                                             <div className="space-y-3">
                                                 {typeModules.map((m, i) => {
                                                     const { bar, badgeBg, badgeFg, badgeBorder } = getDesignModuleColor(m.id);
@@ -910,8 +906,8 @@ const StudentPortal = () => {
                                 style={{background:'#4A3AFF', borderRadius:'22px'}}>
                                 {learner.fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'S'}
                             </div>
-                            <h2 className="text-lg font-bold text-[#101425] mt-1">{learner.fullName}</h2>
-                            <p className="font-mono text-[11.5px] font-medium text-[#8A90A8]">{studentNumber}</p>
+                            <h2 className="text-lg text-[#101425] mt-1" style={{fontWeight:800, letterSpacing:'-0.02em'}}>{learner.fullName}</h2>
+                            <p className="text-[11px] text-[#8A90A8]" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.06em', fontWeight:500}}>{studentNumber}</p>
                         </div>
 
                         {/* Stats — no border, #F6F7FB bg */}
@@ -922,8 +918,8 @@ const StudentPortal = () => {
                                 { label: 'Uploads',   value: history.length },
                             ].map(({ label, value }) => (
                                 <div key={label} className="text-center py-3 rounded-[14px]" style={{background:'#F6F7FB'}}>
-                                    <p className="text-xl font-bold text-[#101425]">{value}</p>
-                                    <p className="text-[10px] text-[#8A90A8] font-semibold mt-0.5">{label}</p>
+                                    <p className="text-xl font-bold text-[#101425]" style={{fontVariantNumeric:'tabular-nums', letterSpacing:'-0.02em'}}>{value}</p>
+                                    <p className="text-[9.5px] text-[#8A90A8] uppercase mt-0.5" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>{label}</p>
                                 </div>
                             ))}
                         </div>
@@ -937,7 +933,7 @@ const StudentPortal = () => {
                             ].map(({ label, value }, i, arr) => (
                                 <div key={label} className="flex justify-between items-center px-5 py-4"
                                     style={i < arr.length - 1 ? {borderBottom:'1px solid rgba(16,20,37,0.06)'} : {}}>
-                                    <span className="text-[12px] text-[#8A90A8]">{label}</span>
+                                    <span className="text-[10px] text-[#8A90A8] uppercase" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>{label}</span>
                                     <span className="text-[12.5px] font-semibold text-[#101425] text-right max-w-[55%] truncate">{value}</span>
                                 </div>
                             ))}
@@ -946,7 +942,7 @@ const StudentPortal = () => {
                         {/* Notification toggles */}
                         <div className="bg-white rounded-2xl overflow-hidden" style={{boxShadow:'var(--card-shadow)'}}>
                             <div className="px-5 py-3" style={{borderBottom:'1px solid rgba(16,20,37,0.06)'}}>
-                                <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8]">Notifications</p>
+                                <p className="text-[9.5px] uppercase text-[#8A90A8]" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>Notifications</p>
                             </div>
                             {[
                                 { label: 'Deadline Reminders',   checked: notifDeadlines,  setter: setNotifDeadlines  },
@@ -957,11 +953,11 @@ const StudentPortal = () => {
                                     style={i < arr.length - 1 ? {borderBottom:'1px solid rgba(16,20,37,0.06)'} : {}}>
                                     <span className="text-[12.5px] font-semibold text-[#101425]">{label}</span>
                                     <button onClick={() => setter(v => !v)}
-                                        className="relative flex-shrink-0 rounded-full transition-colors duration-200"
-                                        style={{width:'42px', height:'24px', background: checked ? '#4A3AFF' : '#DEDFE7'}}
+                                        className="relative flex-shrink-0 rounded-full"
+                                        style={{width:'44px', height:'26px', background: checked ? '#4A3AFF' : '#E9E9EF', boxShadow: checked ? 'inset 0 1px 3px rgba(0,0,0,0.2)' : 'none', transition:'all 0.2s ease'}}
                                         aria-label={`Toggle ${label}`}>
-                                        <span className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200"
-                                            style={{transform: checked ? 'translateX(21px)' : 'translateX(3px)'}} />
+                                        <span className="absolute top-[3px] w-[20px] h-[20px] bg-white rounded-full"
+                                            style={{transform: checked ? 'translateX(21px)' : 'translateX(3px)', boxShadow:'0 1px 4px rgba(0,0,0,0.18)', transition:'all 0.2s ease'}} />
                                     </button>
                                 </div>
                             ))}
