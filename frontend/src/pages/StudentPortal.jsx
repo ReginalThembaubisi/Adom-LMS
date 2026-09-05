@@ -14,7 +14,13 @@ import {
     CaretLeft,
     CaretRight,
     X,
-    PaperPlaneTilt
+    PaperPlaneTilt,
+    House,
+    Stack,
+    ClipboardText,
+    UserCircle,
+    MagnifyingGlass,
+    UploadSimple
 } from '@phosphor-icons/react';
 
 // Module/slot titles come from the backend in ALL CAPS (SETA unit-standard convention);
@@ -44,6 +50,19 @@ const getModuleColor = (id) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
     return MODULE_COLOR_PALETTE[hash % MODULE_COLOR_PALETTE.length];
+};
+
+const DESIGN_BAR_COLORS  = ['#4A3AFF','#8B5CF6','#10B981','#F43F5E','#06B6D4','#F97316','#A855F7','#14B8A6'];
+const DESIGN_BADGE_BG    = ['#EEF0FF','#F3EEFF','#ECFDF5','#FFF1F2','#ECFEFF','#FFF7ED','#FDF4FF','#F0FDFA'];
+const DESIGN_BADGE_FG    = ['#4A3AFF','#7C3AED','#059669','#E11D48','#0891B2','#EA580C','#9333EA','#0D9488'];
+const DESIGN_BADGE_BORD  = ['rgba(74,58,255,.2)','rgba(124,58,237,.2)','rgba(5,150,105,.2)','rgba(225,29,72,.2)','rgba(8,145,178,.2)','rgba(234,88,12,.2)','rgba(147,51,234,.2)','rgba(13,148,136,.2)'];
+
+const getDesignModuleColor = (id) => {
+    const str = String(id ?? '');
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    const idx = hash % 8;
+    return { bar: DESIGN_BAR_COLORS[idx], badgeBg: DESIGN_BADGE_BG[idx], badgeFg: DESIGN_BADGE_FG[idx], badgeBorder: DESIGN_BADGE_BORD[idx] };
 };
 
 const groupTimelineByDay = (items) => {
@@ -83,8 +102,8 @@ const StudentPortal = () => {
 
     const studentNumber = learner?.learnerCode || '';
 
-    // UI Tab State: 'modules' | 'submit' | 'history'
-    const [activeTab, setActiveTab] = useState('modules');
+    // UI Tab State: 'home' | 'modules' | 'history' | 'messages' | 'profile'
+    const [activeTab, setActiveTab] = useState('home');
     const fetchedTabsRef = useRef(new Set());
     const [alert, setAlert] = useState({ type: '', message: '' });
 
@@ -106,6 +125,16 @@ const StudentPortal = () => {
 
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    // Profile notification toggles (UI only)
+    const [notifDeadlines, setNotifDeadlines] = useState(true);
+    const [notifGrades, setNotifGrades] = useState(true);
+    const [notifWifiOnly, setNotifWifiOnly] = useState(false);
+
+    // Module detail segment control: 'assignments' | 'materials'
+    const [moduleSegment, setModuleSegment] = useState('assignments');
+    // Modules search filter
+    const [moduleSearch, setModuleSearch] = useState('');
 
     // Chatbot State
     const [chatOpen, setChatOpen] = useState(false);
@@ -141,7 +170,14 @@ const StudentPortal = () => {
         if (!studentNumber) return;
         if (fetchedTabsRef.current.has(activeTab)) return;
         fetchedTabsRef.current.add(activeTab);
-        if (activeTab === 'modules') {
+        if (activeTab === 'home') {
+            // Pre-mark so modules/history tabs skip redundant fetches
+            fetchedTabsRef.current.add('modules');
+            fetchedTabsRef.current.add('history');
+            fetchModules();
+            fetchTimeline();
+            fetchHistory();
+        } else if (activeTab === 'modules') {
             fetchModules();
             fetchTimeline();
         } else if (activeTab === 'history') {
@@ -302,18 +338,11 @@ const StudentPortal = () => {
         setActiveTab('submit');
     };
 
-    // Tab switcher with warning redirect guard
     const handleTabChange = (tabId) => {
         setAlert({ type: '', message: '' });
-        if (tabId === 'submit' && !selectedSession) {
-            setAlert({ type: 'error', message: 'Please select an assignment from your Modules or Upcoming Deadlines to submit.' });
-            setActiveTab('modules');
-            setSelectedModule(null); // Reset detail view
-            return;
-        }
         setActiveTab(tabId);
         if (tabId === 'modules') {
-            setSelectedModule(null); // Return to module list
+            setSelectedModule(null);
             fetchModules();
             fetchTimeline();
         }
@@ -433,614 +462,418 @@ const StudentPortal = () => {
 
     if (!learner) return null;
 
+    const NAV_TABS = [
+        { id: 'home',     label: 'Home',        Icon: House        },
+        { id: 'modules',  label: 'Modules',     Icon: Stack        },
+        { id: 'history',  label: 'Submissions', Icon: ClipboardText },
+        { id: 'messages', label: 'Messages',    Icon: ChatCircleDots },
+        { id: 'profile',  label: 'Profile',     Icon: UserCircle   },
+    ];
+
+    const filteredModules = moduleSearch.trim()
+        ? modules.filter(m =>
+            toSentenceCase(m.moduleName).toLowerCase().includes(moduleSearch.toLowerCase()) ||
+            (m.moduleCode || '').toLowerCase().includes(moduleSearch.toLowerCase()) ||
+            (m.lecturerName || '').toLowerCase().includes(moduleSearch.toLowerCase()))
+        : modules;
+
     return (
-        <div className="bg-slate-50/80 min-h-screen text-slate-800 antialiased py-8 space-y-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="min-h-screen bg-[#F6F7FB] text-[#101425] antialiased">
+          <div className="pb-[84px]">
                 
-                {/* Header Strip or Dark Banner */}
-                {selectedModule ? (
-                    /* Cohesive Header Strip */
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                        <div className="flex items-center gap-3">
-                            <button
-                                className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-xs py-2 px-4 rounded-lg transition-colors flex items-center gap-1.5"
-                                onClick={() => setSelectedModule(null)}
-                            >
-                                <ArrowLeft size={14} weight="bold" /> Back to Modules
-                            </button>
-                            <span className="text-slate-300 hidden sm:inline">|</span>
-                            <span className="text-sm font-extrabold text-slate-900">
-                                Code {selectedModule.moduleCode || 'N/A'}: {toSentenceCase(selectedModule.moduleName)}
-                            </span>
-                        </div>
-                        <div className="text-xs text-slate-500 font-semibold sm:text-right">
-                            Facilitator: <span className="text-slate-800 font-bold">{selectedModule.lecturerName || 'Unassigned'}</span>
-                        </div>
-                    </div>
-                ) : (
-                    /* Top Dark Hero Welcome Banner */
-                    <header className="flex justify-between items-center pb-6 border-b border-slate-300 bg-linear-to-r from-[#0f172a] to-indigo-950 text-[#f8fafc] p-6 rounded-2xl shadow-md mb-6">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-[#f8fafc]/10 hover:bg-[#f8fafc]/20 transition-all rounded-full flex items-center justify-center font-bold text-lg text-[#f8fafc] border border-[#f8fafc]/20 shadow-xs flex-shrink-0">
-                                {learner.fullName ? learner.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'S'}
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight">Welcome back, {learner.fullName}! 👋</h1>
-                                <p className="text-sm text-[#cbd5e1]">Here is your academic overview for this term.</p>
-                            </div>
-                        </div>
-                        <button onClick={handleSignout} className="border border-[#f8fafc]/20 bg-[#f8fafc]/10 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#f8fafc]/20 text-[#f8fafc] transition-all shadow-xs">
-                            Sign Out
-                        </button>
-                    </header>
-                )}
-
-                {/* Alert Banner */}
-                {alert.message && (
-                    <div className={`p-4 rounded-xl text-xs font-semibold shadow-xs border animate-fadeIn ${
-                        alert.type === 'error'
-                            ? 'bg-rose-50 border-rose-200 text-rose-800'
-                            : 'bg-blue-50 border-blue-200 text-blue-800'
-                    }`}>
-                        {alert.message}
-                    </div>
-                )}
-
-                {/* Student Info Card Block */}
-                {!selectedModule && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Student Number</span>
-                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{studentNumber}</strong>
-                        </div>
-                        <div>
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cohort</span>
-                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{learner.cohort || '2026 Intake'}</strong>
-                        </div>
-                        <div>
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Learnership Program</span>
-                            <strong className="text-sm font-semibold text-slate-800 mt-1 block">{learner.learnershipName || 'Unassigned'}</strong>
-                        </div>
-                    </div>
-                )}
-
-                {/* Tab Bar */}
-                {!selectedModule && (
-                    <nav className="bg-slate-100 p-1 rounded-xl inline-flex gap-1 mb-6">
-                        <button 
-                            className={activeTab === 'modules' 
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('modules')}
-                        >
-                            My Modules
-                        </button>
-                        <button 
-                            className={activeTab === 'calendar' 
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('calendar')}
-                        >
-                            My Calendar
-                        </button>
-                        <button
-                            className={activeTab === 'history'
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all"
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('history')}
-                        >
-                            My Submissions
-                        </button>
-                        <button
-                            className={activeTab === 'messages'
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
-                            }
-                            onClick={() => handleTabChange('messages')}
-                        >
-                            Messages
-                            {unreadMessages > 0 && (
-                                <span className="bg-rose-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {unreadMessages}
-                                </span>
-                            )}
-                        </button>
-                    </nav>
-                )}
-
+                {/* ── Submission Success Toast ── */}
                 {lastSubmission && (
-                    <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 shadow-sm space-y-3 mb-6">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
-                                    <CheckCircle size={16} weight="fill" /> Submission Successful!
-                                </h3>
-                                <div className="text-xs text-emerald-700 mt-2 space-y-1">
-                                    <p><strong>File Submitted:</strong> {lastSubmission.fileName}</p>
-                                    <p><strong>Assignment Slot:</strong> {lastSubmission.slotName}</p>
-                                    <p><strong>Submitted At:</strong> {lastSubmission.submittedAt}</p>
-                                </div>
-                                <p className="text-[11px] text-slate-500 mt-3">
-                                    You can check this anytime under <strong>My Submissions</strong>.
-                                </p>
-                            </div>
-                            <button 
-                                onClick={() => setLastSubmission(null)} 
-                                className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded transition-colors"
-                            >
-                                Dismiss
-                            </button>
+                    <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-2xl px-4 py-3 flex items-center gap-3 animate-fadeIn"
+                        style={{boxShadow:'0 20px 40px -12px rgba(22,169,122,0.35)', border:'1px solid rgba(22,169,122,0.25)'}}>
+                        <CheckCircle size={20} weight="fill" color="#16A97A" className="flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[12.5px] font-semibold text-[#101425] truncate">{lastSubmission.fileName}</p>
+                            <p className="text-[10px] text-[#8A90A8]">Submitted successfully</p>
                         </div>
+                        <button onClick={() => setLastSubmission(null)} className="text-[#8A90A8] hover:text-[#101425] flex-shrink-0">
+                            <X size={14} weight="bold" />
+                        </button>
                     </div>
                 )}
 
-                {/* TAB 1: My Modules */}
-                {activeTab === 'modules' && (
-                    <div key={selectedModule ? 'detail' : 'list'} className="space-y-6 animate-fadeIn">
-                        {!selectedModule ? (
-                            <div id="modules-list-view" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                {/* Left Area (Active Modules - 8 Columns). Ordered after Deadlines on mobile. */}
-                                <div className="order-2 lg:order-1 lg:col-span-8 space-y-6">
-                                    <div className="border-b border-slate-300 pb-3">
-                                        <h2 className="text-lg font-bold text-slate-900">My Active Modules</h2>
-                                        <p className="text-xs text-slate-500">Select a module to see active courses, learning materials, and grades.</p>
-                                    </div>
+                {/* ── Module Detail View ── */}
+                {activeTab === 'modules' && selectedModule && (
+                    <div className="animate-fadeIn">
+                        {/* Indigo header */}
+                        <div className="px-5 pt-14 pb-6 text-white" style={{background:'#4A3AFF'}}>
+                            <button
+                                onClick={() => setSelectedModule(null)}
+                                className="flex items-center gap-1.5 text-sm font-semibold mb-4 px-3 py-1.5 rounded-xl"
+                                style={{background:'rgba(255,255,255,0.16)'}}
+                            >
+                                <ArrowLeft size={14} weight="bold" /> Back
+                            </button>
+                            <h1 className="font-bold text-xl leading-snug line-clamp-2">{toSentenceCase(selectedModule.moduleName)}</h1>
+                            <p className="text-sm mt-1 opacity-70">Facilitator: {selectedModule.lecturerName || 'Unassigned'}</p>
+                        </div>
 
-                                    {loadingModules ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {[0, 1, 2, 3].map(i => (
-                                                <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3">
-                                                    <div className="flex justify-between items-start gap-2">
-                                                        <div className="skeleton h-4 w-2/3 rounded-md" />
-                                                        <div className="skeleton h-5 w-16 rounded" />
-                                                    </div>
-                                                    <div className="skeleton h-3 w-1/2 rounded-md" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : modules.length === 0 ? (
-                                        <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
-                                            <p className="text-sm text-slate-400">You are not enrolled in any modules yet.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-8">
-                                            {Array.from(new Set(modules.map(m => m.moduleType || 'General'))).map(type => {
-                                                const typeModules = modules.filter(m => (m.moduleType || 'General') === type);
-                                                if (typeModules.length === 0) return null;
-                                                return (
-                                                    <div key={type} className="space-y-4">
-                                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-300 pb-2">
-                                                            {type} Modules
-                                                        </h3>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            {typeModules.map((m, i) => {
-                                                                const color = getModuleColor(m.id);
-                                                                return (
-                                                                <div
-                                                                    key={m.id}
-                                                                    className={`bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 ${color.hoverBorder} hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-5 flex flex-col justify-between gap-3 w-full animate-fadeInUp relative overflow-hidden`}
-                                                                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                                                                    onClick={() => openModuleDetails(m.id)}
-                                                                >
-                                                                    <div className={`absolute top-0 left-0 right-0 h-1 ${color.bar}`} />
-                                                                    <div className="space-y-3">
-                                                                        <div className="flex justify-between items-start gap-2">
-                                                                            <span className="font-bold text-slate-800 text-base block leading-snug line-clamp-2" title={m.moduleName}>{toSentenceCase(m.moduleName)}</span>
-                                                                            <span className={`${color.badge} border px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0`}>
-                                                                                Code: {m.moduleCode || 'N/A'}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
-                                                                            <ChalkboardTeacher size={14} weight="bold" className={color.icon} />
-                                                                            <span className="text-slate-500">Facilitator: <strong className="font-semibold text-slate-600">{m.lecturerName}</strong></span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Right Area (Upcoming Deadlines - 4 Columns). Ordered first on mobile. */}
-                                <div className="order-1 lg:order-2 lg:col-span-4 space-y-6">
-                                    <div className="border-b border-slate-300 pb-3">
-                                        <h2 className="text-lg font-bold text-slate-900">Upcoming Deadlines</h2>
-                                        <p className="text-xs text-slate-500">Keep track of your upcoming submissions.</p>
-                                    </div>
-
-                                    {timeline.length === 0 ? (
-                                        <div className="text-center py-8 border border-dashed border-slate-300 rounded-xl">
-                                            <p className="text-xs text-slate-400">No upcoming activities require action</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {groupTimelineByDay(timeline).map(([dayLabel, items], groupIdx) => (
-                                                <div key={dayLabel}>
-                                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2 px-1">{dayLabel}</p>
-                                                    <div className="space-y-2">
-                                                        {items.map((item, idx) => {
-                                                            const closesTime = new Date(item.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                                            const color = getModuleColor(item.moduleId);
-                                                            return (
-                                                                <div
-                                                                    key={item.sessionId}
-                                                                    className={`bg-white border border-slate-200/80 rounded-xl ${color.hoverBorder} hover:-translate-y-0.5 transition-all duration-200 cursor-pointer p-3 flex items-center gap-3 group animate-fadeInUp`}
-                                                                    style={{ animationDelay: `${Math.min(groupIdx * 3 + idx, 8) * 40}ms` }}
-                                                                    onClick={() => {
-                                                                        openModuleDetails(item.moduleId);
-                                                                        setActiveUploadSessionId(item.sessionId);
-                                                                    }}
-                                                                >
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${color.dot} flex-shrink-0`} />
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <p className={`text-xs font-bold text-slate-800 truncate ${color.hoverText} transition-colors`} title={item.moduleName}>
-                                                                            {toSentenceCase(item.moduleName)}
-                                                                        </p>
-                                                                        <p className="text-[10px] text-slate-500 truncate" title={item.slotTitle}>
-                                                                            {toSentenceCase(item.slotTitle)}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex-shrink-0">
-                                                                        <Clock size={11} weight="bold" /> {closesTime}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                        {/* Segment control */}
+                        <div className="px-4 pt-4">
+                            <div className="flex rounded-xl p-1" style={{background:'#EFEFF4'}}>
+                                {['assignments','materials'].map(seg => (
+                                    <button key={seg}
+                                        onClick={() => setModuleSegment(seg)}
+                                        className="flex-1 py-2 rounded-lg text-[12.5px] font-semibold capitalize transition-all"
+                                        style={moduleSegment === seg
+                                            ? {background:'#fff', color:'#101425', boxShadow:'0 2px 8px rgba(16,20,37,0.12)'}
+                                            : {color:'#8A90A8'}}>
+                                        {seg === 'assignments' ? 'Assignments' : 'Materials'}
+                                    </button>
+                                ))}
                             </div>
-                        ) : (
-                            <div id="module-detail-view" className="space-y-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    {/* Left Area (Course Materials - 7 Columns) */}
-                                    <div className="lg:col-span-7 space-y-6">
-                                        {/* Learning Material Card Box */}
-                                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4">
-                                            <h3 className="text-base font-bold text-slate-900 border-b border-slate-300 pb-3">Module Course Materials</h3>
-                                            {(!selectedModule.files || selectedModule.files.length === 0) ? (
-                                                <p className="text-xs text-slate-500">No learning materials uploaded for this module yet.</p>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {Object.entries(
-                                                        selectedModule.files.reduce((acc, f) => {
-                                                            const cat = f.fileType || 'Other';
-                                                            if (!acc[cat]) acc[cat] = [];
-                                                            acc[cat].push(f);
-                                                            return acc;
-                                                        }, {})
-                                                    ).sort((a, b) => {
-                                                        const getPriority = (cat) => {
-                                                            const c = cat.toLowerCase();
-                                                            if (c === 'learner guide') return 0;
-                                                            if (c.includes('assessment') || c.includes('poe') || c.includes('instrument')) return 1;
-                                                            if (c === 'facilitator guide') return 2;
-                                                            if (c === 'assessor guide') return 3;
-                                                            if (c === 'moderator guide') return 4;
-                                                            if (c === 'programme strategy') return 5;
-                                                            return 6;
-                                                        };
-                                                        return getPriority(a[0]) - getPriority(b[0]);
-                                                    }).map(([category, categoryFiles]) => (
-                                                        <div key={category} className="bg-slate-50/30 border border-slate-200/80 rounded-2xl p-5 space-y-3">
-                                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{category}</h4>
-                                                            <div className="space-y-2">
-                                                                {categoryFiles.map(file => (
-                                                                    <div key={file.id} className="p-4 bg-slate-50/50 border border-slate-200/80 rounded-xl flex justify-between items-center gap-4 hover:bg-slate-100/50 hover:shadow-xs transition-all">
-                                                                        <div className="space-y-1">
-                                                                            <p className="text-xs font-bold text-slate-800">{file.title || 'Untitled Material'}</p>
-                                                                            <span className="text-[10px] font-medium text-slate-400">{file.fileType}</span>
-                                                                        </div>
-                                                                        <a 
-                                                                            href={file.filePath} 
-                                                                            download 
-                                                                            className="text-xs font-bold text-slate-700 bg-white border border-slate-300 px-3.5 py-2 rounded-lg shadow-2xs hover:shadow-xs hover:bg-slate-50 transition-all flex-shrink-0"
-                                                                        >
-                                                                            Download
-                                                                        </a>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                        </div>
+
+                        {alert.message && (
+                            <div className={`mx-4 mt-3 p-3 rounded-xl text-xs font-semibold ${alert.type === 'error' ? 'bg-red-50 text-[#E0524A]' : 'bg-blue-50 text-[#4A3AFF]'}`}>
+                                {alert.message}
+                            </div>
+                        )}
+
+                        {/* Materials segment */}
+                        {moduleSegment === 'materials' && (
+                            <div className="px-4 py-4 space-y-3">
+                                {(!selectedModule.files || selectedModule.files.length === 0) ? (
+                                    <p className="text-center py-10 text-sm text-[#8A90A8]">No learning materials uploaded yet.</p>
+                                ) : (
+                                    Object.entries(
+                                        selectedModule.files.reduce((acc, f) => {
+                                            const cat = f.fileType || 'Other';
+                                            if (!acc[cat]) acc[cat] = [];
+                                            acc[cat].push(f);
+                                            return acc;
+                                        }, {})
+                                    ).map(([category, categoryFiles]) => (
+                                        <div key={category}>
+                                            <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8] mb-2 px-1">{category}</p>
+                                            <div className="space-y-2">
+                                                {categoryFiles.map(file => (
+                                                    <div key={file.id} className="bg-white rounded-2xl p-4 flex justify-between items-center gap-3" style={{boxShadow:'var(--card-shadow)'}}>
+                                                        <div className="min-w-0">
+                                                            <p className="font-semibold text-[13px] text-[#101425] truncate">{file.title || 'Untitled Material'}</p>
+                                                            <p className="text-[10px] text-[#8A90A8] mt-0.5">{file.fileType}</p>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                        <a href={file.filePath} download
+                                                            className="text-[11px] font-semibold text-[#4A3AFF] flex-shrink-0 px-3 py-1.5 rounded-xl"
+                                                            style={{background:'#EEF0FF'}}>
+                                                            Download
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
 
-                                    {/* Right Area (Assignment Slots - 5 Columns) */}
-                                    <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4">
-                                            <h3 className="text-base font-bold text-slate-900 border-b border-slate-300 pb-3">Assignment Slots</h3>
-                                            {(!selectedModule.slots || selectedModule.slots.length === 0) ? (
-                                                <p className="text-xs text-slate-500">No active submission slots open for this module.</p>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {selectedModule.slots.map((s) => {
-                                                        const deadline = new Date(s.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                                                        const isSubmitted = s.submitted || s.isSubmitted;
-                                                        const statusBadge = isSubmitted
-                                                            ? <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>Submitted</span>
-                                                            : s.status === 'CLOSED'
-                                                                ? <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>Closed</span>
-                                                                : s.status === 'SCHEDULED'
-                                                                    ? <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-300/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>Not Open Yet</span>
-                                                                    : <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Pending</span>;
+                        {/* Assignments segment */}
+                        {moduleSegment === 'assignments' && (
+                            <div className="px-4 py-4 space-y-3">
+                                {(!selectedModule.slots || selectedModule.slots.length === 0) ? (
+                                    <p className="text-center py-10 text-sm text-[#8A90A8]">No active submission slots open for this module.</p>
+                                ) : (
+                                    selectedModule.slots.map((s) => {
+                                        const deadline = new Date(s.endTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                        const isSubmitted = s.submitted || s.isSubmitted;
+                                        const statusPill = isSubmitted
+                                            ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{background:'#ECFDF5',color:'#059669'}}><span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />Submitted</span>
+                                            : s.status === 'CLOSED'
+                                                ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{background:'#FFF1F2',color:'#E11D48'}}><span className="w-1.5 h-1.5 rounded-full bg-[#E11D48]" />Closed</span>
+                                                : s.status === 'SCHEDULED'
+                                                    ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{background:'#F6F7FB',color:'#8A90A8'}}><span className="w-1.5 h-1.5 rounded-full bg-[#8A90A8]" />Not Open Yet</span>
+                                                    : <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{background:'#FDF2E2',color:'#9A6412'}}><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending</span>;
 
-                                                        return (
-                                                            <div key={s.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 flex flex-col gap-4">
-                                                                {/* Slot Header with Badge */}
-                                                                <div className="flex justify-between items-start border-b border-slate-300 pb-3 w-full gap-2">
-                                                                    <div>
-                                                                        <h4 className="text-xs font-bold text-slate-800 leading-tight">{toSentenceCase(s.title)}</h4>
-                                                                        <p className="text-[10px] text-slate-400 mt-1">
-                                                                            Session: <strong className="text-slate-600 font-semibold">{s.sessionName}</strong>
-                                                                        </p>
-                                                                    </div>
-                                                                    {statusBadge}
-                                                                </div>
+                                        return (
+                                            <div key={s.id} className="bg-white rounded-2xl p-4 space-y-3" style={{boxShadow:'var(--card-shadow)'}}>
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-bold text-[13px] text-[#101425] leading-snug">{toSentenceCase(s.title)}</h4>
+                                                        <p className="text-[10px] text-[#8A90A8] mt-0.5">Session: {s.sessionName}</p>
+                                                    </div>
+                                                    {statusPill}
+                                                </div>
 
-                                                                <div className="text-[11px] text-slate-500 space-y-1">
-                                                                    {s.status === 'SCHEDULED' && s.startTime && (
-                                                                        <p className="font-semibold text-slate-500">
-                                                                            Opens: {new Date(s.startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                                        </p>
-                                                                    )}
-                                                                    <p className="font-semibold text-amber-600">Deadline: {deadline}</p>
-                                                                    <p>{s.description || 'No instructions provided.'}</p>
-                                                                </div>
+                                                <div className="space-y-1">
+                                                    {s.status === 'SCHEDULED' && s.startTime && (
+                                                        <p className="text-[11px] text-[#8A90A8]">Opens: {new Date(s.startTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                                    )}
+                                                    <p className="text-[11px] font-semibold" style={{color:'#9A6412'}}>Deadline: {deadline}</p>
+                                                    {s.description && <p className="text-[11px] text-[#8A90A8]">{s.description}</p>}
+                                                </div>
 
-                                                                {/* Instructor Brief Download */}
-                                                                {s.taskFilePath && (
-                                                                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-300/80 w-full gap-2">
-                                                                        <span className="text-[10px] font-semibold text-slate-600 truncate flex-shrink min-w-0">{s.taskFileName || 'Brief Attachment'}</span>
-                                                                        <a 
-                                                                            href={s.taskFilePath}
-                                                                            download
-                                                                            className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-[10px] py-1 px-2.5 rounded transition-colors flex-shrink-0"
-                                                                        >
-                                                                            Download Brief
-                                                                        </a>
-                                                                    </div>
-                                                                )}
+                                                {s.taskFilePath && (
+                                                    <div className="flex justify-between items-center px-3 py-2 rounded-xl gap-2" style={{background:'#F6F7FB'}}>
+                                                        <span className="text-[10px] font-semibold text-[#101425] truncate flex-shrink min-w-0">{s.taskFileName || 'Brief Attachment'}</span>
+                                                        <a href={s.taskFilePath} download className="text-[10px] font-semibold text-[#4A3AFF] flex-shrink-0">Download Brief</a>
+                                                    </div>
+                                                )}
 
-                                                                {/* Student Submission Receipt */}
-                                                                {isSubmitted && activeUploadSessionId !== s.id && (
-                                                                    <div className="pt-1 flex justify-between items-center text-[10px] w-full">
-                                                                        <span className="text-slate-400">File uploaded on system.</span>
-                                                                        {s.status === 'OPEN' && (
-                                                                            <button 
-                                                                                onClick={() => { setActiveUploadSessionId(s.id); setInlineFile(null); setInlineAlerts({}); }}
-                                                                                className="font-bold text-blue-600 hover:text-blue-800 hover:underline"
-                                                                            >
-                                                                                Replace File
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
+                                                {isSubmitted && activeUploadSessionId !== s.id && (
+                                                    <div className="flex justify-between items-center text-[10px]">
+                                                        <span className="text-[#8A90A8]">File uploaded on system.</span>
+                                                        {s.status === 'OPEN' && (
+                                                            <button onClick={() => { setActiveUploadSessionId(s.id); setInlineFile(null); setInlineAlerts({}); }}
+                                                                className="font-semibold" style={{color:'#4A3AFF'}}>Replace File</button>
+                                                        )}
+                                                    </div>
+                                                )}
 
-                                                                {/* Inline Resubmit / Submit Form */}
-                                                                {s.status === 'OPEN' && activeUploadSessionId === s.id && (
-                                                                    <div className="pt-1 w-full">
-                                                                        <form onSubmit={(e) => handleInlineSubmit(e, s.id)} className="p-3 bg-slate-50 border border-slate-300 rounded-lg space-y-3 w-full">
-                                                                            <div className="space-y-1.5">
-                                                                                <label className="block text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-1.5">Choose Assignment File (max 20MB) *</label>
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input 
-                                                                                        type="file" 
-                                                                                        id={`file-input-${s.id}`}
-                                                                                        onChange={e => handleInlineFileChange(e, s.id)} 
-                                                                                        className="hidden" 
-                                                                                        required 
-                                                                                    />
-                                                                                    <button 
-                                                                                        type="button" 
-                                                                                        onClick={() => document.getElementById(`file-input-${s.id}`).click()} 
-                                                                                        className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-medium text-[10px] py-1.5 px-3 rounded transition-colors flex-shrink-0"
-                                                                                    >
-                                                                                        Browse File
-                                                                                    </button>
-                                                                                    <span className="text-[10px] text-slate-500 font-semibold truncate flex-shrink min-w-0">
-                                                                                        {inlineFile ? inlineFile.name : 'No file selected'}
-                                                                                    </span>
-                                                                                </div>
-                                                                            </div>
+                                                {s.status === 'OPEN' && activeUploadSessionId === s.id && (
+                                                    <form onSubmit={(e) => handleInlineSubmit(e, s.id)} className="space-y-3 pt-1">
+                                                        <div className="rounded-2xl border-2 border-dashed flex flex-col items-center gap-2 py-5 cursor-pointer"
+                                                            style={{borderColor:'rgba(74,58,255,.35)', background:'#EDEBFF'}}
+                                                            onClick={() => document.getElementById(`file-input-${s.id}`).click()}>
+                                                            <UploadSimple size={22} color="#4A3AFF" />
+                                                            <p className="text-[11px] font-semibold text-[#4A3AFF]">{inlineFile ? inlineFile.name : 'Tap to choose file (max 20MB)'}</p>
+                                                        </div>
+                                                        <input type="file" id={`file-input-${s.id}`} onChange={e => handleInlineFileChange(e, s.id)} className="hidden" required />
 
-                                                                            {inlineAlerts[s.id] && (
-                                                                                <div className={`text-[10px] font-bold ${inlineAlerts[s.id].type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                                                    {inlineAlerts[s.id].message}
-                                                                                </div>
-                                                                            )}
-
-                                                                            <div className="flex justify-end gap-1.5 pt-1">
-                                                                                <button 
-                                                                                    type="submit" 
-                                                                                    disabled={uploading}
-                                                                                    className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-[10px] py-1.5 px-3.5 rounded-lg shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150 disabled:opacity-50"
-                                                                                >
-                                                                                    {uploading ? 'Uploading...' : 'Submit'}
-                                                                                </button>
-                                                                                <button 
-                                                                                    type="button" 
-                                                                                    onClick={() => { setActiveUploadSessionId(null); setInlineFile(null); }} 
-                                                                                    className="bg-slate-100 hover:bg-slate-200/80 text-slate-500 font-medium text-[10px] py-1.5 px-3 rounded transition-colors"
-                                                                                >
-                                                                                    Cancel
-                                                                                </button>
-                                                                            </div>
-                                                                        </form>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Initial submit button */}
-                                                                {s.status === 'OPEN' && !isSubmitted && activeUploadSessionId !== s.id && (
-                                                                    <div className="pt-1">
-                                                                        <button
-                                                                            onClick={() => { setActiveUploadSessionId(s.id); setInlineAlerts({}); }}
-                                                                            className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-xs shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 transition-all duration-150 text-center w-full block"
-                                                                        >
-                                                                            Submit Assignment
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Not open yet — explain why there's no submit button instead of leaving a dead end */}
-                                                                {s.status === 'SCHEDULED' && (
-                                                                    <div className="pt-1">
-                                                                        <div className="bg-slate-50 border border-slate-200 text-slate-500 text-xs font-semibold py-2 px-4 rounded-xl text-center w-full">
-                                                                            Submission not open yet
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                        {inlineFile && (
+                                                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:'#FDECE7'}}>
+                                                                <span className="font-mono text-[10px] font-semibold" style={{color:'#C2472C'}}>PDF</span>
+                                                                <span className="text-[11px] text-[#101425] truncate flex-1">{inlineFile.name}</span>
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                                        )}
+
+                                                        {inlineAlerts[s.id] && (
+                                                            <p className={`text-[11px] font-semibold ${inlineAlerts[s.id].type === 'success' ? 'text-[#16A97A]' : 'text-[#E0524A]'}`}>
+                                                                {inlineAlerts[s.id].message}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="flex gap-2">
+                                                            <button type="submit" disabled={uploading}
+                                                                className="flex-1 py-3 rounded-xl text-white font-semibold text-[13px] disabled:opacity-50"
+                                                                style={{background:'#4A3AFF', boxShadow:'0 8px 18px -8px rgba(74,58,255,.7)'}}>
+                                                                {uploading ? 'Uploading…' : 'Submit'}
+                                                            </button>
+                                                            <button type="button" onClick={() => { setActiveUploadSessionId(null); setInlineFile(null); }}
+                                                                className="px-4 py-3 rounded-xl font-semibold text-[13px] text-[#8A90A8]" style={{background:'#F6F7FB'}}>
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                )}
+
+                                                {s.status === 'OPEN' && !isSubmitted && activeUploadSessionId !== s.id && (
+                                                    <button onClick={() => { setActiveUploadSessionId(s.id); setInlineAlerts({}); }}
+                                                        className="w-full py-3 rounded-xl text-white font-semibold text-[13px]"
+                                                        style={{background:'#4A3AFF', boxShadow:'0 8px 18px -8px rgba(74,58,255,.7)'}}>
+                                                        Submit Assignment
+                                                    </button>
+                                                )}
+
+                                                {s.status === 'SCHEDULED' && (
+                                                    <div className="w-full py-3 rounded-xl text-center text-[12px] font-semibold text-[#8A90A8]" style={{background:'#F6F7FB'}}>
+                                                        Submission not open yet
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* TAB 2: My Calendar */}
-                {activeTab === 'calendar' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 text-slate-800 animate-fadeIn">
-                        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Assignment Calendar</h2>
-                                <p className="text-xs text-slate-500">Track and manage your upcoming assignment deadlines.</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors flex items-center gap-1"
-                                >
-                                    <CaretLeft size={12} weight="bold" /> Prev
-                                </button>
-                                <span className="text-xs font-bold text-slate-800 px-3 uppercase tracking-wider">
-                                    {currentMonth.toLocaleString('default', { month: 'long' })} {year}
-                                </span>
-                                <button
-                                    onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-2 rounded-xl text-xs transition-colors flex items-center gap-1"
-                                >
-                                    Next <CaretRight size={12} weight="bold" />
-                                </button>
+                {/* ── Home Tab ── */}
+                {activeTab === 'home' && !selectedModule && (
+                    <div className="animate-fadeIn">
+                        {/* Dark greeting banner */}
+                        <div className="relative overflow-hidden px-5 pt-14 pb-7" style={{background:'#101425', borderRadius:'0 0 24px 24px'}}>
+                            <div className="absolute top-0 right-0 w-52 h-52 rounded-full pointer-events-none"
+                                style={{background:'radial-gradient(circle, rgba(107,78,255,0.45) 0%, transparent 65%)', transform:'translate(28%, -28%)'}} />
+                            <div className="flex justify-between items-start relative z-10">
+                                <div>
+                                    <p className="text-white/50 text-xs font-medium">Good to see you,</p>
+                                    <h1 className="text-white font-bold text-2xl leading-tight mt-0.5">{learner.fullName?.split(' ')[0] || 'Student'}</h1>
+                                </div>
+                                <div className="w-10 h-10 flex items-center justify-center text-sm font-bold text-[#101425] flex-shrink-0"
+                                    style={{background:'#C8F25A', borderRadius:'14px'}}>
+                                    {learner.fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'S'}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Calendar Grid */}
-                        <div className="grid grid-cols-7 gap-2 text-center text-xs">
-                            {/* Days of Week */}
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                <div key={d} className="font-bold text-[10px] uppercase tracking-wider text-slate-400 py-2">{d}</div>
-                            ))}
-                            {/* Days of Month */}
-                            {days.map((day, idx) => {
-                                if (!day) {
-                                    return <div key={`empty-${idx}`} className="bg-slate-50/20 rounded-xl p-3 border border-transparent"></div>;
-                                }
-                                const isToday = day.toDateString() === new Date().toDateString();
-                                const dayDeadlines = deadlines.filter(dl => dl.dueDate.toDateString() === day.toDateString());
+                        <div className="px-4 pt-4 pb-2 space-y-4">
+                            {/* Stats row */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
+                                    <p className="text-2xl font-bold" style={{color:'#C8F25A', WebkitTextFillColor:'#101425', textShadow:'none'}}>
+                                        <span style={{color:'#101425'}}>{history.filter(s => s.status === 'COMPETENT').length}</span>
+                                    </p>
+                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Competent</p>
+                                </div>
+                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
+                                    <p className="text-2xl font-bold text-[#101425]">{timeline.length}</p>
+                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Slots Open</p>
+                                </div>
+                                <div className="bg-white rounded-2xl p-4 text-center" style={{boxShadow:'var(--card-shadow)'}}>
+                                    <p className="text-2xl font-bold text-[#101425]">{history.length}</p>
+                                    <p className="text-[10px] text-[#8A90A8] mt-1 font-semibold">Uploads</p>
+                                </div>
+                            </div>
 
-                                return (
-                                    <div 
-                                        key={day.toISOString()} 
-                                        className={`relative rounded-xl p-3 border transition-all flex flex-col justify-between items-center min-h-[85px] ${
-                                            isToday 
-                                                ? 'bg-blue-50/50 border-blue-300 text-blue-600 font-bold' 
-                                                : 'bg-slate-50/30 border-slate-200/50 hover:bg-slate-50/80 hover:border-slate-300'
-                                        }`}
-                                    >
-                                        <span className="font-semibold text-slate-700">{day.getDate()}</span>
-                                        {dayDeadlines.length > 0 && (
-                                            <div className="space-y-1 w-full mt-1.5 z-10">
-                                                {dayDeadlines.map(dl => (
-                                                    <button
-                                                        key={dl.id}
-                                                        onClick={() => {
-                                                            setActiveTab('modules');
-                                                            openModuleDetails(dl.moduleId);
-                                                            setActiveUploadSessionId(dl.id);
-                                                        }}
-                                                        className="w-full text-left text-[9px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-1.5 py-1 rounded truncate flex items-center gap-1 transition-all"
-                                                        title={`${dl.title} (${dl.moduleName})`}
-                                                    >
-                                                        <Clock size={10} weight="bold" className="flex-shrink-0" /> {toSentenceCase(dl.title)}
-                                                    </button>
-                                                ))}
-                                            </div>
+                            {/* Due next card */}
+                            {timeline.length > 0 && (
+                                <div className="bg-white rounded-2xl p-4 space-y-3" style={{boxShadow:'var(--card-shadow)'}}>
+                                    <p className="font-mono text-[10px] uppercase tracking-wider text-[#8A90A8]">Due next</p>
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-[13px] text-[#101425] truncate">{toSentenceCase(timeline[0].moduleName)}</p>
+                                            <p className="text-[11px] text-[#8A90A8] truncate mt-0.5">{toSentenceCase(timeline[0].slotTitle)}</p>
+                                        </div>
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold flex-shrink-0"
+                                            style={{background:'#FDF2E2', color:'#9A6412'}}>
+                                            {new Date(timeline[0].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2 pt-1">
+                                        <button
+                                            onClick={() => { handleTabChange('modules'); openModuleDetails(timeline[0].moduleId); setActiveUploadSessionId(timeline[0].sessionId); }}
+                                            className="flex-1 py-2.5 rounded-xl text-white font-semibold text-[13px]"
+                                            style={{background:'#4A3AFF', boxShadow:'0 8px 18px -8px rgba(74,58,255,.7)'}}>
+                                            Submit
+                                        </button>
+                                        {timeline[0].taskFilePath && (
+                                            <a href={timeline[0].taskFilePath} download
+                                                className="flex-1 py-2.5 rounded-xl text-center font-semibold text-[13px] text-[#8A90A8]"
+                                                style={{background:'#F6F7FB'}}>
+                                                Brief
+                                            </a>
                                         )}
                                     </div>
-                                );
-                            })}
+                                </div>
+                            )}
+
+                            {/* Upcoming deadlines */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A90A8] mb-3 px-1">Upcoming Deadlines</p>
+                                {timeline.length === 0 ? (
+                                    <p className="text-center py-8 text-sm text-[#8A90A8]">No upcoming deadlines — you're all caught up!</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {timeline.map(item => {
+                                            const { bar } = getDesignModuleColor(item.moduleId);
+                                            return (
+                                                <div key={item.sessionId}
+                                                    className="bg-white rounded-2xl flex items-center overflow-hidden cursor-pointer active:opacity-80"
+                                                    style={{boxShadow:'var(--card-shadow)'}}
+                                                    onClick={() => { handleTabChange('modules'); openModuleDetails(item.moduleId); setActiveUploadSessionId(item.sessionId); }}>
+                                                    <div className="w-[6px] self-stretch flex-shrink-0" style={{background: bar, minHeight:'52px'}} />
+                                                    <div className="flex-1 py-3 px-3 min-w-0">
+                                                        <p className="font-semibold text-[12.5px] text-[#101425] truncate">{toSentenceCase(item.moduleName)}</p>
+                                                        <p className="text-[11px] text-[#8A90A8] truncate">{toSentenceCase(item.slotTitle)}</p>
+                                                    </div>
+                                                    <div className="pr-3 flex-shrink-0">
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                                                            style={{background:'#FDF2E2', color:'#9A6412'}}>
+                                                            {new Date(item.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* TAB 3: My Submissions */}
-                {activeTab === 'history' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-6 animate-fadeIn">
-                        <div className="border-b border-slate-300 pb-3">
-                            <h2 className="text-lg font-bold text-slate-900">My Submission History</h2>
-                            <p className="text-xs text-slate-500">View all files you have previously uploaded and check grading status.</p>
+                {/* ── Modules List Tab ── */}
+                {activeTab === 'modules' && !selectedModule && (
+                    <div className="animate-fadeIn">
+                        <div className="px-5 pt-12 pb-4 bg-white" style={{borderBottom:'1px solid rgba(16,20,37,0.07)'}}>
+                            <h1 className="font-extrabold text-2xl text-[#101425]">My Modules</h1>
+                            <p className="text-[12.5px] text-[#8A90A8] mt-0.5">Your enrolled learning modules</p>
                         </div>
-                        <div className="space-y-4">
+                        <div className="px-4 py-4 space-y-4">
+                            {/* Search */}
+                            <div className="bg-white rounded-2xl flex items-center gap-3 px-4 py-3" style={{border:'1.5px solid #B9BDCC'}}>
+                                <MagnifyingGlass size={16} color="#B9BDCC" weight="regular" />
+                                <input type="text" value={moduleSearch} onChange={e => setModuleSearch(e.target.value)}
+                                    placeholder="Search modules…"
+                                    className="flex-1 bg-transparent text-[13px] text-[#101425] placeholder-[#B9BDCC] outline-none" />
+                            </div>
+
+                            {loadingModules ? (
+                                <div className="space-y-3">{[0,1,2].map(i => <div key={i} className="bg-white rounded-2xl h-20 animate-pulse" />)}</div>
+                            ) : filteredModules.length === 0 ? (
+                                <p className="text-center py-12 text-sm text-[#8A90A8]">{moduleSearch ? 'No modules match your search.' : 'You are not enrolled in any modules yet.'}</p>
+                            ) : (
+                                Array.from(new Set(filteredModules.map(m => m.moduleType || 'General'))).map(type => {
+                                    const typeModules = filteredModules.filter(m => (m.moduleType || 'General') === type);
+                                    return (
+                                        <div key={type}>
+                                            <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8] mb-2 px-1">{type} Modules</p>
+                                            <div className="space-y-3">
+                                                {typeModules.map((m, i) => {
+                                                    const { bar, badgeBg, badgeFg, badgeBorder } = getDesignModuleColor(m.id);
+                                                    return (
+                                                        <div key={m.id}
+                                                            className="bg-white rounded-2xl overflow-hidden cursor-pointer active:opacity-80"
+                                                            style={{boxShadow:'var(--card-shadow)', animationDelay:`${Math.min(i,8)*40}ms`}}
+                                                            onClick={() => openModuleDetails(m.id)}>
+                                                            <div className="h-1 w-full" style={{background:bar}} />
+                                                            <div className="p-4">
+                                                                <div className="flex justify-between items-start gap-2">
+                                                                    <span className="font-bold text-[14.5px] text-[#101425] leading-snug line-clamp-2" style={{maxWidth:'210px'}}>{toSentenceCase(m.moduleName)}</span>
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0"
+                                                                        style={{background:badgeBg, color:badgeFg, border:`1px solid ${badgeBorder}`}}>
+                                                                        {m.moduleCode || 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[11.5px] text-[#8A90A8] mt-1.5">{m.lecturerName || 'Unassigned'}</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Submissions Tab ── */}
+                {activeTab === 'history' && !selectedModule && (
+                    <div className="animate-fadeIn">
+                        <div className="px-5 pt-12 pb-4 bg-white" style={{borderBottom:'1px solid rgba(16,20,37,0.07)'}}>
+                            <h1 className="font-extrabold text-2xl text-[#101425]">My Submissions</h1>
+                            <p className="text-[12.5px] text-[#8A90A8] mt-0.5">{history.length} submission{history.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="px-4 py-4 space-y-3">
                             {history.length === 0 ? (
-                                <p className="text-xs text-slate-500 text-center py-6">You haven't uploaded any assignments yet.</p>
+                                <p className="text-center py-12 text-sm text-[#8A90A8]">You haven't uploaded any assignments yet.</p>
                             ) : (
                                 history.map((sub, i) => (
-                                    <div key={sub.submissionId} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 space-y-4 bg-slate-50/10 animate-fadeInUp" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                                        <div className="space-y-1">
-                                            <h4 className="text-sm font-bold text-slate-800">{sub.moduleName || 'General'}</h4>
-                                            <p className="text-xs font-semibold text-slate-600">{sub.assignmentTitle || 'Assignment'} ({sub.sessionName})</p>
-                                            <p className="text-[11px] text-slate-400">File: {sub.originalFilename}</p>
-                                            <p className="text-[10px] text-slate-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
+                                    <div key={sub.submissionId} className="bg-white rounded-2xl p-4 space-y-3" style={{boxShadow:'var(--card-shadow)'}}>
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-[14px] text-[#101425] truncate">{sub.moduleName || 'General'}</h4>
+                                                <p className="text-[11.5px] text-[#8A90A8] mt-0.5 truncate">{sub.assignmentTitle || 'Assignment'} ({sub.sessionName})</p>
+                                                <p className="text-[10px] mt-1" style={{color:'#B9BDCC'}}>{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${getStatusBadgeClasses(sub.status, 'light')}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${getStatusDotClasses(sub.status)}`}></span>
+                                                {getStatusLabel(sub.status || 'SUBMITTED')}
+                                            </span>
                                         </div>
-
-                                        {/* Unified footer container for status, outcome, and feedback */}
-                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-center gap-3 ${getStatusContainerClasses(sub.status)}`}>
-                                            {/* Left side: Status badge & Feedback */}
-                                            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 w-full md:w-auto">
-                                                <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full flex-shrink-0 ${getStatusBadgeClasses(sub.status, 'light')}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDotClasses(sub.status)}`}></span>
-                                                    {getStatusLabel(sub.status || 'SUBMITTED')}
-                                                </span>
-                                                {sub.gradedByRole && <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" />}
-                                                <div className="text-xs text-center md:text-left space-y-0.5">
-                                                    {(sub.status === 'COMPETENT' || sub.status === 'NOT_YET_COMPETENT') ? (
-                                                        <p className="text-slate-600 font-medium italic">
-                                                            {sub.feedback ? `"${sub.feedback}"` : 'No feedback comment provided.'}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-slate-500 font-medium italic">Not yet assessed.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Right side: Action Buttons */}
-                                            <div className="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-end">
-                                                <button
-                                                    onClick={() => setViewingSubmission(sub)}
-                                                    className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                                                >
-                                                    View Submission
-                                                </button>
-                                            </div>
+                                        <div className="flex items-center justify-between pt-1" style={{borderTop:'1px solid rgba(16,20,37,0.06)'}}>
+                                            {sub.gradedByRole ? <GraderBadge role={sub.gradedByRole} name={sub.gradedByName} theme="light" /> : <span />}
+                                            <button onClick={() => setViewingSubmission(sub)}
+                                                className="text-[12px] font-semibold ml-auto" style={{color:'#4A3AFF'}}>
+                                                View →
+                                            </button>
                                         </div>
                                     </div>
                                 ))
@@ -1049,102 +882,180 @@ const StudentPortal = () => {
                     </div>
                 )}
 
-                {activeTab === 'messages' && (
-                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4 animate-fadeIn">
-                        <div className="border-b border-slate-300 pb-3">
-                            <h2 className="text-lg font-bold text-slate-900">Messages</h2>
-                            <p className="text-xs text-slate-500">Message the facilitators of your enrolled modules.</p>
+                {/* ── Messages Tab ── */}
+                {activeTab === 'messages' && !selectedModule && (
+                    <div className="animate-fadeIn">
+                        <div className="px-5 pt-12 pb-4 bg-white" style={{borderBottom:'1px solid rgba(16,20,37,0.07)'}}>
+                            <h1 className="font-extrabold text-2xl text-[#101425]">Messages</h1>
+                            <p className="text-[12.5px] text-[#8A90A8] mt-0.5">Your facilitator conversations</p>
                         </div>
-                        <MessagesPanel
-                            theme="light"
-                            currentSenderType="LEARNER"
-                            fetchThreads={fetchStudentThreads}
-                            fetchThread={fetchStudentThread}
-                            sendMessage={sendStudentMessage}
-                        />
+                        <div className="px-4 py-4">
+                            <MessagesPanel
+                                theme="light"
+                                currentSenderType="LEARNER"
+                                fetchThreads={fetchStudentThreads}
+                                fetchThread={fetchStudentThread}
+                                sendMessage={sendStudentMessage}
+                            />
+                        </div>
                     </div>
                 )}
-            </div>
 
-            {/* Floating Chatbot Assistant Widget */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-                {/* Chat window */}
-                {chatOpen && (
-                    <div className="w-[360px] h-[480px] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4 text-white animate-fadeIn">
-                        {/* Header */}
-                        <div className="bg-slate-950 p-4 border-b border-slate-700/80 flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs font-bold uppercase tracking-wider">LMS Chat Assistant</span>
+                {/* ── Profile Tab ── */}
+                {activeTab === 'profile' && !selectedModule && (
+                    <div className="px-4 pt-12 pb-6 space-y-4 animate-fadeIn">
+                        {/* Avatar + name + student number */}
+                        <div className="flex flex-col items-center gap-2 pt-6 pb-2">
+                            <div className="w-16 h-16 flex items-center justify-center text-white font-bold text-2xl"
+                                style={{background:'#4A3AFF', borderRadius:'22px'}}>
+                                {learner.fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'S'}
                             </div>
-                            <button
-                                onClick={() => setChatOpen(false)}
-                                className="text-slate-400 hover:text-[#f8fafc] transition-colors"
-                            >
-                                <X size={16} weight="bold" />
-                            </button>
+                            <h2 className="text-lg font-bold text-[#101425] mt-1">{learner.fullName}</h2>
+                            <p className="font-mono text-[11.5px] font-medium text-[#8A90A8]">{studentNumber}</p>
                         </div>
 
-                        {/* Messages display area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-800">
+                        {/* Stats — no border, #F6F7FB bg */}
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                                { label: 'Modules',   value: modules.length },
+                                { label: 'Competent', value: history.filter(s => s.status === 'COMPETENT').length },
+                                { label: 'Uploads',   value: history.length },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="text-center py-3 rounded-[14px]" style={{background:'#F6F7FB'}}>
+                                    <p className="text-xl font-bold text-[#101425]">{value}</p>
+                                    <p className="text-[10px] text-[#8A90A8] font-semibold mt-0.5">{label}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Info rows */}
+                        <div className="bg-white rounded-2xl overflow-hidden" style={{boxShadow:'var(--card-shadow)'}}>
+                            {[
+                                { label: 'Cohort',       value: learner.cohort || 'Unassigned' },
+                                { label: 'Learnership',  value: learner.learnershipName || 'Unassigned' },
+                                { label: 'Email',        value: learner.email || 'Not provided' },
+                            ].map(({ label, value }, i, arr) => (
+                                <div key={label} className="flex justify-between items-center px-5 py-4"
+                                    style={i < arr.length - 1 ? {borderBottom:'1px solid rgba(16,20,37,0.06)'} : {}}>
+                                    <span className="text-[12px] text-[#8A90A8]">{label}</span>
+                                    <span className="text-[12.5px] font-semibold text-[#101425] text-right max-w-[55%] truncate">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Notification toggles */}
+                        <div className="bg-white rounded-2xl overflow-hidden" style={{boxShadow:'var(--card-shadow)'}}>
+                            <div className="px-5 py-3" style={{borderBottom:'1px solid rgba(16,20,37,0.06)'}}>
+                                <p className="font-mono text-[9.5px] uppercase tracking-wider text-[#8A90A8]">Notifications</p>
+                            </div>
+                            {[
+                                { label: 'Deadline Reminders',   checked: notifDeadlines,  setter: setNotifDeadlines  },
+                                { label: 'Grade Alerts',          checked: notifGrades,     setter: setNotifGrades     },
+                                { label: 'Wi-Fi Only Downloads',  checked: notifWifiOnly,   setter: setNotifWifiOnly   },
+                            ].map(({ label, checked, setter }, i, arr) => (
+                                <div key={label} className="flex justify-between items-center px-5 py-4"
+                                    style={i < arr.length - 1 ? {borderBottom:'1px solid rgba(16,20,37,0.06)'} : {}}>
+                                    <span className="text-[12.5px] font-semibold text-[#101425]">{label}</span>
+                                    <button onClick={() => setter(v => !v)}
+                                        className="relative flex-shrink-0 rounded-full transition-colors duration-200"
+                                        style={{width:'42px', height:'24px', background: checked ? '#4A3AFF' : '#DEDFE7'}}
+                                        aria-label={`Toggle ${label}`}>
+                                        <span className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200"
+                                            style={{transform: checked ? 'translateX(21px)' : 'translateX(3px)'}} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Sign out */}
+                        <button onClick={handleSignout}
+                            className="w-full font-semibold text-[13px] bg-white"
+                            style={{padding:'14px', borderRadius:'16px', color:'#B03A32', border:'1px solid rgba(224,82,74,0.3)'}}>
+                            Sign Out
+                        </button>
+                    </div>
+                )}
+
+            </div>{/* end pb-[84px] scroll area */}
+
+            {/* ── Fixed Bottom Navigation ── */}
+            {!selectedModule && (
+                <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white flex items-end justify-around"
+                    style={{borderTop:'1px solid rgba(16,20,37,0.07)', padding:'10px 14px 22px'}}>
+                    {NAV_TABS.map(({ id, label, Icon }) => {
+                        const active = activeTab === id;
+                        return (
+                            <button key={id} onClick={() => handleTabChange(id)}
+                                className="flex flex-col items-center gap-[3px] relative min-w-[44px]">
+                                <Icon size={22} weight={active ? 'fill' : 'regular'}
+                                    color={active ? '#4A3AFF' : '#D5D7E0'} />
+                                <span className="text-[10px] leading-tight"
+                                    style={{fontWeight: active ? 600 : 500, color: active ? '#4A3AFF' : '#8A90A8'}}>
+                                    {label}
+                                </span>
+                                {id === 'messages' && unreadMessages > 0 && (
+                                    <span className="absolute -top-1 right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                                        style={{background:'#E0524A'}}>
+                                        {unreadMessages}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </nav>
+            )}
+
+            {/* ── Floating Chatbot ── */}
+            <div className="fixed bottom-[84px] right-4 z-50 flex flex-col items-end">
+                {chatOpen && (
+                    <div className="w-[340px] h-[440px] rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-3 text-white animate-fadeIn"
+                        style={{background:'#101425', border:'1px solid rgba(255,255,255,0.08)'}}>
+                        <div className="p-4 flex justify-between items-center" style={{background:'rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-[#16A97A] rounded-full animate-pulse" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider">LMS Assistant</span>
+                            </div>
+                            <button onClick={() => setChatOpen(false)} className="text-white/40 hover:text-white/80">
+                                <X size={15} weight="bold" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
                             {chatMessages.map((msg, idx) => (
-                                <div 
-                                    key={idx} 
-                                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                                >
-                                    <div 
-                                        className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[11px] leading-relaxed shadow-sm whitespace-pre-line ${
-                                            msg.sender === 'user' 
-                                                ? 'bg-blue-600 text-white rounded-br-none' 
-                                                : 'bg-slate-800 text-[#0f172a] border border-slate-700/50 rounded-bl-none'
-                                        }`}
-                                    >
+                                <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[11px] leading-relaxed whitespace-pre-line ${
+                                        msg.sender === 'user'
+                                            ? 'text-white rounded-br-none'
+                                            : 'text-white/80 rounded-bl-none'
+                                    }`} style={msg.sender === 'user' ? {background:'#4A3AFF'} : {background:'rgba(255,255,255,0.08)'}}>
                                         {msg.text}
                                     </div>
                                 </div>
                             ))}
                             {chatLoading && (
                                 <div className="flex justify-start">
-                                    <div className="bg-slate-800 text-slate-400 border border-slate-700/50 rounded-2xl rounded-bl-none px-3.5 py-2 text-[11px] flex items-center gap-1">
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '0ms' }}></span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '160ms' }}></span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-typing-pulse" style={{ animationDelay: '320ms' }}></span>
+                                    <div className="rounded-2xl rounded-bl-none px-3.5 py-2 text-[11px] flex items-center gap-1" style={{background:'rgba(255,255,255,0.08)'}}>
+                                        {[0,160,320].map(d => <span key={d} className="w-1 h-1 bg-white/40 rounded-full animate-typing-pulse" style={{animationDelay:`${d}ms`}} />)}
                                     </div>
                                 </div>
                             )}
                             <div ref={chatEndRef} />
                         </div>
-
-                        {/* Form input */}
-                        <form onSubmit={handleSendChatMessage} className="bg-slate-950 p-3 border-t border-slate-700/80 flex gap-2">
-                            <input 
-                                type="text"
-                                value={chatQuery}
-                                onChange={e => setChatQuery(e.target.value)}
-                                placeholder="Ask me something..."
-                                className="flex-1 bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
-                            />
-                            <button
-                                type="submit"
-                                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-xl transition-all flex items-center justify-center shadow-md shadow-blue-500/20 active:scale-[0.98]"
-                            >
-                                <PaperPlaneTilt size={16} weight="fill" />
+                        <form onSubmit={handleSendChatMessage} className="p-3 flex gap-2" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+                            <input type="text" value={chatQuery} onChange={e => setChatQuery(e.target.value)}
+                                placeholder="Ask me something…"
+                                className="flex-1 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:ring-1"
+                                style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)'}} />
+                            <button type="submit" className="p-2 rounded-xl flex items-center justify-center" style={{background:'#4A3AFF'}}>
+                                <PaperPlaneTilt size={15} weight="fill" />
                             </button>
                         </form>
                     </div>
                 )}
-
-                {/* Collapsed floating button */}
-                <button 
-                    onClick={() => setChatOpen(!chatOpen)}
-                    className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer relative"
-                    title="Open LMS Chat Assistant"
-                >
-                    {chatOpen ? (
-                        <X size={22} weight="bold" />
-                    ) : (
-                        <ChatCircleDots size={24} weight="fill" />
-                    )}
+                <button onClick={() => setChatOpen(!chatOpen)}
+                    className="w-12 h-12 text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 transition-all cursor-pointer"
+                    style={{background:'#4A3AFF', boxShadow:'0 8px 20px -6px rgba(74,58,255,.6)'}}
+                    title="Open LMS Chat Assistant">
+                    {chatOpen ? <X size={18} weight="bold" /> : <ChatCircleDots size={20} weight="fill" />}
                 </button>
             </div>
 
