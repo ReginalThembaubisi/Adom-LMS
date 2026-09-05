@@ -83,8 +83,8 @@ const StudentPortal = () => {
 
     const studentNumber = learner?.learnerCode || '';
 
-    // UI Tab State: 'modules' | 'submit' | 'history'
-    const [activeTab, setActiveTab] = useState('modules');
+    // UI Tab State: 'home' | 'modules' | 'history' | 'messages' | 'profile'
+    const [activeTab, setActiveTab] = useState('home');
     const fetchedTabsRef = useRef(new Set());
     const [alert, setAlert] = useState({ type: '', message: '' });
 
@@ -106,6 +106,11 @@ const StudentPortal = () => {
 
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    // Profile notification toggles (UI only)
+    const [notifDeadlines, setNotifDeadlines] = useState(true);
+    const [notifGrades, setNotifGrades] = useState(true);
+    const [notifWifiOnly, setNotifWifiOnly] = useState(false);
 
     // Chatbot State
     const [chatOpen, setChatOpen] = useState(false);
@@ -141,7 +146,14 @@ const StudentPortal = () => {
         if (!studentNumber) return;
         if (fetchedTabsRef.current.has(activeTab)) return;
         fetchedTabsRef.current.add(activeTab);
-        if (activeTab === 'modules') {
+        if (activeTab === 'home') {
+            // Pre-mark so modules/history tabs skip redundant fetches
+            fetchedTabsRef.current.add('modules');
+            fetchedTabsRef.current.add('history');
+            fetchModules();
+            fetchTimeline();
+            fetchHistory();
+        } else if (activeTab === 'modules') {
             fetchModules();
             fetchTimeline();
         } else if (activeTab === 'history') {
@@ -302,18 +314,11 @@ const StudentPortal = () => {
         setActiveTab('submit');
     };
 
-    // Tab switcher with warning redirect guard
     const handleTabChange = (tabId) => {
         setAlert({ type: '', message: '' });
-        if (tabId === 'submit' && !selectedSession) {
-            setAlert({ type: 'error', message: 'Please select an assignment from your Modules or Upcoming Deadlines to submit.' });
-            setActiveTab('modules');
-            setSelectedModule(null); // Reset detail view
-            return;
-        }
         setActiveTab(tabId);
         if (tabId === 'modules') {
-            setSelectedModule(null); // Return to module list
+            setSelectedModule(null);
             fetchModules();
             fetchTimeline();
         }
@@ -487,7 +492,7 @@ const StudentPortal = () => {
                 )}
 
                 {/* Student Info Card Block */}
-                {!selectedModule && (
+                {!selectedModule && activeTab !== 'profile' && (
                     <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-5 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div>
                             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Student Number</span>
@@ -506,48 +511,30 @@ const StudentPortal = () => {
 
                 {/* Tab Bar */}
                 {!selectedModule && (
-                    <nav className="bg-slate-100 p-1 rounded-xl inline-flex gap-1 mb-6">
-                        <button 
-                            className={activeTab === 'modules' 
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('modules')}
-                        >
-                            My Modules
-                        </button>
-                        <button 
-                            className={activeTab === 'calendar' 
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all" 
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('calendar')}
-                        >
-                            My Calendar
-                        </button>
-                        <button
-                            className={activeTab === 'history'
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all"
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                            }
-                            onClick={() => handleTabChange('history')}
-                        >
-                            My Submissions
-                        </button>
-                        <button
-                            className={activeTab === 'messages'
-                                ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                                : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
-                            }
-                            onClick={() => handleTabChange('messages')}
-                        >
-                            Messages
-                            {unreadMessages > 0 && (
-                                <span className="bg-rose-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {unreadMessages}
-                                </span>
-                            )}
-                        </button>
+                    <nav className="bg-slate-100 p-1 rounded-xl inline-flex gap-1 mb-6 flex-wrap">
+                        {[
+                            { id: 'home', label: 'Home' },
+                            { id: 'modules', label: 'My Modules' },
+                            { id: 'history', label: 'Submissions' },
+                            { id: 'messages', label: 'Messages' },
+                            { id: 'profile', label: 'Profile' },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                className={activeTab === tab.id
+                                    ? "bg-white shadow-xs text-slate-900 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                                    : "text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                                }
+                                onClick={() => handleTabChange(tab.id)}
+                            >
+                                {tab.label}
+                                {tab.id === 'messages' && unreadMessages > 0 && (
+                                    <span className="bg-rose-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                        {unreadMessages}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
                     </nav>
                 )}
 
@@ -577,7 +564,103 @@ const StudentPortal = () => {
                     </div>
                 )}
 
-                {/* TAB 1: My Modules */}
+                {/* TAB: Home */}
+                {activeTab === 'home' && (
+                    <div className="space-y-6 animate-fadeIn">
+                        {/* Stats Row */}
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 text-center">
+                                <p className="text-3xl font-bold text-emerald-600">{history.filter(s => s.status === 'COMPETENT').length}</p>
+                                <p className="text-xs text-slate-500 mt-1 font-semibold">Competent</p>
+                            </div>
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 text-center">
+                                <p className="text-3xl font-bold text-blue-600">{timeline.length}</p>
+                                <p className="text-xs text-slate-500 mt-1 font-semibold">Open Slots</p>
+                            </div>
+                            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 text-center">
+                                <p className="text-3xl font-bold text-violet-600">{history.length}</p>
+                                <p className="text-xs text-slate-500 mt-1 font-semibold">Uploads</p>
+                            </div>
+                        </div>
+
+                        {/* Due Next */}
+                        {timeline.length > 0 && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl shadow-sm p-5 space-y-3">
+                                <h3 className="text-xs font-bold text-amber-700 uppercase tracking-wider">Due Next</h3>
+                                <div className="flex justify-between items-start gap-4">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-slate-900 truncate">{toSentenceCase(timeline[0].moduleName)}</p>
+                                        <p className="text-xs text-slate-600 mt-0.5 truncate">{toSentenceCase(timeline[0].slotTitle)}</p>
+                                        <p className="text-xs text-amber-700 font-semibold mt-1.5 flex items-center gap-1">
+                                            <Clock size={12} weight="bold" />
+                                            {new Date(timeline[0].endTime).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 flex-shrink-0">
+                                        <button
+                                            onClick={() => { handleTabChange('modules'); openModuleDetails(timeline[0].moduleId); setActiveUploadSessionId(timeline[0].sessionId); }}
+                                            className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold py-2 px-4 rounded-xl shadow-xs shadow-blue-500/20 transition-all"
+                                        >
+                                            Submit
+                                        </button>
+                                        {timeline[0].taskFilePath && (
+                                            <a
+                                                href={timeline[0].taskFilePath}
+                                                download
+                                                className="bg-white border border-amber-300 text-amber-800 text-xs font-bold py-2 px-4 rounded-xl hover:bg-amber-50 transition-colors"
+                                            >
+                                                Brief
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Upcoming Deadlines */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 space-y-4">
+                            <div className="border-b border-slate-200 pb-3">
+                                <h3 className="text-sm font-bold text-slate-900">Upcoming Deadlines</h3>
+                                <p className="text-xs text-slate-500">Keep track of your upcoming submissions.</p>
+                            </div>
+                            {timeline.length === 0 ? (
+                                <p className="text-xs text-slate-400 text-center py-6">No upcoming deadlines — you're all caught up!</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {groupTimelineByDay(timeline).map(([dayLabel, items]) => (
+                                        <div key={dayLabel}>
+                                            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2 px-1">{dayLabel}</p>
+                                            <div className="space-y-2">
+                                                {items.map(item => {
+                                                    const color = getModuleColor(item.moduleId);
+                                                    return (
+                                                        <div
+                                                            key={item.sessionId}
+                                                            className={`flex items-center gap-3 p-3 bg-slate-50/50 border border-slate-200/80 rounded-xl ${color.hoverBorder} hover:-translate-y-0.5 transition-all cursor-pointer`}
+                                                            onClick={() => { handleTabChange('modules'); openModuleDetails(item.moduleId); setActiveUploadSessionId(item.sessionId); }}
+                                                        >
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${color.dot} flex-shrink-0`} />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-xs font-bold text-slate-800 truncate">{toSentenceCase(item.moduleName)}</p>
+                                                                <p className="text-[10px] text-slate-500 truncate">{toSentenceCase(item.slotTitle)}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex-shrink-0">
+                                                                <Clock size={11} weight="bold" />
+                                                                {new Date(item.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB: My Modules */}
                 {activeTab === 'modules' && (
                     <div key={selectedModule ? 'detail' : 'list'} className="space-y-6 animate-fadeIn">
                         {!selectedModule ? (
@@ -1062,6 +1145,81 @@ const StudentPortal = () => {
                             fetchThread={fetchStudentThread}
                             sendMessage={sendStudentMessage}
                         />
+                    </div>
+                )}
+
+                {/* TAB: Profile */}
+                {activeTab === 'profile' && (
+                    <div className="max-w-lg mx-auto space-y-4 animate-fadeIn">
+                        {/* Avatar + Name + Stats */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 text-center space-y-4">
+                            <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-2xl text-white mx-auto shadow-md">
+                                {learner.fullName ? learner.fullName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'S'}
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">{learner.fullName}</h2>
+                                <p className="text-sm text-slate-400 mt-0.5">{studentNumber}</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3 pt-1 border-t border-slate-100">
+                                <div className="text-center py-2">
+                                    <p className="text-2xl font-bold text-slate-900">{modules.length}</p>
+                                    <p className="text-[10px] text-slate-400 font-semibold">Modules</p>
+                                </div>
+                                <div className="text-center py-2 border-x border-slate-100">
+                                    <p className="text-2xl font-bold text-emerald-600">{history.filter(s => s.status === 'COMPETENT').length}</p>
+                                    <p className="text-[10px] text-slate-400 font-semibold">Competent</p>
+                                </div>
+                                <div className="text-center py-2">
+                                    <p className="text-2xl font-bold text-slate-900">{history.length}</p>
+                                    <p className="text-[10px] text-slate-400 font-semibold">Uploads</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Info Rows */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
+                            {[
+                                { label: 'Cohort', value: learner.cohort || 'Unassigned' },
+                                { label: 'Learnership', value: learner.learnershipName || 'Unassigned' },
+                                { label: 'Email', value: learner.email || 'Not provided' },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="flex justify-between items-center px-5 py-4">
+                                    <span className="text-xs font-semibold text-slate-500">{label}</span>
+                                    <span className="text-xs font-bold text-slate-800 text-right max-w-[60%] truncate">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Notification Toggles */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
+                            <div className="px-5 py-3">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notifications</h3>
+                            </div>
+                            {[
+                                { label: 'Deadline Reminders', checked: notifDeadlines, setter: setNotifDeadlines },
+                                { label: 'Grade Alerts', checked: notifGrades, setter: setNotifGrades },
+                                { label: 'Wi-Fi Only Downloads', checked: notifWifiOnly, setter: setNotifWifiOnly },
+                            ].map(({ label, checked, setter }) => (
+                                <div key={label} className="flex justify-between items-center px-5 py-4">
+                                    <span className="text-xs font-semibold text-slate-700">{label}</span>
+                                    <button
+                                        onClick={() => setter(v => !v)}
+                                        className={`relative w-10 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${checked ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                        aria-label={`Toggle ${label}`}
+                                    >
+                                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-xs transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Sign Out */}
+                        <button
+                            onClick={handleSignout}
+                            className="w-full bg-rose-50 border border-rose-200 text-rose-700 font-semibold text-sm py-3.5 rounded-2xl hover:bg-rose-100 transition-colors"
+                        >
+                            Sign Out
+                        </button>
                     </div>
                 )}
             </div>
