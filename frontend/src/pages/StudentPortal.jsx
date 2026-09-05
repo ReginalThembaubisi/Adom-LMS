@@ -752,7 +752,37 @@ const StudentPortal = () => {
                             <div>
                                 <p className="text-[9.5px] uppercase text-[#8A90A8] mb-3 px-1" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>Upcoming Deadlines</p>
                                 {timeline.length === 0 ? (
-                                    <p className="text-center py-8 text-sm text-[#8A90A8]">No upcoming deadlines — you're all caught up!</p>
+                                    <div className="space-y-4">
+                                        <p className="text-center text-[12px] text-[#8A90A8] py-2">No upcoming deadlines — you're all caught up!</p>
+                                        {modules.length > 0 && (
+                                            <div>
+                                                <p className="text-[9.5px] uppercase text-[#8A90A8] mb-3 px-1" style={{fontFamily:"'JetBrains Mono', monospace", letterSpacing:'0.08em', fontWeight:500}}>Your Modules</p>
+                                                <div className="space-y-3">
+                                                    {modules.map((m, i) => {
+                                                        const { bar, badgeBg, badgeFg, badgeBorder } = getDesignModuleColor(m.id);
+                                                        return (
+                                                            <div key={m.id}
+                                                                className="bg-white rounded-2xl overflow-hidden cursor-pointer active:opacity-80"
+                                                                style={{boxShadow:'var(--card-shadow)'}}
+                                                                onClick={() => { handleTabChange('modules'); openModuleDetails(m.id); }}>
+                                                                <div className="h-1 w-full" style={{background:bar}} />
+                                                                <div className="p-4">
+                                                                    <div className="flex justify-between items-start gap-2">
+                                                                        <span className="font-bold text-[14px] text-[#101425] leading-snug line-clamp-2" style={{maxWidth:'210px'}}>{toSentenceCase(m.moduleName)}</span>
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0"
+                                                                            style={{background:badgeBg, color:badgeFg, border:`1px solid ${badgeBorder}`}}>
+                                                                            {m.moduleCode || 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11.5px] text-[#8A90A8] mt-1.5">{m.lecturerName || 'Unassigned'}</p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="space-y-2">
                                         {timeline.map(item => {
