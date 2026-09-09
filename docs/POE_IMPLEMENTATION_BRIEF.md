@@ -273,6 +273,20 @@ only defence. Scrub access logs if they are retained beyond the container.
 every assessor/moderator controller method. Follow the pattern already used for lecturers in
 `SubmissionController.checkAccess`, which resolves through `Module -> Category -> Lecturer`.
 
+Two constraints on `ScopeService`'s shape, both easier to honour up front than to retrofit:
+
+- **Do not assume an HTTP request is in scope.** It will be called from controllers *and*
+  from the Phase 8 exporter, which runs on an `@Async` worker with no request bound to the
+  thread. So it takes the identity it is scoping as a parameter; it does not reach into
+  `SecurityContextHolder` itself. (Phase 0's `CurrentLearner` does read the context, and is
+  deliberately a thin controller-side helper for that reason — the scoping decision it feeds
+  belongs somewhere callable without a request.)
+- **No assignment rows must resolve to nothing, not everything.** An assessor with an empty
+  assignment set sees no learners. This governs every newly created account in the window
+  before an admin assigns anyone to them, which is the state most such accounts are in when
+  they first log in — and a permissive default there is indistinguishable from the bug this
+  phase exists to fix. Write the test for the unassigned assessor first.
+
 `ScopeService` must also narrow `/api/modules/**` and `/api/sessions/**`, not only the
 learner-facing endpoints. Phase 0 restricted both to staff roles and had to admit ASSESSOR
 and MODERATOR wholesale, because at that point neither role had anything to be scoped to —
@@ -565,11 +579,27 @@ phase depends on identity and scope being correct. Building the vault or the exp
 of unauthenticated learner routes means rewriting both.
 
 Deploy each phase before starting the next. If something goes wrong, debugging against a
-clean `main` beats debugging against one carrying half of the following phase. Phase 0's
-deploy signs every learner out once, because the stored session no longer carries a token:
-announce it to the cohort **before** deploying rather than after, pick a low-traffic hour,
-and confirm forgot-password works on the day — an unexplained sign-out reads as a broken
-system and sends people straight to it.
+clean `main` beats debugging against one carrying half of the following phase.
+
+**Deploy sequence, per phase:**
+
+1. **Announce first, not after.** Phase 0's deploy signs every learner out once, because the
+   stored session no longer carries a token. Say plainly that they will be signed out and
+   need to log in again, and frame it as a security upgrade rather than maintenance — an
+   unexplained sign-out reads as a fault and sends people to forgot-password before they
+   read anything.
+2. **Low-traffic hour.**
+3. **Verify the data migration ran, rather than assuming.** For Phase 0 that is
+   `LegacySubmissionFileMigration`. It is idempotent and refuses a bad directory config, so
+   the realistic failure is a silent no-op, not a crash. It logs a completion line on every
+   run including when it moves nothing (`"Legacy submission file migration complete: scanned
+   N ..."`), so the *absence* of that line means it did not run. Then spot-check that one
+   moved file still opens in the portal.
+4. **Log in as a test learner.** Open a submission and a marked file.
+5. **Confirm forgot-password end to end against a real inbox**, not just the test — the test
+   mocks the mail sender, so it proves the flow and not the relay.
+
+Rollback is clean as long as `main` was green before the phase merged.
 
 After that: Phase 2 (mechanical), then Phase 3 and Phase 5 in parallel if convenient, then 4, 6, 7, 8, 9, 10.
 

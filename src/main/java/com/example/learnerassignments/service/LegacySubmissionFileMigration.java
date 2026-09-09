@@ -60,11 +60,13 @@ public class LegacySubmissionFileMigration implements CommandLineRunner {
 
         int moved = 0;
         int missing = 0;
+        int scanned = 0;
 
         // The whole table, rather than a prefix query: stored paths have taken more than one
         // shape over the life of this code (absolute, and relative to the working directory),
         // and a cohort is a few hundred rows.
         for (Submission submission : submissionRepository.findAll()) {
+            scanned++;
             String relocated = relocate(submission.getFilePath(), publicDir, privateDir);
             if (relocated != null) {
                 submission.setFilePath(relocated);
@@ -84,10 +86,19 @@ public class LegacySubmissionFileMigration implements CommandLineRunner {
             }
         }
 
-        if (moved > 0 || missing > 0) {
-            log.warn("Legacy submission files: {} moved out of the public uploads directory into {}, "
-                    + "{} referenced a file that no longer exists on disk (left untouched).",
-                    moved, privateDir, missing);
+        // Always logged, including when there was nothing to do. Finding nothing and never
+        // running look identical in a log that only speaks up on a change, and "never ran" is
+        // the realistic failure here — a misread directory, a bean that did not start. An
+        // operator checking after a deploy needs the absence of this line to mean something.
+        log.info("Legacy submission file migration complete: scanned {} submission(s), "
+                + "moved {} out of the public directory {} into {}, {} referenced a file "
+                + "missing from disk (left untouched).",
+                scanned, moved, publicDir, privateDir, missing);
+
+        if (missing > 0) {
+            log.warn("{} submission(s) point at a file that is not on disk. These were left as "
+                    + "they are rather than repointed at nothing — worth investigating before "
+                    + "anyone reports a missing document.", missing);
         }
     }
 
