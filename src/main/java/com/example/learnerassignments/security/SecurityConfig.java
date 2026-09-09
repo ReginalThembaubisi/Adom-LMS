@@ -60,15 +60,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
 
-                        // Open at this layer only because the staff dashboards still pass
-                        // base64 Basic credentials as ?authToken, which the filter cannot see.
-                        // The controller authorises every caller itself and returns 404 to
-                        // anyone it does not recognise. Learners reach it with a bearer header,
-                        // not a query parameter. When Phase 1 removes authToken this becomes
-                        // .authenticated() and the controller check becomes the second layer
-                        // rather than the only one.
-                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
-
                         .requestMatchers(
                                 "/",
                                 "/*.html",
@@ -108,6 +99,14 @@ public class SecurityConfig {
                         // Phase 4 replaces static serving with streamed, ownership-checked
                         // delivery and resolves it. Do not put anything personal here first.
                         .requestMatchers("/uploads/**").authenticated()
+
+                        // Submission files. Authenticated at the filter, then authorised per
+                        // record in the controller — the learner who owns it, or staff. It was
+                        // briefly open here, because the staff dashboards passed base64 Basic
+                        // credentials as ?authToken and the filter cannot see a credential in a
+                        // query string. Every caller now sends a header, so the controller check
+                        // is the second layer rather than the only one.
+                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").authenticated()
 
                         // --- Learner portal ---
                         // Everything a learner reads or writes about themselves. The learner
