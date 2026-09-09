@@ -121,12 +121,18 @@ public class SecurityConfig {
                         // their enrolment. These unscoped views are staff-only, so a learner
                         // cannot read around that scope via the staff route.
                         //
-                        // ASSESSOR and MODERATOR are listed because neither role has any
-                        // assignment table yet, so there is nothing to narrow them to — which
-                        // also means every assessor currently sees every module in the system.
-                        // Phase 1 introduces assessor_assignment and moderator_assignment; its
-                        // ScopeService must narrow both of these lines, not just the learner
-                        // endpoints.
+                        // Creating, opening and closing a session is the coursework owner's
+                        // job. Assessors and moderators were admitted here alongside the reads
+                        // when there was nothing to scope them by, which let an assessor open
+                        // and close submission windows for the whole cohort.
+                        .requestMatchers(HttpMethod.POST, "/api/sessions/**").hasAnyRole("ADMIN", "LECTURER")
+                        .requestMatchers(HttpMethod.PUT, "/api/sessions/**").hasAnyRole("ADMIN", "LECTURER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/sessions/**").hasAnyRole("ADMIN", "LECTURER")
+
+                        // Reads stay open to all four roles at this layer and are narrowed per
+                        // record by ScopeService in the controllers, which is where the
+                        // assignment rows can actually be consulted. A role check alone cannot
+                        // express "only the modules your assigned learners are enrolled on".
                         .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         .requestMatchers("/api/sessions/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         // The full roster, including every learner code in the cohort.

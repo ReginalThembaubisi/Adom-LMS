@@ -3,7 +3,9 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.GradingHistoryEntryDto;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.Submission;
+import com.example.learnerassignments.security.CurrentStaff;
 import com.example.learnerassignments.security.LearnerPrincipal;
+import com.example.learnerassignments.service.ScopeService;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +23,8 @@ import java.util.List;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final CurrentStaff currentStaff;
+    private final ScopeService scopeService;
 
     // Learners submit through POST /api/me/submissions. This endpoint used to take the
     // learner code as a form field, which meant anyone could submit as anyone.
@@ -48,34 +52,13 @@ public class SubmissionController {
                     && submission.getLearner().getId().equals(principal.learnerId());
         }
 
-        // 2. Admins, and the assessor and moderator roles.
-        //
-        //    Assessors and moderators are unscoped here, which is the access they already had
-        //    through the parameter this change removes — the point of this task is where the
-        //    credential travels, not who may read what. Narrowing them to their assigned
-        //    learners is the next task in this phase, once assessor_assignment and
-        //    moderator_assignment exist for ScopeService to resolve against.
-        if (hasRole(auth, "ROLE_ADMIN") || hasRole(auth, "ROLE_ASSESSOR") || hasRole(auth, "ROLE_MODERATOR")) {
-            return true;
-        }
-
-        // 3. The lecturer who owns the module this submission was made against.
-        if (submission.getSession() != null &&
-            submission.getSession().getAssignment() != null &&
-            submission.getSession().getAssignment().getModule() != null &&
-            submission.getSession().getAssignment().getModule().getCategory() != null &&
-            submission.getSession().getAssignment().getModule().getCategory().getLecturer() != null) {
-
-            String lecturerUsername = submission.getSession().getAssignment().getModule()
-                    .getCategory().getLecturer().getUsername();
-            return auth.getName().equals(lecturerUsername);
-        }
-
-        return false;
-    }
-
-    private boolean hasRole(Authentication auth, String role) {
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
+        // 2. Staff, through ScopeService — admins unrestricted, lecturers by the module they
+        //    own, assessors and moderators by their assignment rows. An assessor or moderator
+        //    holding no rows reaches nothing here, which is the state of every such account
+        //    before an admin assigns anyone to it.
+        return currentStaff.resolve(auth)
+                .map(principal -> scopeService.canAccessSubmission(principal, submission))
+                .orElse(false);
     }
 
     /**
@@ -150,9 +133,12 @@ public class SubmissionController {
             @RequestBody String json,
             Authentication auth) {
 
-        boolean graderAuth = auth != null && auth.isAuthenticated() &&
-                (hasRole(auth, "ROLE_ADMIN") || hasRole(auth, "ROLE_LECTURER") ||
-                 hasRole(auth, "ROLE_ASSESSOR") || hasRole(auth, "ROLE_MODERATOR"));
+        // Writing marks onto a submission is scoped exactly as reading it is: a grader who
+        // cannot see a record must not be able to annotate it either.
+        Submission submission = submissionService.getSubmission(id);
+        boolean graderAuth = currentStaff.resolve(auth)
+                .map(principal -> scopeService.canAccessSubmission(principal, submission))
+                .orElse(false);
         if (!graderAuth) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

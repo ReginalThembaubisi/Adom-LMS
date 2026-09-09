@@ -151,8 +151,23 @@ public class SubmissionService {
                 .build();
     }
 
+    /** The whole session, for callers with no scope restriction — admins and lecturers. */
     @Transactional(readOnly = true)
     public SessionSubmissionOverviewResponse getSessionSubmissionsOverview(Long sessionId) {
+        return getSessionSubmissionsOverview(sessionId, null);
+    }
+
+    /**
+     * A session's submissions, restricted to a set of learners.
+     *
+     * Being allowed to open a session is not the same as being allowed to see everyone in it:
+     * an assessor assigned two learners on a module may reach a session on that module while
+     * the rest of the cohort in it remains none of their business. A null set means no
+     * restriction; an empty set means no learners, which is what an unassigned account gets.
+     */
+    @Transactional(readOnly = true)
+    public SessionSubmissionOverviewResponse getSessionSubmissionsOverview(
+            Long sessionId, java.util.Set<Long> visibleLearnerIds) {
         SubmissionSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission session not found with id: " + sessionId));
 
@@ -161,6 +176,12 @@ public class SubmissionService {
         List<Learner> allLearners = moduleId != null
                 ? learnerRepository.findByModules_Id(moduleId)
                 : learnerRepository.findAll();
+
+        if (visibleLearnerIds != null) {
+            allLearners = allLearners.stream()
+                    .filter(l -> visibleLearnerIds.contains(l.getId()))
+                    .collect(Collectors.toList());
+        }
         List<Submission> submissions = submissionRepository.findBySessionId(sessionId);
 
         Map<Long, List<Submission>> submissionsByLearnerMap = submissions.stream()

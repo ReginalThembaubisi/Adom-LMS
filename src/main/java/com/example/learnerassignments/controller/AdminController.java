@@ -35,6 +35,8 @@ public class AdminController {
     private final SystemSettingRepository systemSettingRepository;
     private final AuditLogRepository auditLogRepository;
     private final AuditLogService auditLogService;
+    private final AssessorAssignmentRepository assessorAssignmentRepository;
+    private final ModeratorAssignmentRepository moderatorAssignmentRepository;
     private final BackupService backupService;
     private final CloudinaryService cloudinaryService;
     private final PasswordEncoder passwordEncoder;
@@ -621,5 +623,148 @@ public class AdminController {
         );
 
         return ResponseEntity.ok(result);
+    }
+
+    // --- Assessor and moderator scoping ---
+    //
+    // Without rows here an assessor or moderator reaches nothing, which is deliberate: a new
+    // account should not be able to read the cohort before someone decides what it may see.
+    // These are the screens that make that decision.
+
+    @GetMapping("/assessors/{assessorId}/assignments")
+    public ResponseEntity<List<AssignmentScopeDtos.AssessorAssignmentResponse>> listAssessorAssignments(
+            @PathVariable Long assessorId) {
+        return ResponseEntity.ok(assessorAssignmentRepository.findByAssessor_Id(assessorId).stream()
+                .map(this::toAssessorAssignmentResponse)
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @PostMapping("/assessors/{assessorId}/assignments")
+    public ResponseEntity<AssignmentScopeDtos.AssessorAssignmentResponse> createAssessorAssignment(
+            @PathVariable Long assessorId,
+            @RequestBody AssignmentScopeDtos.CreateAssessorAssignmentRequest request,
+            Authentication auth) {
+
+        com.example.learnerassignments.model.Assessor assessor = assessorRepository.findById(assessorId)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Assessor not found"));
+
+        boolean hasLearner = request.getLearnerId() != null;
+        boolean hasCategory = request.getCategoryId() != null;
+        if (hasLearner == hasCategory) {
+            // Both would be ambiguous; neither would be a row that grants nothing while
+            // looking like a grant, which is worse than no row at all.
+            throw new IllegalArgumentException("Give either a learner or a category, not both and not neither.");
+        }
+
+        com.example.learnerassignments.model.AssessorAssignment assignment =
+                com.example.learnerassignments.model.AssessorAssignment.builder()
+                        .assessor(assessor)
+                        .learner(hasLearner ? learnerRepository.findById(request.getLearnerId())
+                                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found")) : null)
+                        .category(hasCategory ? categoryRepository.findById(request.getCategoryId())
+                                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Category not found")) : null)
+                        .build();
+
+        var saved = assessorAssignmentRepository.save(assignment);
+        auditLogService.log(auth, "CREATE_ASSESSOR_ASSIGNMENT", "AssessorAssignment", saved.getId(),
+                "Assessor " + assessor.getFullName() + " granted access to "
+                        + (hasLearner ? "learner " + request.getLearnerId()
+                                      : "category " + request.getCategoryId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toAssessorAssignmentResponse(saved));
+    }
+
+    @DeleteMapping("/assessors/{assessorId}/assignments/{assignmentId}")
+    public ResponseEntity<Void> deleteAssessorAssignment(
+            @PathVariable Long assessorId, @PathVariable Long assignmentId, Authentication auth) {
+        var assignment = assessorAssignmentRepository.findById(assignmentId)
+                .filter(a -> a.getAssessor().getId().equals(assessorId))
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Assignment not found"));
+        assessorAssignmentRepository.delete(assignment);
+        auditLogService.log(auth, "DELETE_ASSESSOR_ASSIGNMENT", "AssessorAssignment", assignmentId,
+                "Assessor access revoked");
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/moderators/{moderatorId}/assignments")
+    public ResponseEntity<List<AssignmentScopeDtos.ModeratorAssignmentResponse>> listModeratorAssignments(
+            @PathVariable Long moderatorId) {
+        return ResponseEntity.ok(moderatorAssignmentRepository.findByModerator_Id(moderatorId).stream()
+                .map(this::toModeratorAssignmentResponse)
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @PostMapping("/moderators/{moderatorId}/assignments")
+    public ResponseEntity<AssignmentScopeDtos.ModeratorAssignmentResponse> createModeratorAssignment(
+            @PathVariable Long moderatorId,
+            @Valid @RequestBody AssignmentScopeDtos.CreateModeratorAssignmentRequest request,
+            Authentication auth) {
+
+        com.example.learnerassignments.model.Moderator moderator = moderatorRepository.findById(moderatorId)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Moderator not found"));
+        var learnership = learnershipRepository.findById(request.getLearnershipId())
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Learnership not found"));
+
+        com.example.learnerassignments.model.ModerationScope scope =
+                com.example.learnerassignments.model.ModerationScope.FULL;
+        if (request.getScope() != null && !request.getScope().isBlank()) {
+            try {
+                scope = com.example.learnerassignments.model.ModerationScope.valueOf(request.getScope().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Scope must be FULL or SAMPLE.");
+            }
+        }
+
+        String cohort = (request.getCohort() == null || request.getCohort().isBlank()) ? null : request.getCohort().trim();
+
+        var saved = moderatorAssignmentRepository.save(
+                com.example.learnerassignments.model.ModeratorAssignment.builder()
+                        .moderator(moderator).learnership(learnership).cohort(cohort).scope(scope).build());
+
+        auditLogService.log(auth, "CREATE_MODERATOR_ASSIGNMENT", "ModeratorAssignment", saved.getId(),
+                "Moderator " + moderator.getFullName() + " granted " + scope
+                        + " access to learnership " + learnership.getName()
+                        + (cohort != null ? " cohort " + cohort : " (all cohorts)"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toModeratorAssignmentResponse(saved));
+    }
+
+    @DeleteMapping("/moderators/{moderatorId}/assignments/{assignmentId}")
+    public ResponseEntity<Void> deleteModeratorAssignment(
+            @PathVariable Long moderatorId, @PathVariable Long assignmentId, Authentication auth) {
+        var assignment = moderatorAssignmentRepository.findById(assignmentId)
+                .filter(a -> a.getModerator().getId().equals(moderatorId))
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Assignment not found"));
+        moderatorAssignmentRepository.delete(assignment);
+        auditLogService.log(auth, "DELETE_MODERATOR_ASSIGNMENT", "ModeratorAssignment", assignmentId,
+                "Moderator access revoked");
+        return ResponseEntity.noContent().build();
+    }
+
+    private AssignmentScopeDtos.AssessorAssignmentResponse toAssessorAssignmentResponse(
+            com.example.learnerassignments.model.AssessorAssignment a) {
+        return AssignmentScopeDtos.AssessorAssignmentResponse.builder()
+                .id(a.getId())
+                .assessorId(a.getAssessor().getId())
+                .assessorName(a.getAssessor().getFullName())
+                .learnerId(a.getLearner() != null ? a.getLearner().getId() : null)
+                .learnerName(a.getLearner() != null ? a.getLearner().getFullName() : null)
+                .learnerCode(a.getLearner() != null ? a.getLearner().getLearnerCode() : null)
+                .categoryId(a.getCategory() != null ? a.getCategory().getId() : null)
+                .categoryType(a.getCategory() != null ? a.getCategory().getCategoryType() : null)
+                .assignedAt(a.getAssignedAt())
+                .build();
+    }
+
+    private AssignmentScopeDtos.ModeratorAssignmentResponse toModeratorAssignmentResponse(
+            com.example.learnerassignments.model.ModeratorAssignment a) {
+        return AssignmentScopeDtos.ModeratorAssignmentResponse.builder()
+                .id(a.getId())
+                .moderatorId(a.getModerator().getId())
+                .moderatorName(a.getModerator().getFullName())
+                .learnershipId(a.getLearnership().getId())
+                .learnershipName(a.getLearnership().getName())
+                .cohort(a.getCohort())
+                .scope(a.getScope() != null ? a.getScope().name() : null)
+                .assignedAt(a.getAssignedAt())
+                .build();
     }
 }
