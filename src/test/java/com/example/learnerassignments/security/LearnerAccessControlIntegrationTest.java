@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +28,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,6 +66,7 @@ class LearnerAccessControlIntegrationTest {
     private Submission submissionA;
     private Submission submissionB;
     private Module module;
+    private SubmissionSession openSession;
 
     @BeforeEach
     void seedCohort() throws IOException {
@@ -102,7 +105,7 @@ class LearnerAccessControlIntegrationTest {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        SubmissionSession session = sessionRepository.save(SubmissionSession.builder()
+        openSession = sessionRepository.save(SubmissionSession.builder()
                 .sessionName("Window 1")
                 .assignment(assignment)
                 .startTime(LocalDateTime.now().minusDays(1))
@@ -116,8 +119,8 @@ class LearnerAccessControlIntegrationTest {
 
         // Both learners submit to the same session and both are marked, so a query that
         // forgets to filter by learner still returns something plausible.
-        submissionA = createSubmission(learnerA, session, "amanda-report.pdf", "Good structure, competent.");
-        submissionB = createSubmission(learnerB, session, "bongani-report.pdf", "Needs more detail.");
+        submissionA = createSubmission(learnerA, openSession, "amanda-report.pdf", "Good structure, competent.");
+        submissionB = createSubmission(learnerB, openSession, "bongani-report.pdf", "Needs more detail.");
     }
 
     private Learner createLearner(String code, String fullName, Module enrolledOn) {
@@ -259,53 +262,51 @@ class LearnerAccessControlIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    // --- View tickets ---
-
-    @Test
-    @DisplayName("a view ticket only opens the submission it was minted for")
-    void viewTicketIsScopedToOneSubmission() throws Exception {
-        String tokenA = login(learnerA.getLearnerCode());
-
-        MvcResult minted = mockMvc.perform(post("/api/me/submissions/" + submissionA.getId() + "/view-ticket")
-                        .header("Authorization", bearer(tokenA)))
-                .andExpect(status().isOk())
-                .andReturn();
-        String ticket = objectMapper.readTree(minted.getResponse().getContentAsString()).get("ticket").asText();
-
-        // Works, with no Authorization header at all — this is the iframe path.
-        mockMvc.perform(get("/api/submissions/" + submissionA.getId() + "/view").param("ticket", ticket))
-                .andExpect(status().isOk());
-
-        // Replaying it against someone else's submission does not.
-        mockMvc.perform(get("/api/submissions/" + submissionB.getId() + "/view").param("ticket", ticket))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("a learner cannot mint a ticket for someone else's submission")
-    void ticketForAnotherLearnersSubmissionIsNotFound() throws Exception {
-        String tokenA = login(learnerA.getLearnerCode());
-
-        mockMvc.perform(post("/api/me/submissions/" + submissionB.getId() + "/view-ticket")
-                        .header("Authorization", bearer(tokenA)))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("a forged ticket is rejected")
-    void forgedTicketIsRejected() throws Exception {
-        String forged = learnerB.getId() + ":" + submissionB.getId() + ":"
-                + (System.currentTimeMillis() / 1000 + 600) + ":not-a-real-signature";
-
-        mockMvc.perform(get("/api/submissions/" + submissionB.getId() + "/view").param("ticket", forged))
-                .andExpect(status().isNotFound());
-    }
-
     @Test
     @DisplayName("the submission file endpoint is closed to anonymous callers")
     void anonymousCannotReadSubmissionFile() throws Exception {
         mockMvc.perform(get("/api/submissions/" + submissionA.getId() + "/view"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("a learner cannot submit work attributed to another learner")
+    void submissionIsAttributedToTheAuthenticatedLearner() throws Exception {
+        String tokenA = login(learnerA.getLearnerCode());
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "attempt.pdf", "application/pdf", "%PDF-1.4 fixture".getBytes());
+
+        // learner_code is sent deliberately: it is what the old endpoint used to decide whose
+        // submission this was. The endpoint must ignore it entirely and attribute the work to
+        // the session that presented the token.
+        mockMvc.perform(multipart("/api/me/submissions")
+                        .file(file)
+                        .param("session_id", String.valueOf(openSession.getId()))
+                        .param("learner_code", learnerB.getLearnerCode())
+                        .header("Authorization", bearer(tokenA)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.learnerCode").value(learnerA.getLearnerCode()))
+                .andExpect(jsonPath("$.learnerName").value("Amanda Randy Mndawe"));
+
+        // And it is genuinely stored against A, not merely reported that way.
+        assertThat(submissionRepository.findByLearner_LearnerCodeOrderBySubmittedAtDesc(learnerB.getLearnerCode()))
+                .as("learner B must have gained nothing from A's request")
+                .hasSize(1)
+                .allSatisfy(s -> assertThat(s.getId()).isEqualTo(submissionB.getId()));
+    }
+
+    @Test
+    @DisplayName("the legacy public uploads directory no longer serves files to anonymous callers")
+    void legacyUploadsDirectoryRequiresAuthentication() throws Exception {
+        // Learner submissions used to be written into this statically-served directory under
+        // names built from the learner code and session id. They have been moved out, and the
+        // path is closed — so a future WebConfig or storage change that puts private files
+        // back here cannot silently re-expose them.
+        mockMvc.perform(get("/uploads/202600001_1_amanda-report.pdf"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/uploads/"))
+                .andExpect(status().isUnauthorized());
     }
 
     // --- Scoping of the rest of the portal ---

@@ -14,15 +14,17 @@ import java.util.Base64;
 import java.util.Optional;
 
 /**
- * Mints short-lived, single-resource tickets so a browser context that cannot send an
- * Authorization header — an {@code <iframe>} src, or Google's Docs viewer fetching a Word
- * file — can still read one file the caller has already been authorised for.
+ * Mints short-lived, single-resource tickets: a signed grant to read one thing, for a few
+ * minutes, issued only after the caller has already been authorised for it.
  *
- * A ticket is not an identifier the caller chooses: it is minted server-side for one
- * submission after the ownership check has passed, expires in minutes, and carries a
- * signature, so it cannot be edited into a ticket for someone else's file. That is what
- * separates it from the learner code it replaces, which was permanent, guessable and
- * accepted for any record.
+ * A ticket is not an identifier the caller chooses. It is minted server-side, expires, and
+ * carries a signature over the resource id, so it cannot be edited into a ticket for
+ * somebody else's file — which is exactly what separates it from a learner code.
+ *
+ * Nothing in the portal uses this yet: submission files are fetched with an Authorization
+ * header and rendered from an object URL, which needs no URL-embeddable credential at all.
+ * It is here for Phase 8, which emails a link to a finished export — a case where the
+ * recipient's browser follows a bare URL and there is no header to send.
  */
 @Service
 public class ViewTicketService {

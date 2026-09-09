@@ -49,11 +49,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
 
-                        // Submission files are fetched by <iframe> and by Google's document
-                        // viewer, neither of which can send an Authorization header. The
-                        // endpoint is open at this layer and authorises in the controller
-                        // against a signed, minutes-long ticket minted for one learner and
-                        // one submission — see MeController.issueViewTicket.
+                        // Open at this layer only because the staff dashboards still pass
+                        // base64 Basic credentials as ?authToken, which the filter cannot see.
+                        // The controller authorises every caller itself and returns 404 to
+                        // anyone it does not recognise. Learners reach it with a bearer header,
+                        // not a query parameter. When Phase 1 removes authToken this becomes
+                        // .authenticated() and the controller check becomes the second layer
+                        // rather than the only one.
                         .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
 
                         .requestMatchers(
@@ -62,7 +64,6 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/api/auth/me",
                                 "/assets/**",
-                                "/uploads/**",
                                 "/favicon.svg",
                                 "/icons.svg",
                                 "/*.css",
@@ -82,6 +83,15 @@ public class SecurityConfig {
                                 "/File/**"
                         ).permitAll()
 
+                        // Facilitator guides and assignment briefs, when stored on local disk
+                        // rather than Cloudinary. This used to be open, which also made every
+                        // learner submission written here readable by filename — the names are
+                        // built from the learner code and session id. Submissions have moved
+                        // out of this directory (see LegacySubmissionFileMigration); requiring
+                        // authentication here means a future change that puts private files
+                        // back cannot silently re-expose them.
+                        .requestMatchers("/uploads/**").authenticated()
+
                         // --- Learner portal ---
                         // Everything a learner reads or writes about themselves. The learner
                         // is resolved from the bearer token, so there is nothing in the path
@@ -91,6 +101,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/me/**").hasRole("LEARNER")
 
                         // --- Admin / Lecturer Protected Endpoints & Dashboards ---
+                        // Learners read modules and sessions through /api/me, which scopes to
+                        // their enrolment. These unscoped views are staff-only, so a learner
+                        // cannot read around that scope via the staff route.
+                        .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
+                        .requestMatchers("/api/sessions/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         // The full roster, including every learner code in the cohort.
                         .requestMatchers(HttpMethod.GET, "/api/learners").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.POST, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")

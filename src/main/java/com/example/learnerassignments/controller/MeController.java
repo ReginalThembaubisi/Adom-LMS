@@ -9,7 +9,6 @@ import com.example.learnerassignments.repository.LecturerRepository;
 import com.example.learnerassignments.security.CurrentLearner;
 import com.example.learnerassignments.security.LearnerPrincipal;
 import com.example.learnerassignments.security.LearnerTokenService;
-import com.example.learnerassignments.security.ViewTicketService;
 import com.example.learnerassignments.service.ChatbotService;
 import com.example.learnerassignments.service.LearnerService;
 import com.example.learnerassignments.service.MessageService;
@@ -47,7 +46,6 @@ public class MeController {
     private final SubmissionService submissionService;
     private final ChatbotService chatbotService;
     private final LearnerTokenService tokenService;
-    private final ViewTicketService viewTicketService;
     private final LecturerRepository lecturerRepository;
 
     // --- Identity ---
@@ -102,25 +100,10 @@ public class MeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Mints a short-lived ticket for reading one of the learner's own submission files.
-     *
-     * The portal renders documents in an iframe, which cannot carry an Authorization header.
-     * Rather than putting a durable credential in the URL — which is what the old learnerCode
-     * query parameter did — the ownership check happens here, once, and the browser gets a
-     * signed ticket scoped to this one submission for a few minutes.
-     */
-    @PostMapping("/submissions/{submissionId}/view-ticket")
-    public ResponseEntity<ViewTicketResponse> issueViewTicket(@PathVariable Long submissionId) {
-        LearnerPrincipal principal = currentLearner.require();
-        submissionService.requireOwnedByLearner(submissionId, principal.learnerId());
-
-        ViewTicketService.Ticket ticket = viewTicketService.issue(principal.learnerId(), submissionId);
-        return ResponseEntity.ok(ViewTicketResponse.builder()
-                .ticket(ticket.value())
-                .expiresAtEpochSecond(ticket.expiresAtEpochSecond())
-                .build());
-    }
+    // The portal fetches submission files with an Authorization header and renders them from
+    // an object URL, so there is no endpoint here that hands out a URL-embeddable credential.
+    // ViewTicketService itself is kept — Phase 8 emails an export link, and a short-lived
+    // signature scoped to one resource is the right primitive for that.
 
     // --- Messages ---
 

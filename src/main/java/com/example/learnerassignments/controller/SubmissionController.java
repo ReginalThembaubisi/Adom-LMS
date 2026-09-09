@@ -9,7 +9,6 @@ import com.example.learnerassignments.repository.AdminRepository;
 import com.example.learnerassignments.repository.ModeratorRepository;
 import com.example.learnerassignments.repository.AssessorRepository;
 import com.example.learnerassignments.security.LearnerPrincipal;
-import com.example.learnerassignments.security.ViewTicketService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
@@ -33,19 +32,15 @@ public class SubmissionController {
     private final ModeratorRepository moderatorRepository;
     private final AssessorRepository assessorRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ViewTicketService viewTicketService;
 
     // Learners submit through POST /api/me/submissions. This endpoint used to take the
     // learner code as a form field, which meant anyone could submit as anyone.
 
     /**
-     * Whether this caller may read this submission.
-     *
-     * Three ways in, in order of how the portal and the dashboards actually authenticate:
-     * the learner who owns it (bearer session), a signed view ticket minted for that learner
-     * and that submission, or staff — the module's lecturer, or an admin.
+     * Whether this caller may read this submission: the learner it belongs to, or staff —
+     * the module's lecturer, or an admin.
      */
-    private boolean checkAccess(Submission submission, String ticket, Authentication auth) {
+    private boolean checkAccess(Submission submission, Authentication auth) {
         // 1. The learner it belongs to. Identity comes from the session; a learner code is
         //    never accepted as an argument here, since codes are neither secret nor proof.
         if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof LearnerPrincipal principal) {
@@ -53,16 +48,7 @@ public class SubmissionController {
                     && submission.getLearner().getId().equals(principal.learnerId());
         }
 
-        // 2. A view ticket, for iframe and document-viewer fetches that cannot send headers.
-        //    Valid only for the submission it was minted against, and only for minutes.
-        if (ticket != null && !ticket.isBlank()) {
-            return viewTicketService.verify(ticket, submission.getId())
-                    .map(learnerId -> submission.getLearner() != null
-                            && submission.getLearner().getId().equals(learnerId))
-                    .orElse(false);
-        }
-
-        // 3. Authenticated staff: the lecturer who owns the module, or any admin.
+        // 2. Authenticated staff: the lecturer who owns the module, or any admin.
         if (auth != null && auth.isAuthenticated()) {
             if (submission.getSession() != null &&
                 submission.getSession().getAssignment() != null &&
@@ -145,9 +131,9 @@ public class SubmissionController {
      * Denial is always "not found", never "forbidden": submission ids are sequential, and a
      * 403 on someone else's id confirms it exists — enough to map the whole cohort.
      */
-    private Submission requireReadable(Long id, String ticket, String authToken, Authentication auth) {
+    private Submission requireReadable(Long id, String authToken, Authentication auth) {
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, ticket, auth) && !checkTokenAccess(submission, authToken)) {
+        if (!checkAccess(submission, auth) && !checkTokenAccess(submission, authToken)) {
             throw new ResourceNotFoundException("Submission not found with id: " + id);
         }
         return submission;
@@ -156,15 +142,21 @@ public class SubmissionController {
     // Serves the submission file for in-app viewing only (iframe/Google Docs Viewer). Uses
     // Content-Disposition: inline so browsers render it instead of prompting a file save —
     // there is deliberately no "attachment" download path left for submissions anymore.
+    //
+    // The learner portal reads this with fetch() and an Authorization header, rendering the
+    // result from an object URL, so nothing here needs a credential in the query string.
+    // The endpoint is nonetheless still open at the filter layer, purely because the staff
+    // dashboards pass base64 Basic credentials as ?authToken — which is a worse version of
+    // the learnerCode parameter this phase removed, and is the first thing Phase 1 should
+    // fix. Once it is gone, this becomes .authenticated() in SecurityConfig.
     @GetMapping("/{id}/view")
     public ResponseEntity<?> viewSubmissionFile(
             @PathVariable Long id,
-            @RequestParam(value = "ticket", required = false) String ticket,
             @RequestParam(value = "authToken", required = false) String authToken,
             @RequestParam(value = "marked", required = false, defaultValue = "false") boolean marked,
             Authentication auth) {
 
-        Submission submission = requireReadable(id, ticket, authToken, auth);
+        Submission submission = requireReadable(id, authToken, auth);
 
         // The marked (annotated) copy is always uploaded as a PDF regardless of the original
         // format, since it's flattened from rendered pages — so it's served as one whenever
@@ -233,7 +225,7 @@ public class SubmissionController {
             @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
 
-        requireReadable(id, null, authToken, auth);
+        requireReadable(id, authToken, auth);
         String json = submissionService.getAnnotationsJson(id);
         if (json == null) return ResponseEntity.noContent().build();
         return ResponseEntity.ok()
@@ -251,7 +243,7 @@ public class SubmissionController {
             @RequestParam(value = "authToken", required = false) String authToken,
             Authentication auth) {
 
-        requireReadable(id, null, authToken, auth);
+        requireReadable(id, authToken, auth);
         return ResponseEntity.ok(submissionService.getGradingHistory(id));
     }
 }
