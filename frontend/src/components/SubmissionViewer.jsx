@@ -1,26 +1,50 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
+import { useLearner } from '../context/LearnerContext';
 const PdfReplay = lazy(() => import('./PdfReplay'));
 
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
 // document in-app (no download) alongside its assessment outcome and feedback.
-const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
+const SubmissionViewer = ({ submission, onClose }) => {
+    const { authFetch } = useLearner();
     const [annotationStrokes, setAnnotationStrokes] = useState(null);
     const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
+    const [viewTicket, setViewTicket] = useState(null);
+    const [ticketError, setTicketError] = useState(false);
+
+    // The document itself is rendered by an <iframe> (and, for Word files, by Google's
+    // viewer), neither of which can send an Authorization header. So the ownership check
+    // happens once here, over the authenticated API, and comes back as a signed ticket
+    // good for this one submission for a few minutes. This replaces the learner code that
+    // used to sit in the URL — a permanent identifier, handed out over email and WhatsApp,
+    // that the server accepted as proof of who you were.
+    useEffect(() => {
+        let cancelled = false;
+        setViewTicket(null);
+        setTicketError(false);
+        authFetch(`/api/me/submissions/${submission.submissionId}/view-ticket`, { method: 'POST' })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (cancelled) return;
+                if (data?.ticket) setViewTicket(data.ticket);
+                else setTicketError(true);
+            })
+            .catch(() => { if (!cancelled) setTicketError(true); });
+        return () => { cancelled = true; };
+    }, [submission.submissionId, authFetch]);
 
     // Fetch saved stroke data when the submission has vector annotations (new path).
     useEffect(() => {
         if (!submission.hasAnnotations) return;
         let cancelled = false;
-        const url = `${window.location.origin}/api/submissions/${submission.submissionId}/annotations?learnerCode=${encodeURIComponent(learnerCode)}`;
-        fetch(url)
+        authFetch(`/api/submissions/${submission.submissionId}/annotations`)
             .then(res => res.ok ? res.json() : null)
             .then(data => { if (!cancelled) setAnnotationStrokes(data || {}); })
             .catch(() => { if (!cancelled) setAnnotationStrokes({}); })
             .finally(() => { if (!cancelled) setAnnotationsLoading(false); });
         return () => { cancelled = true; };
-    }, [submission.submissionId, submission.hasAnnotations, learnerCode]);
+    }, [submission.submissionId, submission.hasAnnotations, authFetch]);
 
     // hasAnnotations → PdfReplay (original PDF + vector strokes replayed client-side)
     // hasMarkedCopy (legacy) → iframe serving the rasterized marked PDF
@@ -34,8 +58,12 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
     // files — so the response always carries a Content-Type the browser can render inline.
     // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
     // blank when linked to directly.
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}${hasMarkedCopy ? '&marked=true' : ''}`;
-    const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
+    const documentUrl = viewTicket
+        ? `${window.location.origin}/api/submissions/${submission.submissionId}/view?ticket=${encodeURIComponent(viewTicket)}${hasMarkedCopy ? '&marked=true' : ''}`
+        : null;
+    const googleDocsViewerUrl = documentUrl
+        ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
+        : null;
 
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
@@ -65,7 +93,19 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                 <div className="flex-1 flex overflow-hidden">
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
-                            {hasAnnotations ? (
+                            {ticketError ? (
+                                <div className="text-center p-6 space-y-3">
+                                    <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-white">This document could not be opened</h4>
+                                    <p className="text-xs text-slate-400">Your session may have expired. Sign in again and reopen the submission.</p>
+                                </div>
+                            ) : !documentUrl ? (
+                                <p className="text-xs text-slate-500">Preparing document...</p>
+                            ) : hasAnnotations ? (
                                 // Vector annotations path: render original PDF + replay strokes.
                                 // No re-download of a large rasterized file — strokes load as JSON.
                                 annotationsLoading ? (

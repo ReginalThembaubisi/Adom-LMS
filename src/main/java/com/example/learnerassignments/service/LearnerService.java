@@ -32,9 +32,10 @@ public class LearnerService {
     private final EmailService emailService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final com.example.learnerassignments.repository.SystemSettingRepository systemSettingRepository;
+    private final com.example.learnerassignments.security.LearnerTokenService tokenService;
 
     @Transactional
-    public LearnerResponse registerLearner(CreateLearnerRequest request) {
+    public LearnerAuthResponse registerLearner(CreateLearnerRequest request) {
         boolean regOpen = systemSettingRepository.findById("REGISTRATION_OPEN")
                 .map(s -> "true".equalsIgnoreCase(s.getSettingValue()))
                 .orElse(true);
@@ -72,18 +73,28 @@ public class LearnerService {
             emailService.sendRegistrationEmail(savedLearner.getEmail(), savedLearner.getFullName(), savedLearner.getLearnerCode());
         }
 
-        return mapToResponse(savedLearner);
+        return issueSession(savedLearner);
     }
 
-    @Transactional(readOnly = true)
-    public LearnerResponse loginStudent(StudentLoginRequest request) {
+    @Transactional
+    public LearnerAuthResponse loginStudent(StudentLoginRequest request) {
         Learner learner = learnerRepository.findByLearnerCode(request.getStudentNumber())
                 .orElseThrow(() -> new IllegalArgumentException("Student number or password is incorrect"));
 
         if (learner.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), learner.getPasswordHash())) {
             throw new IllegalArgumentException("Student number or password is incorrect");
         }
-        return mapToResponse(learner);
+        return issueSession(learner);
+    }
+
+    /** Mints a session token for a learner who has just proved who they are. */
+    private LearnerAuthResponse issueSession(Learner learner) {
+        var issued = tokenService.issue(learner);
+        return LearnerAuthResponse.builder()
+                .token(issued.token())
+                .expiresAt(issued.expiresAt())
+                .learner(mapToResponse(learner))
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -208,5 +219,9 @@ public class LearnerService {
         learner.setResetCode(null);
         learner.setResetCodeExpiresAt(null);
         learnerRepository.save(learner);
+
+        // A password reset is also the recovery path after a suspected compromise, so every
+        // session opened with the old password is cut off rather than left running.
+        tokenService.revokeAllFor(learner.getId());
     }
 }

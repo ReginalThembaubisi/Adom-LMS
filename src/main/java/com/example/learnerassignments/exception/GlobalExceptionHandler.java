@@ -27,6 +27,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    // A learner endpoint reached without a usable session. Distinct from the filter-chain
+    // 401 because the request did pass the authorization rules — the token expired or was
+    // revoked between the security check and the controller.
+    @ExceptionHandler(com.example.learnerassignments.security.CurrentLearner.NotAuthenticatedException.class)
+    public ResponseEntity<Map<String, Object>> handleNotAuthenticated(
+            com.example.learnerassignments.security.CurrentLearner.NotAuthenticatedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", "Unauthorized");
+        body.put("message", "Authentication required");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
     @ExceptionHandler(InvalidFileException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidFile(InvalidFileException ex) {
         Map<String, Object> body = new HashMap<>();

@@ -89,7 +89,7 @@ const groupTimelineByDay = (items) => {
 };
 
 const StudentPortal = () => {
-    const { learner, logoutStudent } = useLearner();
+    const { learner, logoutStudent, authFetch } = useLearner();
     const navigate = useNavigate();
 
     // Redirect to landing if no learner context exists
@@ -187,7 +187,7 @@ const StudentPortal = () => {
 
     const fetchUnreadMessages = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/messages/unread-count`);
+            const res = await authFetch('/api/me/messages/unread-count');
             if (res.ok) {
                 const data = await res.json();
                 setUnreadMessages(data.unreadCount || 0);
@@ -198,20 +198,20 @@ const StudentPortal = () => {
     };
 
     const fetchStudentThreads = async () => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages`);
+        const res = await authFetch('/api/me/messages');
         if (!res.ok) throw new Error('Failed to load conversations');
         return res.json();
     };
 
     const fetchStudentThread = async (lecturerId) => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`);
+        const res = await authFetch(`/api/me/messages/${lecturerId}`);
         if (!res.ok) throw new Error('Failed to load conversation');
         fetchUnreadMessages();
         return res.json();
     };
 
     const sendStudentMessage = async (lecturerId, body) => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`, {
+        const res = await authFetch(`/api/me/messages/${lecturerId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ body })
@@ -232,7 +232,7 @@ const StudentPortal = () => {
     const fetchModules = async () => {
         setLoadingModules(true);
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/modules`);
+            const res = await authFetch('/api/me/modules');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -247,7 +247,7 @@ const StudentPortal = () => {
 
     const fetchTimeline = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/timeline`);
+            const res = await authFetch('/api/me/timeline');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -260,7 +260,7 @@ const StudentPortal = () => {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/submissions`);
+            const res = await authFetch('/api/me/submissions');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -274,7 +274,7 @@ const StudentPortal = () => {
     const openModuleDetails = async (moduleId) => {
         setAlert({ type: '', message: '' });
         try {
-            const res = await fetch(`/api/modules/${moduleId}?studentNumber=${studentNumber}`);
+            const res = await authFetch(`/api/me/modules/${moduleId}`);
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -307,15 +307,12 @@ const StudentPortal = () => {
         setChatLoading(true);
 
         try {
-            const res = await fetch('/api/chatbot/ask', {
+            const res = await authFetch('/api/me/chatbot/ask', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    query: msg,
-                    studentNumber: studentNumber
-                })
+                body: JSON.stringify({ query: msg })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -381,12 +378,11 @@ const StudentPortal = () => {
 
         setUploading(true);
         const formData = new FormData();
-        formData.append('learner_code', studentNumber);
         formData.append('session_id', sessionId);
         formData.append('file', inlineFile);
 
         try {
-            const res = await fetch('/api/submissions', {
+            const res = await authFetch('/api/me/submissions', {
                 method: 'POST',
                 body: formData
             });
@@ -1058,7 +1054,6 @@ const StudentPortal = () => {
             {viewingSubmission && (
                 <SubmissionViewer
                     submission={viewingSubmission}
-                    learnerCode={studentNumber}
                     onClose={() => setViewingSubmission(null)}
                 />
             )}

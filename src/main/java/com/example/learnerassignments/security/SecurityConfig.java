@@ -15,11 +15,14 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final LearnerTokenAuthenticationFilter learnerTokenAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -38,26 +41,21 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .authorizeHttpRequests(auth -> auth
-                        // Public Student Endpoints & Pages
+                        // --- Genuinely public: everything needed to get an account and get in ---
                         .requestMatchers(HttpMethod.POST, "/api/learners").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/reset-password").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/submissions").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/modules").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/timeline").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/facilitators").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/messages").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/messages/*").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/learners/*/messages/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/modules/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/sessions/active").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/submissions").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/chatbot/ask").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
+
+                        // Submission files are fetched by <iframe> and by Google's document
+                        // viewer, neither of which can send an Authorization header. The
+                        // endpoint is open at this layer and authorises in the controller
+                        // against a signed, minutes-long ticket minted for one learner and
+                        // one submission — see MeController.issueViewTicket.
+                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
+
                         .requestMatchers(
                                 "/",
                                 "/*.html",
@@ -84,7 +82,17 @@ public class SecurityConfig {
                                 "/File/**"
                         ).permitAll()
 
-                        // Admin / Lecturer Protected Endpoints & Dashboards
+                        // --- Learner portal ---
+                        // Everything a learner reads or writes about themselves. The learner
+                        // is resolved from the bearer token, so there is nothing in the path
+                        // to tamper with. Previously these lived under /api/learners/{code}
+                        // and were open: a learner code is emailed and WhatsApped out, so it
+                        // was an identifier, never a credential.
+                        .requestMatchers("/api/me/**").hasRole("LEARNER")
+
+                        // --- Admin / Lecturer Protected Endpoints & Dashboards ---
+                        // The full roster, including every learner code in the cohort.
+                        .requestMatchers(HttpMethod.GET, "/api/learners").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.POST, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.PUT, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.DELETE, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
@@ -99,6 +107,7 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(learnerTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(basic -> basic.authenticationEntryPoint((request, response, authException) -> {
                     String uri = request.getRequestURI();
                     if (uri.endsWith("/admin-dashboard.html") || uri.equals("/admin")) {

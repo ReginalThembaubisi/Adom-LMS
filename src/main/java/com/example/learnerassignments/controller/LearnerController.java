@@ -19,33 +19,23 @@ public class LearnerController {
     private final LearnerService learnerService;
 
     @PostMapping
-    public ResponseEntity<LearnerResponse> registerLearner(@Valid @RequestBody CreateLearnerRequest request) {
-        LearnerResponse response = learnerService.registerLearner(request);
+    public ResponseEntity<LearnerAuthResponse> registerLearner(@Valid @RequestBody CreateLearnerRequest request) {
+        LearnerAuthResponse response = learnerService.registerLearner(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LearnerResponse> loginStudent(@Valid @RequestBody StudentLoginRequest request) {
-        LearnerResponse response = learnerService.loginStudent(request);
+    public ResponseEntity<LearnerAuthResponse> loginStudent(@Valid @RequestBody StudentLoginRequest request) {
+        LearnerAuthResponse response = learnerService.loginStudent(request);
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{studentNumber}/submissions")
-    public ResponseEntity<List<StudentSubmissionHistoryDto>> getLearnerSubmissions(@PathVariable String studentNumber) {
-        List<StudentSubmissionHistoryDto> submissions = learnerService.getLearnerSubmissions(studentNumber);
-        return ResponseEntity.ok(submissions);
-    }
-
+    // The full roster. Staff only — it used to be open, and learner codes are handed out over
+    // email and WhatsApp, so an open roster was a list of usable identifiers.
     @GetMapping
     public ResponseEntity<List<LearnerSummaryResponse>> getAllLearners() {
         List<LearnerSummaryResponse> learners = learnerService.getAllLearners();
         return ResponseEntity.ok(learners);
-    }
-
-    @GetMapping("/{code}")
-    public ResponseEntity<LearnerResponse> getLearnerByCode(@PathVariable String code) {
-        LearnerResponse learner = learnerService.getLearnerByCode(code);
-        return ResponseEntity.ok(learner);
     }
 
     @PostMapping("/forgot-password")

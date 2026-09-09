@@ -42,7 +42,12 @@ public class SubmissionService {
     private final CloudinaryService cloudinaryService;
     private final SubmissionGradingHistoryRepository gradingHistoryRepository;
 
-    @Value("${file.upload-dir:uploads}")
+    // Deliberately NOT the "uploads" directory: that one is mapped as a public static
+    // resource handler for facilitator guides and assignment briefs. Learner submissions
+    // written there were readable by anyone who guessed the filename, which is built from
+    // the learner code and session id. They live outside the served tree and are reachable
+    // only through the ownership-checked /api/submissions/{id}/view endpoint.
+    @Value("${file.submission-dir:private-uploads}")
     private String uploadDir;
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("pdf", "doc", "docx");
@@ -372,6 +377,21 @@ public class SubmissionService {
     public Submission getSubmission(Long id) {
         return submissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + id));
+    }
+
+    /**
+     * A submission, but only if it belongs to this learner.
+     *
+     * Someone else's submission is reported as not found, never as forbidden: a 403 would
+     * confirm the id exists, which is enough to enumerate the cohort's record ids.
+     */
+    @Transactional(readOnly = true)
+    public Submission requireOwnedByLearner(Long submissionId, Long learnerId) {
+        Submission submission = getSubmission(submissionId);
+        if (submission.getLearner() == null || !submission.getLearner().getId().equals(learnerId)) {
+            throw new ResourceNotFoundException("Submission not found with id: " + submissionId);
+        }
+        return submission;
     }
 
     @Transactional(readOnly = true)

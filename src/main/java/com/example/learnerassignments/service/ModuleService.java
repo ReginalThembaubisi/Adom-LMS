@@ -146,6 +146,40 @@ public class ModuleService {
                 .build();
     }
 
+    /**
+     * Module detail for a learner, scoped to what they are actually enrolled on.
+     *
+     * Guides fan out by enrolment, so a module outside the learner's learnership is reported
+     * as not found rather than forbidden — a 403 would confirm the module exists.
+     */
+    @Transactional(readOnly = true)
+    public ModuleDetailResponseDto getModuleDetailsForLearner(Long moduleId, String studentNumber) {
+        Learner learner = learnerRepository.findByLearnerCode(studentNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Student number not found: " + studentNumber));
+
+        Module module = moduleRepository.findById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Module not found with id: " + moduleId));
+
+        if (!isEnrolledOn(learner, module)) {
+            throw new ResourceNotFoundException("Module not found with id: " + moduleId);
+        }
+
+        return getModuleDetails(moduleId, studentNumber);
+    }
+
+    private boolean isEnrolledOn(Learner learner, Module module) {
+        if (learner.getModules() != null && learner.getModules().stream()
+                .anyMatch(m -> m.getId().equals(module.getId()))) {
+            return true;
+        }
+        // Learners registered before per-module enrolment was populated are scoped by their
+        // learnership instead, which is how getEnrolledModules() already lists their modules.
+        return learner.getLearnership() != null
+                && module.getCategory() != null
+                && module.getCategory().getLearnership() != null
+                && module.getCategory().getLearnership().getId().equals(learner.getLearnership().getId());
+    }
+
     @Transactional(readOnly = true)
     public List<TimelineResponseDto> getLearnerTimeline(String studentNumber) {
         Learner learner = learnerRepository.findByLearnerCode(studentNumber)
