@@ -1,43 +1,90 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
+import { useLearner } from '../context/LearnerContext';
 const PdfReplay = lazy(() => import('./PdfReplay'));
 
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
-// document in-app (no download) alongside its assessment outcome and feedback.
-const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
+// document alongside its assessment outcome and feedback. PDFs and images render in-app;
+// Word files are saved locally, since the only way to preview those in a browser would be
+// to hand the file to a third-party viewer.
+const SubmissionViewer = ({ submission, onClose }) => {
+    const { authFetch } = useLearner();
     const [annotationStrokes, setAnnotationStrokes] = useState(null);
     const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
+    const [documentUrl, setDocumentUrl] = useState(null);
+    const [documentType, setDocumentType] = useState(null);
+    const [loadError, setLoadError] = useState(false);
+
+    const hasAnnotations = submission.hasAnnotations;
+    const hasMarkedCopy = !!submission.markedFilePath && !hasAnnotations;
+
+    // The document is fetched here, with the learner's token, and rendered from an object
+    // URL. Nothing else works without handing the file to somebody: an <iframe> pointed at
+    // our own endpoint cannot send an Authorization header, and Google's document viewer
+    // renders Word files by having Google fetch them — which would send a learner's
+    // assessment work to a third party we hold no processing agreement with, on personal
+    // information nobody consented to sharing.
+    useEffect(() => {
+        let cancelled = false;
+        let objectUrl = null;
+
+        setDocumentUrl(null);
+        setLoadError(false);
+
+        const path = `/api/submissions/${submission.submissionId}/view`
+            + (hasMarkedCopy ? '?marked=true' : '');
+
+        authFetch(path)
+            .then(res => res.ok ? res.blob() : Promise.reject(new Error('Could not load document')))
+            .then(blob => {
+                if (cancelled) return;
+                objectUrl = URL.createObjectURL(blob);
+                setDocumentType(blob.type);
+                setDocumentUrl(objectUrl);
+            })
+            .catch(() => { if (!cancelled) setLoadError(true); });
+
+        return () => {
+            cancelled = true;
+            // The blob stays in memory until it is revoked, so this matters on a screen
+            // a learner opens once per submission.
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [submission.submissionId, hasMarkedCopy, authFetch]);
+
+    // Word files have no in-browser renderer we can use without shipping the file offsite,
+    // so they are saved and opened in Word instead. If inline preview turns out to matter,
+    // the answer is a server-side PDF conversion, not a third-party viewer.
+    const saveDocument = () => {
+        if (!documentUrl) return;
+        const link = document.createElement('a');
+        link.href = documentUrl;
+        link.download = submission.originalFilename || 'submission';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    };
 
     // Fetch saved stroke data when the submission has vector annotations (new path).
     useEffect(() => {
         if (!submission.hasAnnotations) return;
         let cancelled = false;
-        const url = `${window.location.origin}/api/submissions/${submission.submissionId}/annotations?learnerCode=${encodeURIComponent(learnerCode)}`;
-        fetch(url)
+        authFetch(`/api/submissions/${submission.submissionId}/annotations`)
             .then(res => res.ok ? res.json() : null)
             .then(data => { if (!cancelled) setAnnotationStrokes(data || {}); })
             .catch(() => { if (!cancelled) setAnnotationStrokes({}); })
             .finally(() => { if (!cancelled) setAnnotationsLoading(false); });
         return () => { cancelled = true; };
-    }, [submission.submissionId, submission.hasAnnotations, learnerCode]);
+    }, [submission.submissionId, submission.hasAnnotations, authFetch]);
 
     // hasAnnotations → PdfReplay (original PDF + vector strokes replayed client-side)
-    // hasMarkedCopy (legacy) → iframe serving the rasterized marked PDF
-    // else → iframe serving the original file
-    const hasAnnotations = submission.hasAnnotations;
-    const hasMarkedCopy = !!submission.markedFilePath && !hasAnnotations;
-    const isPdf = hasAnnotations || hasMarkedCopy || submission.originalFilename?.toLowerCase().endsWith('.pdf');
-    const isDoc = !hasAnnotations && !hasMarkedCopy && (submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx'));
-
-    // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
-    // files — so the response always carries a Content-Type the browser can render inline.
-    // Cloudinary's raw-resource delivery doesn't set one reliably, which left this viewer
-    // blank when linked to directly.
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?learnerCode=${encodeURIComponent(learnerCode)}${hasMarkedCopy ? '&marked=true' : ''}`;
-    const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
-
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // hasMarkedCopy (legacy) → the rasterized marked PDF
+    // else → the original file, rendered inline when the browser can, saved when it can't
+    const isPdf = hasAnnotations || hasMarkedCopy
+        || submission.originalFilename?.toLowerCase().endsWith('.pdf')
+        || documentType === 'application/pdf';
+    const isImage = !!documentType && documentType.startsWith('image/');
 
     const status = submission.status;
     const isAssessed = status === 'COMPETENT' || status === 'NOT_YET_COMPETENT';
@@ -65,7 +112,19 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                 <div className="flex-1 flex overflow-hidden">
                     <div className="w-3/4 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4">
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
-                            {hasAnnotations ? (
+                            {loadError ? (
+                                <div className="text-center p-6 space-y-3">
+                                    <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-white">This document could not be opened</h4>
+                                    <p className="text-xs text-slate-400">Your session may have expired. Sign in again and reopen the submission.</p>
+                                </div>
+                            ) : !documentUrl ? (
+                                <p className="text-xs text-slate-500">Loading document...</p>
+                            ) : hasAnnotations ? (
                                 // Vector annotations path: render original PDF + replay strokes.
                                 // No re-download of a large rasterized file — strokes load as JSON.
                                 annotationsLoading ? (
@@ -88,37 +147,35 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                                     className="w-full h-full border-none"
                                     title="PDF Document Preview"
                                 />
-                            ) : isDoc ? (
-                                isLocalhost ? (
-                                    <div className="p-6 text-center space-y-4 max-w-md">
-                                        <div className="w-12 h-12 bg-amber-500/15 text-amber-500 rounded-full flex items-center justify-center mx-auto">
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-white">Local Word Document Preview Sandbox</h4>
-                                        <p className="text-xs text-slate-400">
-                                            Google Document Viewer requires a public URL to fetch and render Word documents. In the deployed production site, this will render the document inside the browser automatically.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <iframe
-                                        src={googleDocsViewerUrl}
-                                        className="w-full h-full border-none"
-                                        title="Word Document Preview"
-                                    />
-                                )
+                            ) : isImage ? (
+                                <img
+                                    src={documentUrl}
+                                    alt={submission.originalFilename}
+                                    className="max-w-full max-h-full object-contain"
+                                />
                             ) : (
-                                <div className="text-center p-6 space-y-3">
-                                    <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                                // Word documents, and anything else the browser cannot render
+                                // on its own. Previewing these used to mean handing the file to
+                                // Google's document viewer, which fetches it from their servers
+                                // — a learner's assessment work leaving our infrastructure for
+                                // a processor we have no agreement with. Saving it locally and
+                                // opening it in Word keeps the file between the learner and us.
+                                <div className="p-6 text-center space-y-4 max-w-md">
+                                    <div className="w-12 h-12 bg-blue-500/15 text-blue-400 rounded-full flex items-center justify-center mx-auto">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                                         </svg>
                                     </div>
-                                    <h4 className="text-sm font-bold text-white">Unsupported file format preview</h4>
+                                    <h4 className="text-sm font-bold text-white">Open this file in Word</h4>
                                     <p className="text-xs text-slate-400">
-                                        This document format cannot be rendered inside the viewer.
+                                        Word documents can't be previewed in the browser. Save your copy and open it in Word — your assessment work stays between you and your facilitator.
                                     </p>
+                                    <button
+                                        onClick={saveDocument}
+                                        className="bg-[#4A3AFF] hover:bg-[#3d2fd6] text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                                    >
+                                        Save my submission
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -162,7 +219,9 @@ const SubmissionViewer = ({ submission, learnerCode, onClose }) => {
                         </div>
 
                         <div className="pt-6 border-t border-slate-800/80 text-center">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-widest">View only</span>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-widest">
+                                {isPdf || isImage ? 'View only' : 'Your copy'}
+                            </span>
                         </div>
                     </div>
                 </div>

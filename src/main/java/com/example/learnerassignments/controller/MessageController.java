@@ -29,57 +29,14 @@ public class MessageController {
     private final LecturerRepository lecturerRepository;
     private final MessageService messageService;
 
-    private Learner requireLearner(String code) {
-        return learnerRepository.findByLearnerCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("Student number not found: " + code));
-    }
-
     private Lecturer requireLecturer(String username) {
         return lecturerRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Lecturer record not found"));
     }
 
-    // --- Student side ---
-
-    @GetMapping("/api/learners/{code}/facilitators")
-    public ResponseEntity<List<PersonSummaryDto>> getFacilitators(@PathVariable String code) {
-        Learner learner = requireLearner(code);
-        return ResponseEntity.ok(messageService.getFacilitatorsForLearner(learner));
-    }
-
-    @GetMapping("/api/learners/{code}/messages")
-    public ResponseEntity<List<MessageThreadSummaryDto>> getLearnerThreads(@PathVariable String code) {
-        Learner learner = requireLearner(code);
-        return ResponseEntity.ok(messageService.getThreadSummariesForLearner(learner));
-    }
-
-    @GetMapping("/api/learners/{code}/messages/unread-count")
-    public ResponseEntity<Map<String, Long>> getLearnerUnreadCount(@PathVariable String code) {
-        Learner learner = requireLearner(code);
-        return ResponseEntity.ok(Map.of("unreadCount", messageService.getUnreadCountForLearner(learner)));
-    }
-
-    @GetMapping("/api/learners/{code}/messages/{lecturerId}")
-    public ResponseEntity<?> getLearnerThread(@PathVariable String code, @PathVariable Long lecturerId) {
-        Learner learner = requireLearner(code);
-        if (!messageService.facilitatorOwnsLearner(lecturerId, learner)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("That facilitator does not teach any of your modules.");
-        }
-        return ResponseEntity.ok(messageService.getThreadAndMarkRead(learner.getId(), lecturerId, SenderType.LEARNER));
-    }
-
-    @PostMapping("/api/learners/{code}/messages/{lecturerId}")
-    public ResponseEntity<?> sendFromLearner(@PathVariable String code, @PathVariable Long lecturerId,
-                                              @Valid @RequestBody SendMessageRequest request) {
-        Learner learner = requireLearner(code);
-        if (!messageService.facilitatorOwnsLearner(lecturerId, learner)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("That facilitator does not teach any of your modules.");
-        }
-        Lecturer lecturer = lecturerRepository.findById(lecturerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Facilitator not found"));
-        MessageDto saved = messageService.sendMessage(learner, lecturer, SenderType.LEARNER, request.getBody());
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
+    // The learner side of messaging now lives on /api/me/messages, where the learner is
+    // resolved from the session. These routes took the learner code from the path and were
+    // open, so anyone could read — and send as — any learner in the cohort.
 
     // --- Facilitator side ---
 

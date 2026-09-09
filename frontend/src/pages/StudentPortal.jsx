@@ -89,7 +89,7 @@ const groupTimelineByDay = (items) => {
 };
 
 const StudentPortal = () => {
-    const { learner, logoutStudent } = useLearner();
+    const { learner, logoutStudent, authFetch } = useLearner();
     const navigate = useNavigate();
 
     // Redirect to landing if no learner context exists
@@ -187,7 +187,7 @@ const StudentPortal = () => {
 
     const fetchUnreadMessages = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/messages/unread-count`);
+            const res = await authFetch('/api/me/messages/unread-count');
             if (res.ok) {
                 const data = await res.json();
                 setUnreadMessages(data.unreadCount || 0);
@@ -198,20 +198,20 @@ const StudentPortal = () => {
     };
 
     const fetchStudentThreads = async () => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages`);
+        const res = await authFetch('/api/me/messages');
         if (!res.ok) throw new Error('Failed to load conversations');
         return res.json();
     };
 
     const fetchStudentThread = async (lecturerId) => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`);
+        const res = await authFetch(`/api/me/messages/${lecturerId}`);
         if (!res.ok) throw new Error('Failed to load conversation');
         fetchUnreadMessages();
         return res.json();
     };
 
     const sendStudentMessage = async (lecturerId, body) => {
-        const res = await fetch(`/api/learners/${studentNumber}/messages/${lecturerId}`, {
+        const res = await authFetch(`/api/me/messages/${lecturerId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ body })
@@ -232,7 +232,7 @@ const StudentPortal = () => {
     const fetchModules = async () => {
         setLoadingModules(true);
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/modules`);
+            const res = await authFetch('/api/me/modules');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -247,7 +247,7 @@ const StudentPortal = () => {
 
     const fetchTimeline = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/timeline`);
+            const res = await authFetch('/api/me/timeline');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -260,7 +260,7 @@ const StudentPortal = () => {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`/api/learners/${studentNumber}/submissions`);
+            const res = await authFetch('/api/me/submissions');
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -274,7 +274,7 @@ const StudentPortal = () => {
     const openModuleDetails = async (moduleId) => {
         setAlert({ type: '', message: '' });
         try {
-            const res = await fetch(`/api/modules/${moduleId}?studentNumber=${studentNumber}`);
+            const res = await authFetch(`/api/me/modules/${moduleId}`);
             if (!checkStudentResponse(res)) return;
             if (res.ok) {
                 const data = await res.json();
@@ -282,6 +282,35 @@ const StudentPortal = () => {
             }
         } catch (e) {
             setAlert({ type: 'error', message: 'Failed to load module details.' });
+        }
+    };
+
+    // Guides and briefs are either an absolute Cloudinary URL, which the browser fetches
+    // directly, or a path under /uploads on this server — which now requires authentication,
+    // because that directory used to serve learner submissions to anyone who guessed a
+    // filename. An <a href> cannot send the token, so same-origin files are fetched here and
+    // saved from an object URL instead.
+    const openCourseFile = async (path, filename) => {
+        if (!path) return;
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            window.open(path, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        try {
+            const res = await authFetch(path);
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename || path.split('/').pop() || 'document';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } catch {
+            setAlert({ type: 'error', message: 'That file could not be downloaded. Please try again.' });
         }
     };
 
@@ -307,15 +336,12 @@ const StudentPortal = () => {
         setChatLoading(true);
 
         try {
-            const res = await fetch('/api/chatbot/ask', {
+            const res = await authFetch('/api/me/chatbot/ask', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    query: msg,
-                    studentNumber: studentNumber
-                })
+                body: JSON.stringify({ query: msg })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -381,12 +407,11 @@ const StudentPortal = () => {
 
         setUploading(true);
         const formData = new FormData();
-        formData.append('learner_code', studentNumber);
         formData.append('session_id', sessionId);
         formData.append('file', inlineFile);
 
         try {
-            const res = await fetch('/api/submissions', {
+            const res = await authFetch('/api/me/submissions', {
                 method: 'POST',
                 body: formData
             });
@@ -557,11 +582,11 @@ const StudentPortal = () => {
                                                             <p className="font-semibold text-[13px] text-[#101425] truncate">{file.title || 'Untitled Material'}</p>
                                                             <p className="text-[10px] text-[#8A90A8] mt-0.5">{file.fileType}</p>
                                                         </div>
-                                                        <a href={file.filePath} download
-                                                            className="text-[11px] font-semibold text-[#4A3AFF] flex-shrink-0 px-3 py-1.5 rounded-xl"
+                                                        <button onClick={() => openCourseFile(file.filePath, file.originalFilename || file.title)}
+                                                            className="text-[11px] font-semibold text-[#4A3AFF] flex-shrink-0 px-3 py-1.5 rounded-xl cursor-pointer"
                                                             style={{background:'#EEF0FF'}}>
                                                             Download
-                                                        </a>
+                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -609,7 +634,8 @@ const StudentPortal = () => {
                                                 {s.taskFilePath && (
                                                     <div className="flex justify-between items-center px-3 py-2 rounded-xl gap-2" style={{background:'#F6F7FB'}}>
                                                         <span className="text-[10px] font-semibold text-[#101425] truncate flex-shrink min-w-0">{s.taskFileName || 'Brief Attachment'}</span>
-                                                        <a href={s.taskFilePath} download className="text-[10px] font-semibold text-[#4A3AFF] flex-shrink-0">Download Brief</a>
+                                                        <button onClick={() => openCourseFile(s.taskFilePath, s.taskFileName)}
+                                                            className="text-[10px] font-semibold text-[#4A3AFF] flex-shrink-0 cursor-pointer">Download Brief</button>
                                                     </div>
                                                 )}
 
@@ -738,11 +764,11 @@ const StudentPortal = () => {
                                             Submit
                                         </button>
                                         {timeline[0].taskFilePath && (
-                                            <a href={timeline[0].taskFilePath} download
-                                                className="flex-1 py-2.5 rounded-xl text-center font-semibold text-[13px] text-[#8A90A8]"
+                                            <button onClick={() => openCourseFile(timeline[0].taskFilePath, timeline[0].taskFileName)}
+                                                className="flex-1 py-2.5 rounded-xl text-center font-semibold text-[13px] text-[#8A90A8] cursor-pointer"
                                                 style={{background:'#F6F7FB'}}>
                                                 Brief
-                                            </a>
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -1058,7 +1084,6 @@ const StudentPortal = () => {
             {viewingSubmission && (
                 <SubmissionViewer
                     submission={viewingSubmission}
-                    learnerCode={studentNumber}
                     onClose={() => setViewingSubmission(null)}
                 />
             )}

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.time.Year;
 
 @Entity
 @Table(name = "learners")
@@ -74,9 +73,13 @@ public class Learner {
             this.createdAt = LocalDateTime.now();
         }
         if (this.learnerCode == null || this.learnerCode.isBlank()) {
-            int currentYear = Year.now().getValue();
-            int randomSeq = (int) (Math.random() * 90000) + 10000;
-            this.learnerCode = String.format("%d%05d", currentYear, randomSeq);
+            // Codes are allocated by LearnerService.generateNextLearnerCode() off the
+            // learner_code_sequences table. There used to be a Math.random() fallback here,
+            // which could collide with an existing code and surface to a self-registering
+            // learner as a raw unique-constraint violation. Failing here instead makes the
+            // real bug — a creation path that skipped the sequence — obvious at its source.
+            throw new IllegalStateException(
+                    "Learner code must be allocated via LearnerService.generateNextLearnerCode()");
         }
     }
 }

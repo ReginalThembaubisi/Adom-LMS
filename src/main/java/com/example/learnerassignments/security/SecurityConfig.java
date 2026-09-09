@@ -15,11 +15,14 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final LearnerTokenAuthenticationFilter learnerTokenAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -38,33 +41,29 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .authorizeHttpRequests(auth -> auth
-                        // Public Student Endpoints & Pages
+                        // --- Genuinely public: everything needed to get an account and get in ---
                         .requestMatchers(HttpMethod.POST, "/api/learners").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/reset-password").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/submissions").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/modules").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/timeline").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/facilitators").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/messages").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/learners/*/messages/*").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/learners/*/messages/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/modules/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/sessions/active").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/submissions").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/chatbot/ask").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
+
+                        // Open at this layer only because the staff dashboards still pass
+                        // base64 Basic credentials as ?authToken, which the filter cannot see.
+                        // The controller authorises every caller itself and returns 404 to
+                        // anyone it does not recognise. Learners reach it with a bearer header,
+                        // not a query parameter. When Phase 1 removes authToken this becomes
+                        // .authenticated() and the controller check becomes the second layer
+                        // rather than the only one.
+                        .requestMatchers(HttpMethod.GET, "/api/submissions/*/view").permitAll()
+
                         .requestMatchers(
                                 "/",
                                 "/*.html",
                                 "/h2-console/**",
                                 "/api/auth/me",
                                 "/assets/**",
-                                "/uploads/**",
                                 "/favicon.svg",
                                 "/icons.svg",
                                 "/*.css",
@@ -84,7 +83,44 @@ public class SecurityConfig {
                                 "/File/**"
                         ).permitAll()
 
-                        // Admin / Lecturer Protected Endpoints & Dashboards
+                        // Facilitator guides and assignment briefs, when stored on local disk
+                        // rather than Cloudinary. This used to be open, which also made every
+                        // learner submission written here readable by filename — the names are
+                        // built from the learner code and session id. Submissions have moved
+                        // out of this directory (see LegacySubmissionFileMigration); requiring
+                        // authentication here means a future change that puts private files
+                        // back cannot silently re-expose them.
+                        //
+                        // Still unscoped, though: any signed-in learner can read any guide by
+                        // path, including modules they are not enrolled on. Low severity while
+                        // this only serves course material rather than personal information —
+                        // Phase 4 replaces static serving with streamed, ownership-checked
+                        // delivery and resolves it. Do not put anything personal here first.
+                        .requestMatchers("/uploads/**").authenticated()
+
+                        // --- Learner portal ---
+                        // Everything a learner reads or writes about themselves. The learner
+                        // is resolved from the bearer token, so there is nothing in the path
+                        // to tamper with. Previously these lived under /api/learners/{code}
+                        // and were open: a learner code is emailed and WhatsApped out, so it
+                        // was an identifier, never a credential.
+                        .requestMatchers("/api/me/**").hasRole("LEARNER")
+
+                        // --- Admin / Lecturer Protected Endpoints & Dashboards ---
+                        // Learners read modules and sessions through /api/me, which scopes to
+                        // their enrolment. These unscoped views are staff-only, so a learner
+                        // cannot read around that scope via the staff route.
+                        //
+                        // ASSESSOR and MODERATOR are listed because neither role has any
+                        // assignment table yet, so there is nothing to narrow them to — which
+                        // also means every assessor currently sees every module in the system.
+                        // Phase 1 introduces assessor_assignment and moderator_assignment; its
+                        // ScopeService must narrow both of these lines, not just the learner
+                        // endpoints.
+                        .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
+                        .requestMatchers("/api/sessions/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
+                        // The full roster, including every learner code in the cohort.
+                        .requestMatchers(HttpMethod.GET, "/api/learners").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.POST, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.PUT, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.DELETE, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")
@@ -99,6 +135,7 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(learnerTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(basic -> basic.authenticationEntryPoint((request, response, authException) -> {
                     String uri = request.getRequestURI();
                     if (uri.endsWith("/admin-dashboard.html") || uri.equals("/admin")) {

@@ -1,14 +1,11 @@
 package com.example.learnerassignments.controller;
 
 import com.example.learnerassignments.dto.ModuleDetailResponseDto;
-import com.example.learnerassignments.dto.ModuleResponseDto;
-import com.example.learnerassignments.dto.TimelineResponseDto;
 import com.example.learnerassignments.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -17,23 +14,11 @@ public class ModuleController {
 
     private final ModuleService moduleService;
 
-    @GetMapping("/learners/{studentNumber}/modules")
-    public ResponseEntity<List<ModuleResponseDto>> getEnrolledModules(@PathVariable String studentNumber) {
-        List<ModuleResponseDto> modules = moduleService.getEnrolledModules(studentNumber);
-        return ResponseEntity.ok(modules);
-    }
-
+    // Staff view of a module. The learner-facing equivalents now live on /api/me, where the
+    // learner comes from the session instead of the path: a student number in the URL let
+    // anyone read anyone's enrolment, timeline and per-slot submission state.
     @GetMapping("/modules/{id}")
-    public ResponseEntity<ModuleDetailResponseDto> getModuleDetails(
-            @PathVariable Long id,
-            @RequestParam(value = "studentNumber", required = false) String studentNumber) {
-        ModuleDetailResponseDto details = moduleService.getModuleDetails(id, studentNumber);
-        return ResponseEntity.ok(details);
-    }
-
-    @GetMapping("/learners/{studentNumber}/timeline")
-    public ResponseEntity<List<TimelineResponseDto>> getLearnerTimeline(@PathVariable String studentNumber) {
-        List<TimelineResponseDto> timeline = moduleService.getLearnerTimeline(studentNumber);
-        return ResponseEntity.ok(timeline);
+    public ResponseEntity<ModuleDetailResponseDto> getModuleDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(moduleService.getModuleDetails(id, null));
     }
 }
