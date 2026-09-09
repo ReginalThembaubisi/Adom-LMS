@@ -1,5 +1,6 @@
 package com.example.learnerassignments.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -41,6 +42,16 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .authorizeHttpRequests(auth -> auth
+                        // The container re-runs this filter chain for the ERROR dispatch, and
+                        // that second pass carries no authentication. Without this line a
+                        // genuine 403 from AccessDeniedHandlerImpl — which reports itself with
+                        // sendError — is re-secured as an anonymous request for /error, denied
+                        // again, and rewritten by the entry point below into a 401. Spring Boot
+                        // permits these dispatch types in its default chain; defining our own
+                        // gave that up silently. MockMvc does not perform error dispatch, so
+                        // only a real container shows it.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
+
                         // --- Genuinely public: everything needed to get an account and get in ---
                         .requestMatchers(HttpMethod.POST, "/api/learners").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/login").permitAll()
