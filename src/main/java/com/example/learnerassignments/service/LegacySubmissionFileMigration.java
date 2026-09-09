@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 /**
  * Moves learner submissions that were stored inside the publicly-served uploads directory
@@ -65,7 +66,20 @@ public class LegacySubmissionFileMigration implements CommandLineRunner {
         // The whole table, rather than a prefix query: stored paths have taken more than one
         // shape over the life of this code (absolute, and relative to the working directory),
         // and a cohort is a few hundred rows.
-        for (Submission submission : submissionRepository.findAll()) {
+        List<Submission> submissions = submissionRepository.findAll();
+
+        long pending = submissions.stream()
+                .filter(s -> needsMove(s.getFilePath(), publicDir) || needsMove(s.getMarkedFilePath(), publicDir))
+                .count();
+        if (pending > 0) {
+            log.warn("About to move {} learner submission file(s) out of the publicly served "
+                    + "directory. This changes data, not just code: after it runs, redeploying "
+                    + "an earlier build does NOT undo it — the database and the uploads "
+                    + "directory have to be restored together. Each move is logged below.",
+                    pending);
+        }
+
+        for (Submission submission : submissions) {
             scanned++;
             String relocated = relocate(submission.getFilePath(), publicDir, privateDir);
             if (relocated != null) {
@@ -133,6 +147,12 @@ public class LegacySubmissionFileMigration implements CommandLineRunner {
             Files.createDirectories(privateDir);
             Path target = availableTarget(privateDir, source.getFileName().toString());
             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+            // One line per file, because this is the only record of what moved where. Rolling
+            // the code back does not put these files back: redeploying the old jar leaves it
+            // looking in the public directory for files that are no longer in it, against rows
+            // that point somewhere it does not know about. Reversing this means moving the
+            // files back and restoring the paths, and that needs a list.
+            log.info("Moved submission file out of the public directory: {} -> {}", source, target);
             return target.toString();
         } catch (IOException e) {
             // A file that could not be moved is still exposed, so this is loud rather than
