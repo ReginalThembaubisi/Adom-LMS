@@ -3,6 +3,10 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.*;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.repository.*;
+import com.example.learnerassignments.security.CurrentStaff;
+import com.example.learnerassignments.security.StaffPrincipal;
+import com.example.learnerassignments.exception.ResourceNotFoundException;
+import com.example.learnerassignments.service.ScopeService;
 import com.example.learnerassignments.service.SubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,17 +28,34 @@ public class AssessorController {
     private final ModuleRepository moduleRepository;
     private final SubmissionSessionRepository sessionRepository;
     private final SubmissionService submissionService;
+    private final CurrentStaff currentStaff;
+    private final ScopeService scopeService;
 
     private Assessor getAuthenticatedAssessor(Authentication auth) {
         String username = auth.getName();
         return assessorRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Authenticated assessor not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated assessor not found"));
+    }
+
+    /**
+     * What this assessor is allowed to reach. An assessor with no assignment rows resolves to
+     * nothing, which is the state of every account before an admin assigns anyone to it.
+     */
+    private StaffPrincipal scope(Authentication auth) {
+        return currentStaff.require(auth);
+    }
+
+    /** Someone else's record reads as not found, so the response cannot be used to probe ids. */
+    private void requireScope(boolean permitted, String what) {
+        if (!permitted) {
+            throw new ResourceNotFoundException(what + " not found");
+        }
     }
 
     @GetMapping("/modules")
     public ResponseEntity<List<AdminModuleResponse>> getModules(Authentication auth) {
-        getAuthenticatedAssessor(auth);
-        List<AdminModuleResponse> list = moduleRepository.findAll().stream()
+        StaffPrincipal principal = scope(auth);
+        List<AdminModuleResponse> list = scopeService.accessibleModules(principal).stream()
                 .map(m -> AdminModuleResponse.builder()
                         .id(m.getId())
                         .moduleName(m.getModuleName())
@@ -61,8 +82,10 @@ public class AssessorController {
     public ResponseEntity<SessionSubmissionOverviewResponse> getSessionSubmissions(
             @PathVariable Long id,
             Authentication auth) {
-        getAuthenticatedAssessor(auth);
-        SessionSubmissionOverviewResponse overview = submissionService.getSessionSubmissionsOverview(id);
+        StaffPrincipal principal = scope(auth);
+        requireScope(scopeService.canAccessSession(principal, id), "Session");
+        SessionSubmissionOverviewResponse overview =
+                submissionService.getSessionSubmissionsOverview(id, scopeService.accessibleLearnerIds(principal));
         return ResponseEntity.ok(overview);
     }
 
@@ -73,21 +96,22 @@ public class AssessorController {
             Authentication auth) {
 
         Assessor assessor = getAuthenticatedAssessor(auth);
+        requireScope(scopeService.canAccessSubmission(scope(auth), submissionService.getSubmission(id)), "Submission");
         SubmissionResponse response = submissionService.gradeSubmission(id, request, "ASSESSOR", assessor.getFullName());
         return ResponseEntity.ok(response);
     }
 
     @PostMapping(value = "/submissions/{id}/marked-copy", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file, Authentication auth) throws IOException {
-        getAuthenticatedAssessor(auth);
+        requireScope(scopeService.canAccessSubmission(scope(auth), submissionService.getSubmission(id)), "Submission");
         String url = submissionService.uploadMarkedCopy(id, file);
         return ResponseEntity.ok(java.util.Map.of("markedFilePath", url));
     }
 
     @GetMapping("/sessions")
     public ResponseEntity<List<SessionResponse>> getSessions(Authentication auth) {
-        getAuthenticatedAssessor(auth);
-        List<SessionResponse> list = sessionRepository.findAllByOrderByCreatedAtDesc().stream()
+        StaffPrincipal principal = scope(auth);
+        List<SessionResponse> list = scopeService.accessibleSessions(principal).stream()
                 .filter(ss -> ss.getAssignment() != null && ss.getAssignment().getModule() != null)
                 .map(ss -> SessionResponse.builder()
                         .id(ss.getId())

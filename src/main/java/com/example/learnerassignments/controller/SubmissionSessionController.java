@@ -3,12 +3,17 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.CreateSessionRequest;
 import com.example.learnerassignments.dto.SessionResponse;
 import com.example.learnerassignments.dto.SessionSubmissionOverviewResponse;
+import com.example.learnerassignments.exception.ResourceNotFoundException;
+import com.example.learnerassignments.security.CurrentStaff;
+import com.example.learnerassignments.security.StaffPrincipal;
+import com.example.learnerassignments.service.ScopeService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.service.SubmissionSessionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +25,8 @@ public class SubmissionSessionController {
 
     private final SubmissionSessionService sessionService;
     private final SubmissionService submissionService;
+    private final CurrentStaff currentStaff;
+    private final ScopeService scopeService;
 
     @PostMapping
     public ResponseEntity<SessionResponse> createSession(@Valid @RequestBody CreateSessionRequest request) {
@@ -28,20 +35,39 @@ public class SubmissionSessionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SessionResponse>> getAllSessions() {
-        List<SessionResponse> sessions = sessionService.getAllSessions();
+    public ResponseEntity<List<SessionResponse>> getAllSessions(Authentication auth) {
+        StaffPrincipal principal = currentStaff.require(auth);
+        java.util.Set<Long> visible = scopeService.accessibleSessions(principal).stream()
+                .map(com.example.learnerassignments.model.SubmissionSession::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<SessionResponse> sessions = sessionService.getAllSessions().stream()
+                .filter(s -> visible.contains(s.getId()))
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(sessions);
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<SessionResponse>> getActiveSessions() {
-        List<SessionResponse> activeSessions = sessionService.getActiveSessions();
+    public ResponseEntity<List<SessionResponse>> getActiveSessions(Authentication auth) {
+        StaffPrincipal principal = currentStaff.require(auth);
+        java.util.Set<Long> visible = scopeService.accessibleSessions(principal).stream()
+                .map(com.example.learnerassignments.model.SubmissionSession::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<SessionResponse> activeSessions = sessionService.getActiveSessions().stream()
+                .filter(s -> visible.contains(s.getId()))
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(activeSessions);
     }
 
     @GetMapping("/{id}/submissions")
-    public ResponseEntity<SessionSubmissionOverviewResponse> getSessionSubmissions(@PathVariable Long id) {
-        SessionSubmissionOverviewResponse overview = submissionService.getSessionSubmissionsOverview(id);
+    public ResponseEntity<SessionSubmissionOverviewResponse> getSessionSubmissions(
+            @PathVariable Long id, Authentication auth) {
+        StaffPrincipal principal = currentStaff.require(auth);
+        if (!scopeService.canAccessSession(principal, id)) {
+            throw new ResourceNotFoundException("Submission session not found with id: " + id);
+        }
+        // Reaching a session is not the same as seeing everyone in it.
+        SessionSubmissionOverviewResponse overview = submissionService.getSessionSubmissionsOverview(
+                id, principal.isAdmin() ? null : scopeService.accessibleLearnerIds(principal));
         return ResponseEntity.ok(overview);
     }
 
