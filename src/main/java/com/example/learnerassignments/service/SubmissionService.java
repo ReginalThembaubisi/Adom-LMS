@@ -470,10 +470,18 @@ public class SubmissionService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * The saved stroke data for a submission, or null when it has not been marked yet.
+     *
+     * Deliberately not Optional.map: mapping to a null annotationsJson collapses to an empty
+     * Optional, which made an unmarked submission indistinguishable from a missing one and
+     * answered "Submission not found" for a record that plainly exists. That also blunted the
+     * ownership signal on this endpoint, where a 404 is supposed to mean "not yours".
+     */
     public String getAnnotationsJson(Long id) {
-        return submissionRepository.findById(id)
-                .map(Submission::getAnnotationsJson)
+        Submission submission = submissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
+        return submission.getAnnotationsJson();
     }
 
     public String resolveContentType(String originalFilename) {

@@ -3,13 +3,7 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.GradingHistoryEntryDto;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.Submission;
-import com.example.learnerassignments.model.Lecturer;
-import com.example.learnerassignments.repository.LecturerRepository;
-import com.example.learnerassignments.repository.AdminRepository;
-import com.example.learnerassignments.repository.ModeratorRepository;
-import com.example.learnerassignments.repository.AssessorRepository;
 import com.example.learnerassignments.security.LearnerPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -27,102 +21,61 @@ import java.util.List;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
-    private final LecturerRepository lecturerRepository;
-    private final AdminRepository adminRepository;
-    private final ModeratorRepository moderatorRepository;
-    private final AssessorRepository assessorRepository;
-    private final PasswordEncoder passwordEncoder;
 
     // Learners submit through POST /api/me/submissions. This endpoint used to take the
     // learner code as a form field, which meant anyone could submit as anyone.
 
     /**
-     * Whether this caller may read this submission: the learner it belongs to, or staff —
-     * the module's lecturer, or an admin.
+     * Whether this caller may read this submission: the learner it belongs to, or staff.
+     *
+     * Everyone here is authenticated by the filter chain before the request arrives —
+     * learners by bearer token, staff by HTTP Basic. Nothing is read from the query string.
+     * There used to be a second path that decoded base64 Basic credentials out of an
+     * ?authToken parameter, which put lecturer and admin passwords into access logs, browser
+     * history and referrer headers, and — through the Word preview — into Google's request
+     * logs. It is gone; the browser contexts that needed it now fetch with a header and
+     * render from an object URL.
      */
     private boolean checkAccess(Submission submission, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+
         // 1. The learner it belongs to. Identity comes from the session; a learner code is
         //    never accepted as an argument here, since codes are neither secret nor proof.
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof LearnerPrincipal principal) {
+        if (auth.getPrincipal() instanceof LearnerPrincipal principal) {
             return submission.getLearner() != null
                     && submission.getLearner().getId().equals(principal.learnerId());
         }
 
-        // 2. Authenticated staff: the lecturer who owns the module, or any admin.
-        if (auth != null && auth.isAuthenticated()) {
-            if (submission.getSession() != null &&
-                submission.getSession().getAssignment() != null &&
-                submission.getSession().getAssignment().getModule() != null &&
-                submission.getSession().getAssignment().getModule().getCategory() != null &&
-                submission.getSession().getAssignment().getModule().getCategory().getLecturer() != null) {
+        // 2. Admins, and the assessor and moderator roles.
+        //
+        //    Assessors and moderators are unscoped here, which is the access they already had
+        //    through the parameter this change removes — the point of this task is where the
+        //    credential travels, not who may read what. Narrowing them to their assigned
+        //    learners is the next task in this phase, once assessor_assignment and
+        //    moderator_assignment exist for ScopeService to resolve against.
+        if (hasRole(auth, "ROLE_ADMIN") || hasRole(auth, "ROLE_ASSESSOR") || hasRole(auth, "ROLE_MODERATOR")) {
+            return true;
+        }
 
-                String lecturerUsername = submission.getSession().getAssignment().getModule().getCategory().getLecturer().getUsername();
-                if (auth.getName().equals(lecturerUsername)) {
-                    return true;
-                }
-            }
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
-                return true;
-            }
+        // 3. The lecturer who owns the module this submission was made against.
+        if (submission.getSession() != null &&
+            submission.getSession().getAssignment() != null &&
+            submission.getSession().getAssignment().getModule() != null &&
+            submission.getSession().getAssignment().getModule().getCategory() != null &&
+            submission.getSession().getAssignment().getModule().getCategory().getLecturer() != null) {
+
+            String lecturerUsername = submission.getSession().getAssignment().getModule()
+                    .getCategory().getLecturer().getUsername();
+            return auth.getName().equals(lecturerUsername);
         }
 
         return false;
     }
 
-    private boolean checkTokenAccess(Submission submission, String authToken) {
-        if (authToken == null || authToken.isBlank()) {
-            return false;
-        }
-        try {
-            String base64Credentials = authToken;
-            if (base64Credentials.startsWith("Basic ")) {
-                base64Credentials = base64Credentials.substring("Basic ".length());
-            }
-            byte[] decoded = java.util.Base64.getDecoder().decode(base64Credentials);
-            String credentials = new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
-            String[] parts = credentials.split(":", 2);
-            if (parts.length < 2) return false;
-            String username = parts[0];
-            String password = parts[1];
-
-            // 1. Check if admin
-            var adminOpt = adminRepository.findByUsername(username);
-            if (adminOpt.isPresent() && passwordEncoder.matches(password, adminOpt.get().getPasswordHash())) {
-                return true;
-            }
-
-            // 2. Check if lecturer
-            var lecturerOpt = lecturerRepository.findByUsername(username);
-            if (lecturerOpt.isPresent() && passwordEncoder.matches(password, lecturerOpt.get().getPasswordHash())) {
-                Lecturer lecturer = lecturerOpt.get();
-                if (submission.getSession() != null &&
-                    submission.getSession().getAssignment() != null &&
-                    submission.getSession().getAssignment().getModule() != null &&
-                    submission.getSession().getAssignment().getModule().getCategory() != null &&
-                    submission.getSession().getAssignment().getModule().getCategory().getLecturer() != null) {
-
-                    String assignedUsername = submission.getSession().getAssignment().getModule().getCategory().getLecturer().getUsername();
-                    if (username.equals(assignedUsername)) {
-                        return true;
-                    }
-                }
-            }
-
-            // 3. Check if moderator
-            var modOpt = moderatorRepository.findByUsername(username);
-            if (modOpt.isPresent() && passwordEncoder.matches(password, modOpt.get().getPasswordHash())) {
-                return true;
-            }
-
-            // 4. Check if assessor
-            var assOpt = assessorRepository.findByUsername(username);
-            if (assOpt.isPresent() && passwordEncoder.matches(password, assOpt.get().getPasswordHash())) {
-                return true;
-            }
-        } catch (Exception e) {
-            // Ignore
-        }
-        return false;
+    private boolean hasRole(Authentication auth, String role) {
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
     }
 
     /**
@@ -131,9 +84,9 @@ public class SubmissionController {
      * Denial is always "not found", never "forbidden": submission ids are sequential, and a
      * 403 on someone else's id confirms it exists — enough to map the whole cohort.
      */
-    private Submission requireReadable(Long id, String authToken, Authentication auth) {
+    private Submission requireReadable(Long id, Authentication auth) {
         Submission submission = submissionService.getSubmission(id);
-        if (!checkAccess(submission, auth) && !checkTokenAccess(submission, authToken)) {
+        if (!checkAccess(submission, auth)) {
             throw new ResourceNotFoundException("Submission not found with id: " + id);
         }
         return submission;
@@ -143,20 +96,16 @@ public class SubmissionController {
     // Content-Disposition: inline so browsers render it instead of prompting a file save —
     // there is deliberately no "attachment" download path left for submissions anymore.
     //
-    // The learner portal reads this with fetch() and an Authorization header, rendering the
-    // result from an object URL, so nothing here needs a credential in the query string.
-    // The endpoint is nonetheless still open at the filter layer, purely because the staff
-    // dashboards pass base64 Basic credentials as ?authToken — which is a worse version of
-    // the learnerCode parameter this phase removed, and is the first thing Phase 1 should
-    // fix. Once it is gone, this becomes .authenticated() in SecurityConfig.
+    // Both the portal and the grading workspace read this with fetch() and an Authorization
+    // header, rendering the result from an object URL, so no caller needs a credential in the
+    // query string and the endpoint requires authentication at the filter.
     @GetMapping("/{id}/view")
     public ResponseEntity<?> viewSubmissionFile(
             @PathVariable Long id,
-            @RequestParam(value = "authToken", required = false) String authToken,
             @RequestParam(value = "marked", required = false, defaultValue = "false") boolean marked,
             Authentication auth) {
 
-        Submission submission = requireReadable(id, authToken, auth);
+        Submission submission = requireReadable(id, auth);
 
         // The marked (annotated) copy is always uploaded as a PDF regardless of the original
         // format, since it's flattened from rendered pages — so it's served as one whenever
@@ -198,18 +147,12 @@ public class SubmissionController {
     @PutMapping(value = "/{id}/annotations", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> saveAnnotations(
             @PathVariable Long id,
-            @RequestParam(value = "authToken", required = false) String authToken,
             @RequestBody String json,
             Authentication auth) {
 
-        Submission submission = submissionService.getSubmission(id);
-        boolean graderAuth = checkTokenAccess(submission, authToken) ||
-                (auth != null && auth.isAuthenticated() &&
-                 auth.getAuthorities().stream().anyMatch(a ->
-                         a.getAuthority().equals("ROLE_ADMIN") ||
-                         a.getAuthority().equals("ROLE_LECTURER") ||
-                         a.getAuthority().equals("ROLE_ASSESSOR") ||
-                         a.getAuthority().equals("ROLE_MODERATOR")));
+        boolean graderAuth = auth != null && auth.isAuthenticated() &&
+                (hasRole(auth, "ROLE_ADMIN") || hasRole(auth, "ROLE_LECTURER") ||
+                 hasRole(auth, "ROLE_ASSESSOR") || hasRole(auth, "ROLE_MODERATOR"));
         if (!graderAuth) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -217,15 +160,9 @@ public class SubmissionController {
         return ResponseEntity.ok().build();
     }
 
-    // No ticket parameter here, unlike /view: this endpoint requires authentication at the
-    // filter, and the portal reads it with fetch(), which carries the bearer header.
     @GetMapping("/{id}/annotations")
-    public ResponseEntity<String> getAnnotations(
-            @PathVariable Long id,
-            @RequestParam(value = "authToken", required = false) String authToken,
-            Authentication auth) {
-
-        requireReadable(id, authToken, auth);
+    public ResponseEntity<String> getAnnotations(@PathVariable Long id, Authentication auth) {
+        requireReadable(id, auth);
         String json = submissionService.getAnnotationsJson(id);
         if (json == null) return ResponseEntity.noContent().build();
         return ResponseEntity.ok()
@@ -239,11 +176,9 @@ public class SubmissionController {
     // checks as the file viewer above.
     @GetMapping("/{id}/grading-history")
     public ResponseEntity<List<GradingHistoryEntryDto>> getGradingHistory(
-            @PathVariable Long id,
-            @RequestParam(value = "authToken", required = false) String authToken,
-            Authentication auth) {
+            @PathVariable Long id, Authentication auth) {
 
-        requireReadable(id, authToken, auth);
+        requireReadable(id, auth);
         return ResponseEntity.ok(submissionService.getGradingHistory(id));
     }
 }

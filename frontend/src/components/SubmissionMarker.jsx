@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
+import { staffFetch, fetchStaffBlobUrl } from '../utils/staffAuth';
 const PdfAnnotator = lazy(() => import('./PdfAnnotator'));
 
 const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, role }) => {
@@ -17,6 +18,9 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const [initialStrokes, setInitialStrokes] = useState(null);
     const [annotationsLoading, setAnnotationsLoading] = useState(submission.hasAnnotations);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [documentUrl, setDocumentUrl] = useState(null);
+    const [documentType, setDocumentType] = useState(null);
+    const [documentError, setDocumentError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -62,56 +66,83 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
         }
     };
 
-    const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf');
     const isDoc = submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx');
-    
-    // Retrieve authentication token to allow document preview downloading without standard basic auth headers in iframe
-    const token = sessionStorage.getItem('lecturer_auth') || 
-                  sessionStorage.getItem('moderator_auth') || 
-                  sessionStorage.getItem('assessor_auth') || 
-                  sessionStorage.getItem('admin_auth');
 
-    // Always go through our own /view endpoint — even for externally-stored (Cloudinary)
-    // files — so the response always carries a Content-Type the browser can render inline.
     // When hasAnnotations, load the original and replay strokes client-side via PdfAnnotator.
     // Only fall back to the rasterized marked copy for legacy submissions that have one but
     // no annotationsJson (so old marks are still visible while new saves use the JSON path).
     const hasMarkedCopy = !!submission.markedFilePath && !submission.hasAnnotations;
-    const viewParams = new URLSearchParams();
-    if (token) viewParams.set('authToken', token);
-    if (hasMarkedCopy) viewParams.set('marked', 'true');
-    const documentUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/view?${viewParams.toString()}`;
-    const googleDocsViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`;
 
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // The document is fetched with the staff credential in a header and rendered from an
+    // object URL. It used to be an <iframe> pointed at a URL carrying ?authToken=<base64
+    // username:password> — which put lecturer and admin credentials in access logs and
+    // browser history, and handed them to Google as well, since the Word preview asked
+    // Google's viewer to fetch that same URL.
+    useEffect(() => {
+        let cancelled = false;
+        let objectUrl = null;
+
+        setDocumentUrl(null);
+        setDocumentError('');
+
+        const path = `/api/submissions/${submission.submissionId}/view`
+            + (hasMarkedCopy ? '?marked=true' : '');
+
+        fetchStaffBlobUrl(path)
+            .then(({ objectUrl: url, contentType }) => {
+                if (cancelled) { URL.revokeObjectURL(url); return; }
+                objectUrl = url;
+                setDocumentType(contentType);
+                setDocumentUrl(url);
+            })
+            .catch(err => { if (!cancelled) setDocumentError(err.message || 'Could not load document'); });
+
+        return () => {
+            cancelled = true;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [submission.submissionId, hasMarkedCopy]);
+
+    const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf')
+        || documentType === 'application/pdf';
+
+    // Word files have no in-browser renderer available without sending the file to a third
+    // party. Graders save and open them locally instead.
+    const saveDocument = () => {
+        if (!documentUrl) return;
+        const link = document.createElement('a');
+        link.href = documentUrl;
+        link.download = submission.originalFilename || 'submission';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    };
 
     // Every past grading action, oldest first, so a grader opening a submission someone else
     // already assessed sees what was decided before them instead of unknowingly overwriting it.
     useEffect(() => {
         let cancelled = false;
-        const historyUrl = `${window.location.origin}/api/submissions/${submission.submissionId}/grading-history${token ? `?authToken=${encodeURIComponent(token)}` : ''}`;
         setHistoryLoading(true);
-        fetch(historyUrl)
+        staffFetch(`/api/submissions/${submission.submissionId}/grading-history`)
             .then(res => res.ok ? res.json() : [])
             .then(data => { if (!cancelled) setGradingHistory(Array.isArray(data) ? data : []); })
             .catch(() => { if (!cancelled) setGradingHistory([]); })
             .finally(() => { if (!cancelled) setHistoryLoading(false); });
         return () => { cancelled = true; };
-    }, [submission.submissionId, token]);
+    }, [submission.submissionId]);
 
     // Pre-load saved annotation strokes so the grader sees their previous marks on re-open.
     useEffect(() => {
         if (!submission.hasAnnotations) return;
         let cancelled = false;
-        const url = `${window.location.origin}/api/submissions/${submission.submissionId}/annotations${token ? `?authToken=${encodeURIComponent(token)}` : ''}`;
         setAnnotationsLoading(true);
-        fetch(url)
+        staffFetch(`/api/submissions/${submission.submissionId}/annotations`)
             .then(res => res.ok ? res.json() : null)
             .then(data => { if (!cancelled) setInitialStrokes(data); })
             .catch(() => { if (!cancelled) setInitialStrokes(null); })
             .finally(() => { if (!cancelled) setAnnotationsLoading(false); });
         return () => { cancelled = true; };
-    }, [submission.submissionId, submission.hasAnnotations, token]);
+    }, [submission.submissionId, submission.hasAnnotations]);
 
     return (
         <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col overflow-hidden text-slate-100">
@@ -149,14 +180,18 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                 <div className="flex-1 flex overflow-hidden min-h-0">
                     {/* Left Pane - Document Viewer (fills all available space) */}
                     <div className="flex-1 bg-slate-950 flex flex-col relative border-r border-slate-800 p-4 min-w-0">
-                        {isPdf ? (
+                        {documentError ? (
+                            <div className="flex-1 flex items-center justify-center text-xs text-red-400 p-6 text-center">
+                                {documentError}
+                            </div>
+                        ) : isPdf ? (
                             // Custom canvas-based viewer + annotation layer, replacing the
                             // browser's native PDF plugin — that plugin runs isolated from the
                             // page's JS, so anything drawn in it could never be captured or
                             // saved. This one renders via pdf.js so strokes can be saved as
                             // vector JSON and replayed without re-encoding the original PDF.
-                            annotationsLoading ? (
-                                <div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading annotations...</div>
+                            (!documentUrl || annotationsLoading) ? (
+                                <div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading document...</div>
                             ) : (
                             <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading PDF viewer...</div>}>
                                 <PdfAnnotator
@@ -171,33 +206,29 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                         ) : (
                         <div className="flex-1 bg-slate-900/40 rounded-2xl border border-slate-800 overflow-hidden relative flex flex-col items-center justify-center">
                             {isDoc ? (
-                                isLocalhost ? (
-                                    <div className="p-6 text-center space-y-4 max-w-md">
-                                        <div className="w-12 h-12 bg-amber-500/15 text-amber-500 rounded-full flex items-center justify-center mx-auto">
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-[#f8fafc]">Local Word Document Preview Sandbox</h4>
-                                        <p className="text-xs text-slate-400">
-                                            Google Document Viewer requires a public URL to fetch and render Word documents. In the deployed production site, this will render the document inside the browser automatically.
-                                        </p>
-                                        <a 
-                                            href={documentUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-block bg-slate-800 hover:bg-slate-700 text-[#f8fafc] font-semibold text-xs py-2 px-4 rounded-xl transition-all"
-                                        >
-                                            View document in new tab
-                                        </a>
+                                // Word files were previewed by handing Google's document
+                                // viewer a URL to fetch — a URL that carried this grader's
+                                // own base64 credentials, and a learner's assessment work,
+                                // to a third party under no processing agreement. Saving a
+                                // local copy keeps both here.
+                                <div className="p-6 text-center space-y-4 max-w-md">
+                                    <div className="w-12 h-12 bg-blue-500/15 text-blue-400 rounded-full flex items-center justify-center mx-auto">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                                        </svg>
                                     </div>
-                                ) : (
-                                    <iframe 
-                                        src={googleDocsViewerUrl}
-                                        className="w-full h-full border-none"
-                                        title="Word Document Preview"
-                                    />
-                                )
+                                    <h4 className="text-sm font-bold text-[#f8fafc]">Open this file in Word</h4>
+                                    <p className="text-xs text-slate-400">
+                                        Word documents can&apos;t be previewed in the browser. Save a copy to read and mark it, then record the outcome here.
+                                    </p>
+                                    <button
+                                        onClick={saveDocument}
+                                        disabled={!documentUrl}
+                                        className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-[#f8fafc] font-semibold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        {documentUrl ? 'Save a copy' : 'Loading...'}
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="text-center p-6 space-y-3">
                                     <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto">

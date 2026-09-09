@@ -317,8 +317,12 @@ class LearnerAccessControlIntegrationTest {
     @Test
     @DisplayName("the submission file endpoint is closed to anonymous callers")
     void anonymousCannotReadSubmissionFile() throws Exception {
+        // 401 rather than the 404 this asserted before: the endpoint was open at the filter
+        // while the staff dashboards passed credentials in the query string, so the
+        // controller's own check was the only thing standing between an anonymous caller and
+        // a learner's file. Now the filter refuses first.
         mockMvc.perform(get("/api/submissions/" + submissionA.getId() + "/view"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
