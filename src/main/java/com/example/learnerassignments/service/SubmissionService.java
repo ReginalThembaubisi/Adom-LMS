@@ -108,6 +108,11 @@ public class SubmissionService {
             }
         }
 
+        // 5b. Hash the bytes we actually received, before anything else can touch them.
+        //     Phase 9 signs against this without re-fetching the file; a hash taken later,
+        //     from a file downloaded later, would prove only what that file is by then.
+        String sha256 = ContentHash.of(file);
+
         // 6. Calculate Submission Status (LATE if after assignment due date)
         Assignment assignment = session.getAssignment();
         SubmissionStatus status = now.isAfter(assignment.getDueDate())
@@ -122,6 +127,7 @@ public class SubmissionService {
                 .originalFilename(originalFilename)
                 .submittedAt(now)
                 .status(status)
+                .sha256(sha256)
                 .build();
 
         Submission savedSubmission = submissionRepository.save(submission);
@@ -388,8 +394,10 @@ public class SubmissionService {
         if (!cloudinaryService.isConfigured()) {
             throw new IllegalStateException("File storage is not configured.");
         }
+        String markedSha256 = ContentHash.of(file);
         String url = cloudinaryService.uploadFile(file);
         submission.setMarkedFilePath(url);
+        submission.setMarkedSha256(markedSha256);
         submissionRepository.save(submission);
         return url;
     }

@@ -140,6 +140,7 @@ public class LecturerController {
                 .filePath(fileUrl)
                 .originalFilename(file.getOriginalFilename())
                 .fileType(fileType)
+                .sha256(com.example.learnerassignments.service.ContentHash.of(file))
                 .build();
         moduleFileRepository.save(moduleFile);
 
