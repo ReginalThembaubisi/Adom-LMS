@@ -602,7 +602,43 @@ clean `main` beats debugging against one carrying half of the following phase.
 5. **Confirm forgot-password end to end against a real inbox**, not just the test — the test
    mocks the mail sender, so it proves the flow and not the relay.
 
-Rollback is clean as long as `main` was green before the phase merged.
+**Rollback is only clean for phases that change code alone.** Phase 0 is not one of them,
+and this line used to claim otherwise.
+
+`LegacySubmissionFileMigration` moves files on disk and rewrites `file_path` to match. Once
+it has run, redeploying the previous jar does not undo it: the old code looks in `uploads/`
+for files that are no longer there, against rows pointing somewhere it knows nothing about.
+The result is a healthy database, a healthy filesystem, and no learner able to open a single
+document. So, before any deploy that carries a data migration:
+
+- **Back up the database.**
+- **Back up the `uploads/` directory.** This is the half people forget, and it is the half
+  that cannot be reconstructed from anything else.
+- **Understand that rolling back means restoring both together**, in step with each other —
+  not redeploying the old jar.
+
+The migration is idempotent and refuses a bad directory configuration, so needing this is
+unlikely. Unlikely and recoverable are different properties, and only one of them is in your
+control. Every move is logged as `Moved submission file out of the public directory: from ->
+to`, and a run that will move anything warns first, so the reversal has a list to work from.
+
+**Rehearse against a restore of the production database, not just the test suite.** The tests
+run on H2 with data they invented. Production MySQL has the real schema, real row counts, and
+`file_path` values accumulated across eras — a mix of local paths and Cloudinary URLs, with
+whatever inconsistencies came with them. The migration handles that mix by design, but by
+design is not the same as observed. Restore a dump locally, point the jar at it, run it, read
+the log. It costs an hour and it is the difference between testing the code and testing the
+data.
+
+**Verify the artifact before you trust its logs.** A missing log line means the step did not
+happen — but it means that just as loudly when the build is simply the wrong one. Confirm the
+change is actually in the jar first (`unzip -l <jar> | grep LegacySubmissionFileMigration`),
+then read what it says. This was learned the hard way: a stale build produced exactly the
+silence the completion line exists to rule out.
+
+**Send the first password reset to your own address.** The ten-second SMTP timeout means a
+bad relay credential surfaces fast — which is what you want when the person waiting on it is
+you rather than a learner.
 
 **Learner comms — rules, not wording.** These outlive any one announcement, and the phases
 that bring them back are already on the list: Phase 4 changes how files are delivered, and
