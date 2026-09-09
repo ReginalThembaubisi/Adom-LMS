@@ -617,10 +617,18 @@ document. So, before any deploy that carries a data migration:
 - **Understand that rolling back means restoring both together**, in step with each other —
   not redeploying the old jar.
 
+- **Capture the migration's output and store it with the backups.** Every move is logged as
+  `Moved submission file out of the public directory: from -> to`, and a run that will move
+  anything warns first — but that log is only a reversal record for as long as it exists.
+  Application logs rotate, and a container restart loses them entirely. Confirm stdout is
+  being written to a file before you deploy, and copy that file off the host afterwards, into
+  the same place as the database and `uploads/` backups. The record of what changed and the
+  thing you would restore to belong together; a reversal needs both halves and the map
+  between them.
+
 The migration is idempotent and refuses a bad directory configuration, so needing this is
 unlikely. Unlikely and recoverable are different properties, and only one of them is in your
-control. Every move is logged as `Moved submission file out of the public directory: from ->
-to`, and a run that will move anything warns first, so the reversal has a list to work from.
+control.
 
 **Rehearse against a restore of the production database, not just the test suite.** The tests
 run on H2 with data they invented. Production MySQL has the real schema, real row counts, and
