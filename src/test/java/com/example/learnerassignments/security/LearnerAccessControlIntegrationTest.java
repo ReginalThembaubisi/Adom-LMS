@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -58,6 +60,8 @@ class LearnerAccessControlIntegrationTest {
     @Autowired SubmissionSessionRepository sessionRepository;
     @Autowired SubmissionRepository submissionRepository;
     @Autowired LecturerRepository lecturerRepository;
+
+    @MockBean JavaMailSender mailSender;
 
     private static final String PASSWORD = "correct-horse";
 
@@ -209,6 +213,54 @@ class LearnerAccessControlIntegrationTest {
 
         mockMvc.perform(get("/api/me/submissions").header("Authorization", bearer(token)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * The reset flow is the one path a locked-out learner has, and this phase changed it:
+     * resetting now revokes every session opened with the old password. It also carries the
+     * whole cohort on deploy day, since everyone is signed out once when the stored session
+     * shape changes.
+     */
+    @Test
+    @DisplayName("resetting a password issues a working login and kills the old session")
+    void passwordResetWorksAndRevokesExistingSessions() throws Exception {
+        String oldToken = login(learnerA.getLearnerCode());
+        mockMvc.perform(get("/api/me").header("Authorization", bearer(oldToken)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/learners/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"studentNumber\":\"" + learnerA.getLearnerCode() + "\","
+                                + "\"email\":\"" + learnerA.getEmail() + "\"}"))
+                .andExpect(status().isOk());
+
+        String resetCode = learnerRepository.findByLearnerCode(learnerA.getLearnerCode())
+                .orElseThrow().getResetCode();
+        assertThat(resetCode).as("a reset code must have been stored to send").isNotBlank();
+
+        mockMvc.perform(post("/api/learners/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"studentNumber\":\"" + learnerA.getLearnerCode() + "\","
+                                + "\"resetCode\":\"" + resetCode + "\","
+                                + "\"newPassword\":\"a-brand-new-password\"}"))
+                .andExpect(status().isOk());
+
+        // Whoever held the old session is out, including an attacker the reset was prompted by.
+        mockMvc.perform(get("/api/me").header("Authorization", bearer(oldToken)))
+                .andExpect(status().isUnauthorized());
+
+        MvcResult result = mockMvc.perform(post("/api/learners/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"studentNumber\":\"" + learnerA.getLearnerCode() + "\","
+                                + "\"password\":\"a-brand-new-password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String newToken = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("token").asText();
+        mockMvc.perform(get("/api/me").header("Authorization", bearer(newToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.learnerCode").value(learnerA.getLearnerCode()));
     }
 
     // --- Ownership ---

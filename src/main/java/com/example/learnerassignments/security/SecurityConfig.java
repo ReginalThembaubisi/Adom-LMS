@@ -90,6 +90,12 @@ public class SecurityConfig {
                         // out of this directory (see LegacySubmissionFileMigration); requiring
                         // authentication here means a future change that puts private files
                         // back cannot silently re-expose them.
+                        //
+                        // Still unscoped, though: any signed-in learner can read any guide by
+                        // path, including modules they are not enrolled on. Low severity while
+                        // this only serves course material rather than personal information —
+                        // Phase 4 replaces static serving with streamed, ownership-checked
+                        // delivery and resolves it. Do not put anything personal here first.
                         .requestMatchers("/uploads/**").authenticated()
 
                         // --- Learner portal ---
@@ -104,6 +110,13 @@ public class SecurityConfig {
                         // Learners read modules and sessions through /api/me, which scopes to
                         // their enrolment. These unscoped views are staff-only, so a learner
                         // cannot read around that scope via the staff route.
+                        //
+                        // ASSESSOR and MODERATOR are listed because neither role has any
+                        // assignment table yet, so there is nothing to narrow them to — which
+                        // also means every assessor currently sees every module in the system.
+                        // Phase 1 introduces assessor_assignment and moderator_assignment; its
+                        // ScopeService must narrow both of these lines, not just the learner
+                        // endpoints.
                         .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         .requestMatchers("/api/sessions/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         // The full roster, including every learner code in the cohort.
