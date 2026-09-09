@@ -598,7 +598,12 @@ clean `main` beats debugging against one carrying half of the following phase.
    run including when it moves nothing (`"Legacy submission file migration complete: scanned
    N ..."`), so the *absence* of that line means it did not run. Then spot-check that one
    moved file still opens in the portal.
-4. **Log in as a test learner.** Open a submission and a marked file.
+4. **Log in as a test learner.** Run `./scripts/verify-deploy.sh <base-url> <learner-code>
+   <password>` against a test account — it asserts the access-control behaviour this phase
+   exists to produce, including the cases that have already been wrong once (a learner
+   denied a staff endpoint must get 403, not a session-clearing 401), and exits non-zero so
+   it can gate the announcement rather than merely inform it. Then open a submission and a
+   marked file in the UI, which the script cannot do.
 5. **Confirm forgot-password end to end against a real inbox**, not just the test — the test
    mocks the mail sender, so it proves the flow and not the relay.
 
