@@ -24,7 +24,10 @@ public interface LearnerSessionRepository extends JpaRepository<LearnerSession, 
     @Query("UPDATE LearnerSession s SET s.revokedAt = :now WHERE s.learner.id = :learnerId AND s.revokedAt IS NULL")
     int revokeAllForLearner(@Param("learnerId") Long learnerId, @Param("now") LocalDateTime now);
 
-    @Modifying
+    // Same reasoning as above, for the same reason: bulk statements do not go through the
+    // persistence context. Not called yet — it is here for a cleanup job — but it should not
+    // be the one that reintroduces the problem.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM LearnerSession s WHERE s.expiresAt < :cutoff")
     int deleteExpiredBefore(@Param("cutoff") LocalDateTime cutoff);
 }
