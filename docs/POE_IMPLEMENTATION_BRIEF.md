@@ -583,11 +583,14 @@ clean `main` beats debugging against one carrying half of the following phase.
 
 **Deploy sequence, per phase:**
 
-1. **Announce first, not after.** Phase 0's deploy signs every learner out once, because the
-   stored session no longer carries a token. Say plainly that they will be signed out and
-   need to log in again, and frame it as a security upgrade rather than maintenance — an
-   unexplained sign-out reads as a fault and sends people to forgot-password before they
-   read anything.
+1. **Announce first, not after** — and again an hour before, and once more when it is done.
+   Phase 0's deploy signs every learner out once, because the stored session no longer
+   carries a token. Say plainly that they will be signed out and need to log in again, and
+   frame it as a security upgrade rather than maintenance — an unexplained sign-out reads as
+   a fault and sends people to forgot-password before they read anything. The closing message
+   matters as much as the first two: whoever missed those finds themselves signed out with no
+   explanation, and that is the group that generates the support load. See **learner comms**
+   below for the rules the wording has to satisfy.
 2. **Low-traffic hour.**
 3. **Verify the data migration ran, rather than assuming.** For Phase 0 that is
    `LegacySubmissionFileMigration`. It is idempotent and refuses a bad directory config, so
@@ -600,6 +603,29 @@ clean `main` beats debugging against one carrying half of the following phase.
    mocks the mail sender, so it proves the flow and not the relay.
 
 Rollback is clean as long as `main` was green before the phase merged.
+
+**Learner comms — rules, not wording.** These outlive any one announcement, and the phases
+that bring them back are already on the list: Phase 4 changes how files are delivered, and
+Phase 8 emails export links. Both will need a message to somebody, and both will be written
+by someone to whom a link seems perfectly reasonable in isolation.
+
+- **Never put a link in a message to learners.** A message that says "you have been signed
+  out, log in again, check your email" is the exact shape of a phishing lure, and a cohort
+  primed to expect it will click whatever arrives next. Tell them to open the portal the way
+  they normally do. The defence is not one careful message; it is that our messages never
+  carry links, so one that does is visibly not ours.
+- **Send from the number the cohort already receives learnership messages on.** A new sender
+  asking them to log in is indistinguishable from an attacker.
+- **Never ask for a password**, and say so in the message.
+- **Say plainly that nothing has been deleted.** These learners keep their portfolios on USB
+  sticks; they have well-earned reason to believe files vanish. A sign-out reads as data loss
+  to that audience in a way it would not to someone raised on cloud storage.
+- **Ask them to verify email access in advance**, in the first message. Anyone who cannot get
+  into their registered address needs a human, not forgot-password, and you want to know who
+  they are while there is still a day to fix it.
+- **Name who to contact, and check the channel is two-way first.** "Message us here" is no
+  use on a broadcast list nobody can reply to. Confirm whether it is a group or a broadcast
+  before sending, and name a person or role either way.
 
 After that: Phase 2 (mechanical), then Phase 3 and Phase 5 in parallel if convenient, then 4, 6, 7, 8, 9, 10.
 
