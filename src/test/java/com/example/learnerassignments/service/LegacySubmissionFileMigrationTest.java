@@ -3,6 +3,10 @@ package com.example.learnerassignments.service;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.*;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -83,6 +87,35 @@ class LegacySubmissionFileMigrationTest {
                 .filePath(path).originalFilename("legacy.pdf")
                 .submittedAt(LocalDateTime.now()).status(SubmissionStatus.SUBMITTED)
                 .build());
+    }
+
+    /**
+     * The point of this one is the deploy check. An operator confirming the migration ran has
+     * only the log to go on, and a log that speaks up only when something changed cannot tell
+     * "ran, nothing to do" apart from "never ran" — which is the failure actually worth
+     * catching, since the migration is idempotent and refuses a bad directory config.
+     */
+    @Test
+    @DisplayName("a run that finds nothing still says so, so a silent no-op is visible")
+    void completionIsLoggedEvenWhenNothingMoves() {
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(LegacySubmissionFileMigration.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            migration.run();
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(appender.list)
+                .as("absence of this line after a deploy must mean the migration did not run")
+                .anySatisfy(event -> {
+                    assertThat(event.getLevel()).isEqualTo(Level.INFO);
+                    assertThat(event.getFormattedMessage())
+                            .contains("Legacy submission file migration complete");
+                });
     }
 
     @Test
