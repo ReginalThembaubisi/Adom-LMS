@@ -117,11 +117,29 @@ holes of the same shape were found and closed while doing it: `POST /api/submiss
 the learner code as a form field, so anyone could submit as anyone, and `/api/chatbot/ask`
 answered with one learner's deadlines from a code in the request body while unauthenticated.
 
-### 4.2 Cloudinary learner files are publicly delivered
+### 4.2 Cloudinary learner files are publicly delivered — **RESOLVED for new files (Phase 4)**
 
 `CloudinaryService.uploadFile` uploads with `resource_type: "raw"` and default public delivery, returning `secure_url`, which is persisted in `Submission.filePath`. That URL works for anyone who holds it, with no authentication, forever.
 
 `CloudinaryService.uploadBackup` in the same class already demonstrates the correct pattern: `type: "authenticated"` plus `getSignedBackupUrl()`. Apply that pattern to learner-facing files.
+
+**What Phase 4 did and did not fix.** Files uploaded from Phase 4 onward are authenticated
+resources addressed by public_id, so the URL alone no longer opens them. Files uploaded
+*before* Phase 4 are still public resources at their existing `secure_url`, and nothing in
+Phase 4 changes that: the stored URLs keep working precisely so the 298 submissions already in
+production keep opening. Those URLs cannot be retracted without re-uploading each file as an
+authenticated resource and rewriting its row — a bulk operation over other people's assessment
+evidence, with a half-finished state that leaves part of the cohort's work unreachable. That
+is a deliberate deferral, not an oversight. If a specific legacy file is known to have leaked,
+the remedy is to re-upload that one file, which supersedes it through the normal path.
+
+**The transition rule.** A value in a `filePath` column is a Cloudinary public_id only if it
+starts with `CloudinaryService.SECURE_PREFIX`; anything else is a legacy URL (if it starts
+`http`) or a path on disk. The rule is prefix-based rather than "not a URL means public_id"
+because a stored path can legitimately be relative — `LegacySubmissionFileMigration` resolves
+exactly that case — and `uploads/x.pdf` is shaped identically to a public_id. Every existing
+row therefore keeps resolving the way it did before. `StoredFileService` is the only place
+that decides this; do not re-derive it inline.
 
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 
@@ -409,7 +427,7 @@ Acceptance criteria:
 
 ---
 
-### Phase 4 — Cloudinary authenticated delivery
+### Phase 4 — Cloudinary authenticated delivery — **COMPLETE**
 
 Tasks:
 
@@ -423,6 +441,22 @@ Acceptance criteria:
 - A newly uploaded learner file's stored value is not a URL.
 - Pasting a Cloudinary URL for a new file into a logged-out browser fails.
 - Existing files uploaded before this phase still open in the app.
+
+Left for later, deliberately:
+
+- **`ModuleFile` was not converted.** The brief's task list named it alongside `Submission`,
+  but `ModuleFile.filePath` is consumed by the frontend as a direct `href` in three places
+  (`AdminDashboard`, `LecturerDashboard`, `StudentPortal`). Storing a public_id there breaks
+  all three until there is a fetch-and-re-serve endpoint for module files, which is a
+  different change with a different blast radius. Facilitator guides are also course material
+  rather than a named learner's personal evidence, so the exposure is not the same as an ID
+  copy. Do it when the serving endpoint exists.
+- **Submission DTOs still ship `filePath` and `markedFilePath` to clients.** For files stored
+  after Phase 4 these are harmless public_ids, but for legacy rows they are still working
+  public URLs, handed to every client that lists submissions — including a lecturer listing a
+  whole session. The frontend only ever uses these fields as presence flags
+  (`!!submission.markedFilePath`), so replacing them with a boolean costs three small frontend
+  edits and closes the leak for legacy rows too.
 
 ---
 

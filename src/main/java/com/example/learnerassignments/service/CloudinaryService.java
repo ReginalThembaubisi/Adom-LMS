@@ -5,10 +5,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 @Service
 public class CloudinaryService {
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final Cloudinary cloudinary;
     public CloudinaryService(
             @Value("${cloudinary.cloud-name:}") String cloudName,
@@ -68,7 +71,96 @@ public class CloudinaryService {
         return publicId;
     }
 
-    public String getSignedBackupUrl(String publicId) {
+
+    /**
+     * The public_id prefix every authenticated learner-facing file is stored under.
+     *
+     * This constant is load-bearing, not cosmetic. {@link StoredFileService} decides whether
+     * a value in a filePath column is a Cloudinary public_id or a path on disk by testing for
+     * this prefix, because the two shapes are otherwise indistinguishable: a legacy row can
+     * hold a relative disk path like "uploads/x.pdf", which looks exactly like a public_id.
+     * Keying off a prefix that only this class ever writes means no row that predates
+     * authenticated delivery can be misread as a public_id. Changing it without changing the
+     * resolver would make every file stored after the change unreadable.
+     */
+    public static final String SECURE_PREFIX = "lms_secure/";
+
+    /**
+     * Uploads a learner-facing file (a submission, a marked copy, a portfolio document) and
+     * returns its <strong>public_id</strong> — never a URL.
+     *
+     * Two things are deliberate here.
+     *
+     * <p>{@code type: "authenticated"} is the point of the method. A plain "upload" resource
+     * is readable by anyone who has the URL, and those URLs travelled through email, browser
+     * history and anywhere a learner pasted one; the file behind them stayed readable to a
+     * logged-out stranger forever. An authenticated resource cannot be fetched without a
+     * signature this server generates, so possession of the URL is no longer possession of
+     * the document. This mirrors what {@code uploadBackup} has always done.
+     *
+     * <p>The public_id carries <strong>no file extension</strong>, for the reason recorded on
+     * {@link #uploadFile}: Cloudinary's raw/PDF delivery restriction triggers off a recognised
+     * format in the public_id and returns 401 even for correctly signed requests. Storing the
+     * bytes under an extension-less id sidesteps the restriction rather than trying to satisfy
+     * it. The real filename and the Content-Type to serve it with are held in our own database
+     * (Submission.originalFilename, LearnerDocument.originalFilename), never read back from
+     * Cloudinary, so nothing depends on the extension surviving.
+     */
+    public String uploadLearnerFile(MultipartFile file) throws IOException {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        String publicId = SECURE_PREFIX + secureName(file.getOriginalFilename());
+        cloudinary.uploader().upload(file.getInputStream(), ObjectUtils.asMap(
+            "resource_type", "raw",
+            "type", "authenticated",
+            "public_id", publicId
+        ));
+        return publicId;
+    }
+
+    /**
+     * A collision-free, extension-less id fragment derived from the uploaded filename.
+     *
+     * The timestamp alone is not enough. Cloudinary overwrites an existing public_id by
+     * default, and two learners uploading files with the same name in the same millisecond
+     * would produce the same id — which for a system whose whole design is "supersede, never
+     * overwrite" would silently destroy one of them. The random suffix removes that.
+     */
+    private String secureName(String originalFilename) {
+        String base = originalFilename == null ? "file" : originalFilename;
+        int dot = base.lastIndexOf('.');
+        if (dot > 0) {
+            base = base.substring(0, dot);
+        }
+        base = base.replaceAll("[^a-zA-Z0-9-]", "_");
+        if (base.isEmpty()) {
+            base = "file";
+        }
+        if (base.length() > 60) {
+            base = base.substring(0, 60);
+        }
+        return System.currentTimeMillis() + "_" + randomSuffix() + "_" + base;
+    }
+
+    private String randomSuffix() {
+        byte[] bytes = new byte[6];
+        RANDOM.nextBytes(bytes);
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * A short-lived signed URL for an authenticated raw resource.
+     *
+     * The returned string is a credential: anyone holding it can fetch the file until it is
+     * regenerated. It must never be logged, returned to a browser, or put in an exception
+     * message. Callers fetch with it server-side and re-serve the bytes.
+     */
+    public String getSignedUrl(String publicId) {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }
@@ -77,6 +169,14 @@ public class CloudinaryService {
                 .type("authenticated")
                 .signed(true)
                 .generate(publicId);
+    }
+
+    /**
+     * Signs a database backup's public_id. Identical mechanism to {@link #getSignedUrl}; kept
+     * as a separate name because the backup listing in AdminController reads as backup code.
+     */
+    public String getSignedBackupUrl(String publicId) {
+        return getSignedUrl(publicId);
     }
 
     @SuppressWarnings("unchecked")

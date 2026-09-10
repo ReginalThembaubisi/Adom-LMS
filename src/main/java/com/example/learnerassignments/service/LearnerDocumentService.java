@@ -11,7 +11,6 @@ import com.example.learnerassignments.repository.LearnerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,6 +44,7 @@ public class LearnerDocumentService {
     private final LearnerDocumentRepository documentRepository;
     private final LearnerRepository learnerRepository;
     private final CloudinaryService cloudinaryService;
+    private final StoredFileService storedFileService;
 
     /** Documents are personal, so they never go in the publicly served uploads directory. */
     @Value("${file.submission-dir:private-uploads}")
@@ -145,11 +145,9 @@ public class LearnerDocumentService {
     /** The stored bytes, for serving through an ownership-checked endpoint. */
     @Transactional(readOnly = true)
     public Object load(LearnerDocument document) {
-        String path = document.getFilePath();
-        if (path != null && (path.startsWith("http://") || path.startsWith("https://"))) {
-            return fetchRemote(path);
-        }
-        return loadLocal(path);
+        // Legacy public URL, authenticated public_id or a path on disk — StoredFileService
+        // tells them apart. Documents uploaded before this phase keep opening unchanged.
+        return storedFileService.open(document.getFilePath(), "document");
     }
 
     public String resolveContentType(String originalFilename) {
@@ -186,7 +184,10 @@ public class LearnerDocumentService {
                          String originalFilename) {
         if (cloudinaryService.isConfigured()) {
             try {
-                return cloudinaryService.uploadFile(file);
+                // The public_id, not the URL. An ID copy or a signed learner agreement is the
+                // most sensitive thing this system holds; storing a public URL for one means
+                // anyone who ever sees that URL can read it, logged in or not, forever.
+                return cloudinaryService.uploadLearnerFile(file);
             } catch (IOException e) {
                 throw new InvalidFileException("That file could not be uploaded. Please try again.");
             }
@@ -209,24 +210,4 @@ public class LearnerDocumentService {
         }
     }
 
-    private Resource loadLocal(String pathStr) {
-        try {
-            Path path = Paths.get(pathStr).normalize();
-            Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                throw new ResourceNotFoundException("Document file is missing from storage.");
-            }
-            return resource;
-        } catch (java.net.MalformedURLException e) {
-            throw new ResourceNotFoundException("Document file is missing from storage.");
-        }
-    }
-
-    private byte[] fetchRemote(String url) {
-        try (InputStream in = java.net.URI.create(url).toURL().openStream()) {
-            return in.readAllBytes();
-        } catch (IOException e) {
-            throw new ResourceNotFoundException("Document file could not be retrieved from storage.");
-        }
-    }
 }

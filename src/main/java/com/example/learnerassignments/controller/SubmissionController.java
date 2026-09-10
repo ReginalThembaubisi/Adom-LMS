@@ -6,6 +6,7 @@ import com.example.learnerassignments.model.Submission;
 import com.example.learnerassignments.security.CurrentStaff;
 import com.example.learnerassignments.security.LearnerPrincipal;
 import com.example.learnerassignments.service.ScopeService;
+import com.example.learnerassignments.service.StoredFileService;
 import com.example.learnerassignments.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ public class SubmissionController {
     private final SubmissionService submissionService;
     private final CurrentStaff currentStaff;
     private final ScopeService scopeService;
+    private final StoredFileService storedFileService;
 
     // Learners submit through POST /api/me/submissions. This endpoint used to take the
     // learner code as a form field, which meant anyone could submit as anyone.
@@ -100,15 +102,16 @@ public class SubmissionController {
                 ? "application/pdf"
                 : submissionService.resolveContentType(submission.getOriginalFilename());
 
-        Object body;
-        if (pathStr != null && (pathStr.startsWith("http://") || pathStr.startsWith("https://"))) {
-            // Fetch and re-serve rather than redirecting: Cloudinary's raw-resource delivery
-            // doesn't reliably set an inline-renderable Content-Type on its own, which left
-            // the in-app viewer blank for externally-stored files.
-            body = submissionService.fetchExternalFile(pathStr);
-        } else {
-            body = submissionService.loadLocalResource(pathStr);
-        }
+        // Fetch and re-serve, never redirect. Three reasons, all of which still hold now that
+        // new files are stored as authenticated resources: Cloudinary's raw delivery doesn't
+        // set an inline-renderable Content-Type, so a redirected viewer renders blank; a
+        // redirect to a signed URL hands the browser a working credential for the file; and a
+        // redirect discards the ownership check that requireReadable just performed, because
+        // the second request never reaches this application at all.
+        //
+        // StoredFileService works out whether pathStr is a legacy public URL, a public_id, or
+        // a path on disk. All three still open — that is the point of the transition.
+        Object body = storedFileService.open(pathStr, "submission");
 
         String filename = (marked && submission.getMarkedFilePath() != null)
                 ? "marked_" + submission.getOriginalFilename()
