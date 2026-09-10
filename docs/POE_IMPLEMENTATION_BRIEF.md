@@ -169,6 +169,44 @@ row through the normal path.
 record, like `LegacySubmissionFileMigration` — not a script someone runs once and cannot
 answer questions about afterwards.
 
+### 4.2c Uploads broke on 3 September when they were switched to streaming — **RESOLVED**
+
+`CloudinaryService.uploadFile` passed `file.getBytes()` from 30 July. Commit `1688809`
+("Fix N+1 queries, unbounded findAll, **streaming upload**, async thread"), merged to main in
+`788c3e8` on 2026-09-03, changed it to `file.getInputStream()` to avoid buffering the file.
+
+Cloudinary's `Uploader.upload(Object, Map)` dispatches on `String`, `File` and `byte[]`, and
+throws `IOException("Unrecognized file parameter")` for anything else. `InputStream` is handled
+only by the separate `uploadLarge`. Verified against the pinned SDK 1.39.0 by bytecode and by
+running it:
+
+```
+                    byte[]                  InputStream
+plain upload        reaches the network     Unrecognized file parameter
+authenticated       reaches the network     Unrecognized file parameter
+```
+
+So the request was never made, and it presented as "That file could not be uploaded. Please
+try again." with a 400, because `LearnerDocumentService.store` caught the `IOException` and
+discarded it.
+
+**`type: "authenticated"` is not involved.** It makes no difference at this layer, and the
+production delivery probe completed a full authenticated round trip — upload, signed URL,
+fetch, byte comparison. The stream is the whole cause. Do not "fix" this by moving learner
+files back to public delivery.
+
+**The fix**: `file.getBytes()` on both uploaders, with the parameter typed `byte[]` rather than
+`Object` so passing a stream is a compile error rather than a runtime failure naming no cause.
+
+**Why it went unnoticed for a week**: `uploadBackup` already took `byte[]`, so backups and the
+delivery health check were unaffected — the probe took a branch inside the SDK that no real
+caller reached. A probe that does not enter where the caller enters proves nothing about the
+caller. The check now goes through `uploadLearnerFile(MultipartFile)`.
+
+**Memory note**: streaming was the point of the original change. `getBytes()` holds the file in
+memory — 20 MB for a submission, 10 MB for a document. If that becomes a problem on a small
+instance, the answer is `uploadLarge`, which does accept an `InputStream`, not a bare `upload`.
+
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 
 `Learner.onCreate` generates the code with `Math.random()` against a `unique = true` column, while `LearnerCodeSequence` and `LearnerCodeSequenceRepository` exist but are unused. A collision surfaces as a raw constraint violation during self-registration. Use the sequence entity.

@@ -48,7 +48,10 @@ public class CloudinaryService {
                 ? originalFilename.substring(0, originalFilename.lastIndexOf('.'))
                 : originalFilename;
         String publicId = "lms_files/" + System.currentTimeMillis() + "_" + nameWithoutExtension.replaceAll("[^a-zA-Z0-9-]", "_");
-        Map uploadResult = cloudinary.uploader().upload(file.getInputStream(), ObjectUtils.asMap(
+        // getBytes(), not getInputStream(): the SDK rejects a stream. This method has had that
+        // bug since it was written, which means module files and task briefs have been failing
+        // to upload for as long as Cloudinary has been configured.
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
             "resource_type", "raw",
             "public_id", publicId
         ));
@@ -107,14 +110,23 @@ public class CloudinaryService {
      * Cloudinary, so nothing depends on the extension surviving.
      */
     public String uploadLearnerFile(MultipartFile file) throws IOException {
-        return uploadLearnerFile(file.getInputStream(), file.getOriginalFilename());
+        // getBytes(), never getInputStream(). See the note on the byte[] overload below: the
+        // SDK's upload() has no InputStream branch and rejects one outright.
+        return uploadLearnerFile(file.getBytes(), file.getOriginalFilename());
     }
 
     /**
      * As {@link #uploadLearnerFile(MultipartFile)}, for callers that already hold the bytes.
-     * Mirrors {@code uploadBackup}, which takes the same shape for the same reason.
+     *
+     * <p>The parameter is {@code byte[]} rather than {@code Object} deliberately, and must stay
+     * that way. Cloudinary's {@code Uploader.upload(Object, Map)} dispatches on {@code String},
+     * {@code File} and {@code byte[]}, and throws {@code IOException("Unrecognized file
+     * parameter")} for anything else — {@code InputStream} included, which is handled only by
+     * the separate {@code uploadLarge}. Passing a stream therefore fails every time, at
+     * runtime, with a message that names no cause. Typing this parameter turns that into a
+     * compile error instead.
      */
-    public String uploadLearnerFile(Object content, String originalFilename) throws IOException {
+    public String uploadLearnerFile(byte[] content, String originalFilename) throws IOException {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }

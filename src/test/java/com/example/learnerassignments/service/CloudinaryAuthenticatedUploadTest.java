@@ -105,4 +105,39 @@ class CloudinaryAuthenticatedUploadTest {
         assertThat(stored).startsWith(CloudinaryService.SECURE_PREFIX);
         assertThat(stored).doesNotEndWith("_");
     }
+
+    @Test
+    @DisplayName("The SDK is handed bytes, never a stream — a stream it rejects outright")
+    void theSdkReceivesBytesNotAStream() throws Exception {
+        when(uploader.upload(any(), any())).thenReturn(new HashMap<String, Object>());
+
+        service.uploadLearnerFile(
+                new MockMultipartFile("file", "CV.pdf", "application/pdf", "the bytes".getBytes()));
+
+        ArgumentCaptor<Object> content = ArgumentCaptor.forClass(Object.class);
+        org.mockito.Mockito.verify(uploader).upload(content.capture(), any());
+
+        // Cloudinary's Uploader.upload(Object, Map) dispatches on String, File and byte[], and
+        // throws IOException("Unrecognized file parameter") for anything else — InputStream
+        // included, since that is handled only by the separate uploadLarge. Handing it a
+        // stream failed every upload, every time, with a message naming no cause; the vault
+        // reported "That file could not be uploaded. Please try again." and discarded the rest.
+        assertThat(content.getValue()).isInstanceOf(byte[].class);
+        assertThat(content.getValue()).isNotInstanceOf(java.io.InputStream.class);
+        assertThat((byte[]) content.getValue()).isEqualTo("the bytes".getBytes());
+    }
+
+    @Test
+    @DisplayName("The original public uploader has the same defect, and the same fix")
+    void theLegacyUploaderAlsoReceivesBytes() throws Exception {
+        when(uploader.upload(any(), any())).thenReturn(new HashMap<>(Map.of("secure_url", "https://x/y")));
+
+        // Still used for module files and facilitator guides via LecturerController, so it has
+        // been failing there for as long as Cloudinary has been configured.
+        service.uploadFile(new MockMultipartFile("file", "guide.pdf", "application/pdf", "guide".getBytes()));
+
+        ArgumentCaptor<Object> content = ArgumentCaptor.forClass(Object.class);
+        org.mockito.Mockito.verify(uploader).upload(content.capture(), any());
+        assertThat(content.getValue()).isInstanceOf(byte[].class);
+    }
 }
