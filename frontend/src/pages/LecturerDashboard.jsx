@@ -23,6 +23,10 @@ const LecturerDashboard = () => {
     const [assignments, setAssignments] = useState([]);
     const [categories, setCategories] = useState([]);
     const [inspectedSubmissions, setInspectedSubmissions] = useState([]);
+    // Whether this session's marking is being held back, and how many people releasing it
+    // would tell. Null until a session is opened.
+    const [sessionRelease, setSessionRelease] = useState(null);
+    const [releasing, setReleasing] = useState(false);
     const [activeSessionId, setActiveSessionId] = useState('');
     const [alert, setAlert] = useState({ type: '', message: '' });
 
@@ -503,10 +507,55 @@ const LecturerDashboard = () => {
         }
     };
 
+    /**
+     * Releases the whole session's marking.
+     *
+     * Session-level and confirmed by count, because from the learner's side this is one-way:
+     * once they have seen a result they have told somebody. The confirmation names how many
+     * people will be notified rather than asking "are you sure", so the facilitator is
+     * agreeing to something specific.
+     */
+    const releaseFeedback = async () => {
+        if (!activeSessionId || !sessionRelease) return;
+        const people = sessionRelease.wouldNotify;
+        if (people === 0) {
+            showMsg('error', 'Nothing to release — no marked work is being held for this session.');
+            return;
+        }
+        const confirmed = window.confirm(
+            `Release feedback for ${sessionRelease.sessionName}?\n\n` +
+            `${people} learner${people === 1 ? '' : 's'} will be able to see their outcome, marks and ` +
+            `comments, and ${people === 1 ? 'will be' : 'will each be'} notified.\n\n` +
+            `You can keep marking afterwards and release again — only newly marked work goes out.`
+        );
+        if (!confirmed) return;
+
+        setReleasing(true);
+        try {
+            const res = await fetch(`/api/sessions/${activeSessionId}/release-feedback`, {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${token}` }
+            });
+            if (!checkAuthResponse(res)) return;
+            if (res.ok) {
+                const data = await res.json();
+                showMsg('success', data.message || 'Feedback released.');
+                inspectSubmissions(activeSessionId);
+            } else {
+                showMsg('error', 'Could not release feedback. Please try again.');
+            }
+        } catch (e) {
+            showMsg('error', 'Connection issue.');
+        } finally {
+            setReleasing(false);
+        }
+    };
+
     const inspectSubmissions = async (sessionId) => {
         setActiveSessionId(sessionId);
         if (!sessionId) {
             setInspectedSubmissions([]);
+            setSessionRelease(null);
             return;
         }
         // Jump straight to the results instead of leaving the lecturer to notice and
@@ -521,6 +570,12 @@ const LecturerDashboard = () => {
             if (res.ok) {
                 const data = await res.json();
                 setInspectedSubmissions(data.submitted || []);
+                setSessionRelease({
+                    held: data.heldCount || 0,
+                    released: data.releasedCount || 0,
+                    wouldNotify: data.wouldNotifyCount || 0,
+                    sessionName: data.sessionName || '',
+                });
             } else {
                 showMsg('error', 'Failed to load submissions list.');
             }
@@ -1088,6 +1143,37 @@ const LecturerDashboard = () => {
                             </button>
                         </div>
 
+                        {/* Marking is held until it is released. A facilitator who does not know
+                            that will not go looking for a button, so the state says itself. */}
+                        {sessionRelease && sessionRelease.held > 0 && (
+                            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                                <div className="space-y-1 min-w-0">
+                                    <p className="text-sm font-bold text-amber-900">
+                                        {sessionRelease.held} marked submission{sessionRelease.held === 1 ? '' : 's'} {sessionRelease.held === 1 ? 'is' : 'are'} not visible to learners yet
+                                    </p>
+                                    <p className="text-xs text-amber-800">
+                                        Marking stays hidden until you release it, so you can finish the whole session before anyone sees a result.
+                                        Releasing notifies {sessionRelease.wouldNotify} learner{sessionRelease.wouldNotify === 1 ? '' : 's'}.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={releaseFeedback}
+                                    disabled={releasing}
+                                    className="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-semibold text-xs py-2.5 px-4 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                                >
+                                    {releasing ? 'Releasing…' : 'Release feedback'}
+                                </button>
+                            </div>
+                        )}
+                        {sessionRelease && sessionRelease.held === 0 && sessionRelease.released > 0 && (
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                                <p className="text-xs font-semibold text-emerald-900">
+                                    All {sessionRelease.released} marked submission{sessionRelease.released === 1 ? '' : 's'} in this session {sessionRelease.released === 1 ? 'has' : 'have'} been released. Learners can see their results.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="space-y-4">
                             {inspectedSubmissions.length === 0 ? (
                                 <p className="text-xs text-slate-500 text-center py-6">No student files submitted for this session yet.</p>
@@ -1102,6 +1188,11 @@ const LecturerDashboard = () => {
                                                 <p className="text-[10px] text-slate-400">Uploaded: {new Date(sub.submittedAt).toLocaleString()}</p>
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
+                                                {sub.gradedAt && (
+                                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${sub.feedbackReleased ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+                                                        {sub.feedbackReleased ? 'Released' : 'Held — learner cannot see this'}
+                                                    </span>
+                                                )}
                                                 <span className={`inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full ${getStatusBadgeClasses(sub.status, 'light')}`}>
                                                     {getStatusLabel(sub.status || 'SUBMITTED')}
                                                 </span>

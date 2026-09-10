@@ -26,6 +26,18 @@ public class SessionSubmissionOverviewResponse {
     private int totalLearners;
     private int submittedCount;
     private int unsubmittedCount;
+    /** Marked, learner-facing, and not yet released — work the learner cannot see. */
+    private int heldCount;
+    /** Marked and released. */
+    private int releasedCount;
+    /**
+     * How many learners a release would notify right now.
+     *
+     * Named separately from heldCount because they differ whenever somebody submitted twice,
+     * and the confirmation the facilitator reads is about people, not submissions.
+     */
+    private int wouldNotifyCount;
+
     private List<SubmittedLearnerDto> submitted;
     private List<UnsubmittedLearnerDto> unsubmitted;
 }
