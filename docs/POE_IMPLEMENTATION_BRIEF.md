@@ -265,6 +265,26 @@ Two follow-ups this exposes:
 - **`submitAssignment` does not check enrolment at all.** Any valid learner code can submit to
   any session. That is why the two rules could drift this far apart without anything failing.
 
+### 4.2e Marks replayed in the wrong place — **RESOLVED for new marks**
+
+Annotation strokes were stored as raw canvas pixels and replayed without conversion, but the
+two viewers do not render at the same scale: `PdfAnnotator` fits the page to its container
+(so the scale depends on window width and whether the sidebar is open) while `PdfReplay` uses
+a fixed 1.5. Every mark was therefore displaced by the ratio between those scales, growing with
+distance from the top-left — a tick placed beside one table row appeared beside another. The
+same applied to a marker's own marks if they resized their window mid-session, because the
+annotator re-renders at the new scale and replayed old pixels unchanged.
+
+On a portfolio that gets audited this is wrong evidence, not a cosmetic glitch: the position of
+a tick is part of what the assessor asserted.
+
+**The fix**: each stroke records the scale it was drawn at (`s`), and every draw converts into
+the scale being rendered now. Position, stamp size and pen thickness all convert.
+
+**Marks saved before this stay approximate.** They carry no recorded scale, so there is nothing
+to convert from; they are drawn unconverted, exactly as before. Any submission whose placement
+matters should be re-marked. Nothing can recover a scale that was never written down.
+
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 
 `Learner.onCreate` generates the code with `Math.random()` against a `unique = true` column, while `LearnerCodeSequence` and `LearnerCodeSequenceRepository` exist but are unused. A collision surfaces as a raw constraint violation during self-registration. Use the sequence entity.

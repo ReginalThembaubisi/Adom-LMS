@@ -167,7 +167,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        (strokesByPageRef.current[pageNum] || []).forEach(s => drawStroke(ctx, s));
+        (strokesByPageRef.current[pageNum] || []).forEach(s => drawStroke(ctx, s, renderScaleRef.current));
     }, []);
 
     // Render one page's PDF content onto its canvas triple. Uses the bitmap cache when
@@ -211,7 +211,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         // Replay any existing annotations (page may have been annotated before eviction)
         const annotCtx = annotCanvas.getContext('2d');
         annotCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
-        (strokesByPageRef.current[pageNum] || []).forEach(s => drawStroke(annotCtx, s));
+        (strokesByPageRef.current[pageNum] || []).forEach(s => drawStroke(annotCtx, s, renderScaleRef.current));
     }, []);
 
     // Render pages that just entered the render window. Pages leaving the window have their
@@ -312,18 +312,20 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         e.preventDefault();
         const point = getPoint(e, pageNum);
         if (tool === 'tick' || tool === 'cross') {
-            const stroke = { tool, color, x: point.x, y: point.y, size: 28 };
+            // The scale these pixels are in. Without it a replay at any other scale
+            // puts the mark somewhere the marker never clicked.
+            const stroke = { tool, color, x: point.x, y: point.y, size: 28, s: renderScaleRef.current };
             if (!strokesByPageRef.current[pageNum]) strokesByPageRef.current[pageNum] = [];
             strokesByPageRef.current[pageNum].push(stroke);
             lastAnnotatedPageRef.current = pageNum;
             // Draw directly onto the static layer — no clear/replay needed for a new stamp
             const annotCanvas = annotCanvasRefs.current[pageNum];
-            if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke);
+            if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke, renderScaleRef.current);
             bumpVersion(n => n + 1);
         } else {
             isDrawingRef.current = true;
             drawingPageRef.current = pageNum;
-            currentStrokeRef.current = { tool: 'pen', color, thickness, points: [point] };
+            currentStrokeRef.current = { tool: 'pen', color, thickness, points: [point], s: renderScaleRef.current };
         }
     };
 
@@ -336,7 +338,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
         if (!liveCanvas) return;
         const ctx = liveCanvas.getContext('2d');
         ctx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-        drawStroke(ctx, currentStrokeRef.current);
+        drawStroke(ctx, currentStrokeRef.current, renderScaleRef.current);
     };
 
     const finishStroke = (pageNum) => {
@@ -353,7 +355,7 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
             lastAnnotatedPageRef.current = pageNum;
             // Accumulate onto static layer (no clear+replay — just draw the new stroke)
             const annotCanvas = annotCanvasRefs.current[pageNum];
-            if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke);
+            if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke, renderScaleRef.current);
         }
         bumpVersion(n => n + 1);
     };
