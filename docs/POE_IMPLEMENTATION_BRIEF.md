@@ -258,10 +258,15 @@ who never submitted.
 
 Two follow-ups this exposes:
 
-- **`learner_modules` is not populated for a large share of learners.** Visibility no longer
-  depends on it, but the *unsubmitted* list still does, so "who has not submitted" is
-  understated by the same gap. Phase 7's completeness dashboard will inherit that unless the
-  enrolment rows are backfilled or the roster is derived the way `isEnrolledOn` derives it.
+- **`learner_modules` was not populated for a large share of learners — RESOLVED.** The cause
+  was not, as first recorded here, that registration never writes those rows: it does, and has
+  since 2026-08-18. It enrols a learner on the modules that exist *at that moment*, and nothing
+  went back when a module was created afterwards — so every module added after a cohort
+  registered left that cohort off its roster. `LearnerModuleEnrolmentBackfill` fills the gap
+  from two sources (a submission proves enrolment; the learnership implies it, which is the
+  same rule registration and `isEnrolledOn` already apply), and `EnrolmentService` keeps it
+  closed: module creation enrols the learnership's existing learners, and accepting a
+  submission records enrolment as a safety net.
 - **`submitAssignment` does not check enrolment at all.** Any valid learner code can submit to
   any session. That is why the two rules could drift this far apart without anything failing.
 

@@ -22,4 +22,7 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
             "SELECT DISTINCT l.id FROM Learner l JOIN l.modules m WHERE m.id IN :moduleIds")
     java.util.List<Long> findIdsByModuleIdIn(
             @org.springframework.data.repository.query.Param("moduleIds") java.util.Collection<Long> moduleIds);
+
+    /** Everyone on a learnership, for enrolling them onto a module created after they joined. */
+    java.util.List<Learner> findByLearnership_Id(Long learnershipId);
 }
