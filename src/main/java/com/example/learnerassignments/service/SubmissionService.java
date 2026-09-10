@@ -175,55 +175,78 @@ public class SubmissionService {
 
         Assignment assignment = session.getAssignment();
         Long moduleId = assignment.getModule() != null ? assignment.getModule().getId() : null;
-        List<Learner> allLearners = moduleId != null
-                ? learnerRepository.findByModules_Id(moduleId)
-                : learnerRepository.findAll();
 
-        if (visibleLearnerIds != null) {
-            allLearners = allLearners.stream()
-                    .filter(l -> visibleLearnerIds.contains(l.getId()))
-                    .collect(Collectors.toList());
-        }
+        // Who submitted is read from the submissions, not from the module roster.
+        //
+        // This used to walk the roster and attach each learner's submission, which assumed
+        // that everyone who can submit is in the learner_modules join table. Nothing enforces
+        // that: registration never writes those rows, and submitAssignment never checks them.
+        // A learner scoped to the module by their learnership — which is how the portal decides
+        // what they can see — submitted successfully, was shown "Submitted", and never appeared
+        // in the facilitator's console. The work sat in the database with nobody able to mark
+        // it, and neither side had any way to notice.
+        //
+        // The roster still answers the question it can answer: who has not submitted yet.
         List<Submission> submissions = submissionRepository.findBySessionId(sessionId);
 
         Map<Long, List<Submission>> submissionsByLearnerMap = submissions.stream()
+                .filter(s -> s.getLearner() != null)
                 .collect(Collectors.groupingBy(s -> s.getLearner().getId()));
 
         List<SubmittedLearnerDto> submittedList = new ArrayList<>();
         List<UnsubmittedLearnerDto> unsubmittedList = new ArrayList<>();
 
-        for (Learner learner : allLearners) {
-            List<Submission> learnerSubmissions = submissionsByLearnerMap.get(learner.getId());
-            if (learnerSubmissions != null && !learnerSubmissions.isEmpty()) {
-                Submission latestSubmission = learnerSubmissions.stream()
-                        .max(Comparator.comparing(Submission::getSubmittedAt))
-                        .orElse(learnerSubmissions.get(0));
-
-                submittedList.add(SubmittedLearnerDto.builder()
-                        .submissionId(latestSubmission.getId())
-                        .learnerId(learner.getId())
-                        .learnerCode(learner.getLearnerCode())
-                        .fullName(learner.getFullName())
-                        .cohort(learner.getCohort())
-                        .submittedAt(latestSubmission.getSubmittedAt())
-                        .status(latestSubmission.getStatus())
-                        .originalFilename(latestSubmission.getOriginalFilename())
-                        .feedback(latestSubmission.getFeedback())
-                        .gradedAt(latestSubmission.getGradedAt())
-                        .gradedByRole(latestSubmission.getGradedByRole())
-                        .gradedByName(latestSubmission.getGradedByName())
-                        .marksAwarded(latestSubmission.getMarksAwarded())
-                        .hasMarkedCopy(latestSubmission.getMarkedFilePath() != null)
-                        .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
-                        .build());
-            } else {
-                unsubmittedList.add(UnsubmittedLearnerDto.builder()
-                        .learnerId(learner.getId())
-                        .learnerCode(learner.getLearnerCode())
-                        .fullName(learner.getFullName())
-                        .cohort(learner.getCohort())
-                        .build());
+        for (Map.Entry<Long, List<Submission>> entry : submissionsByLearnerMap.entrySet()) {
+            // Scoping still narrows this: an assessor holding no assignment rows sees nothing,
+            // exactly as before. Making submissions impossible to lose must not make them
+            // visible to people who should not see them.
+            if (visibleLearnerIds != null && !visibleLearnerIds.contains(entry.getKey())) {
+                continue;
             }
+            Submission latestSubmission = entry.getValue().stream()
+                    .max(Comparator.comparing(Submission::getSubmittedAt))
+                    .orElse(entry.getValue().get(0));
+            Learner learner = latestSubmission.getLearner();
+
+            submittedList.add(SubmittedLearnerDto.builder()
+                    .submissionId(latestSubmission.getId())
+                    .learnerId(learner.getId())
+                    .learnerCode(learner.getLearnerCode())
+                    .fullName(learner.getFullName())
+                    .cohort(learner.getCohort())
+                    .submittedAt(latestSubmission.getSubmittedAt())
+                    .status(latestSubmission.getStatus())
+                    .originalFilename(latestSubmission.getOriginalFilename())
+                    .feedback(latestSubmission.getFeedback())
+                    .gradedAt(latestSubmission.getGradedAt())
+                    .gradedByRole(latestSubmission.getGradedByRole())
+                    .gradedByName(latestSubmission.getGradedByName())
+                    .marksAwarded(latestSubmission.getMarksAwarded())
+                    .hasMarkedCopy(latestSubmission.getMarkedFilePath() != null)
+                    .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
+                    .build());
+        }
+
+        submittedList.sort(Comparator.comparing(
+                SubmittedLearnerDto::getFullName, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        List<Learner> rosterLearners = moduleId != null
+                ? learnerRepository.findByModules_Id(moduleId)
+                : learnerRepository.findAll();
+
+        for (Learner learner : rosterLearners) {
+            if (submissionsByLearnerMap.containsKey(learner.getId())) {
+                continue;
+            }
+            if (visibleLearnerIds != null && !visibleLearnerIds.contains(learner.getId())) {
+                continue;
+            }
+            unsubmittedList.add(UnsubmittedLearnerDto.builder()
+                    .learnerId(learner.getId())
+                    .learnerCode(learner.getLearnerCode())
+                    .fullName(learner.getFullName())
+                    .cohort(learner.getCohort())
+                    .build());
         }
 
         return SessionSubmissionOverviewResponse.builder()
@@ -235,7 +258,7 @@ public class SubmissionService {
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())
                 .dueDate(assignment.getDueDate())
-                .totalLearners(allLearners.size())
+                .totalLearners(submittedList.size() + unsubmittedList.size())
                 .submittedCount(submittedList.size())
                 .unsubmittedCount(unsubmittedList.size())
                 .submitted(submittedList)
@@ -306,7 +329,7 @@ public class SubmissionService {
                 .assignmentId(assignment.getId())
                 .assignmentTitle(assignment.getTitle())
                 .dueDate(assignment.getDueDate())
-                .totalLearners(allLearners.size())
+                .totalLearners(submittedList.size() + unsubmittedList.size())
                 .submittedCount(submittedList.size())
                 .unsubmittedCount(unsubmittedList.size())
                 .submitted(submittedList)

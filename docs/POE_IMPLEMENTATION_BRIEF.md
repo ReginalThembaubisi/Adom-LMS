@@ -207,6 +207,46 @@ caller. The check now goes through `uploadLearnerFile(MultipartFile)`.
 memory — 20 MB for a submission, 10 MB for a document. If that becomes a problem on a small
 instance, the answer is `uploadLarge`, which does accept an `InputStream`, not a bare `upload`.
 
+### 4.2d Submitted work could be invisible to the marker — **RESOLVED**
+
+The grading console built its "submitted" list by walking the module's enrolled learners
+(`learnerRepository.findByModules_Id`) and attaching each one's submission. That assumed
+everyone who can submit is in the `learner_modules` join table. Nothing enforces it:
+registration never writes those rows, and `submitAssignment` never checks them — it validates
+the learner code and the session, and nothing else.
+
+A learner scoped to a module by their **learnership** — which is the fallback
+`ModuleService.isEnrolledOn` uses, and how the portal decides what they can see — could open
+the session, submit, be shown "Submitted", and never appear in the facilitator's console. The
+file was in storage, the row was in the database, and no screen anywhere showed it. Neither the
+learner nor the facilitator had a way to notice.
+
+Reproduced in a container: a learner registered through the normal flow has zero
+`learner_modules` rows, submits successfully, and the session's submitted count was 0.
+
+**The fix**: the submitted list is derived from the submissions themselves. The roster is still
+used for the *unsubmitted* list, which is the question it can actually answer. Assessor and
+moderator scoping is applied to both, so Phase 1's rule is unchanged: no assignment rows still
+means nothing visible.
+
+**The general rule**: two rules that decide the same thing will eventually disagree, and the
+disagreement is where work gets lost. Visibility of a submission must not depend on enrolment
+bookkeeping that nothing maintains.
+
+**Worth checking against production data**, since this has been true for as long as the console
+has existed:
+
+```sql
+SELECT COUNT(*) FROM submissions s
+ WHERE NOT EXISTS (SELECT 1 FROM learner_modules lm
+                    WHERE lm.learner_id = s.learner_id
+                      AND lm.module_id = (SELECT a.module_id FROM submission_sessions ss
+                                            JOIN assignments a ON a.id = ss.assignment_id
+                                           WHERE ss.id = s.session_id));
+```
+
+Anything above zero is work that was submitted and never appeared for marking.
+
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 
 `Learner.onCreate` generates the code with `Math.random()` against a `unique = true` column, while `LearnerCodeSequence` and `LearnerCodeSequenceRepository` exist but are unused. A collision surfaces as a raw constraint violation during self-registration. Use the sequence entity.
@@ -526,7 +566,11 @@ Left for later, deliberately:
   different change with a different blast radius. Facilitator guides are also course material
   rather than a named learner's personal evidence, so the exposure is not the same as an ID
   copy. Do it when the serving endpoint exists.
-  **The learner half is now done.** A facilitator's `.docx` brief downloaded as
+  Phase 4's authenticated round trip is **confirmed live**: a document uploaded after the byte
+fix was stored as an `lms_secure/` public_id and opened through signed delivery in production,
+which is the one claim the phase shipped unverified.
+
+**The learner half is now done.** A facilitator's `.docx` brief downloaded as
   `1789044791251_Practical_2_-_LSUMS_IoT...` with no extension, because the browser was sent
   straight to the stored URL and named the file after the extension-less public_id. Learners
   now download through `/api/me/module-files/{id}/download` and
