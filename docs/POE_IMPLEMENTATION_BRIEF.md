@@ -141,6 +141,34 @@ exactly that case — and `uploads/x.pdf` is shaped identically to a public_id. 
 row therefore keeps resolving the way it did before. `StoredFileService` is the only place
 that decides this; do not re-derive it inline.
 
+### 4.2b Files uploaded before Phase 4 are still publicly readable — **OPEN, accepted for now**
+
+Phase 4 changed how files are *stored*; it did not change what was already stored. Roughly 298
+submissions, plus their marked copies, sit at Cloudinary `upload` (public) URLs that work for
+anyone holding them, with no session, indefinitely. Those URLs travelled through the app, and
+before Phase 1 some of them travelled through a Word preview that handed the document to
+Google.
+
+**Why it was not fixed with Phase 4.** Retracting them means downloading each file and
+re-uploading it as an authenticated resource, then rewriting its row — a bulk operation over
+other people's assessment evidence, on a free-tier instance that sleeps, where a failure
+part-way through leaves some of the cohort's work unreachable while the database still claims
+it is there. The reversal record would have to be as careful as the file migration's.
+
+**What makes it acceptable meanwhile.** The URLs are long, random and not enumerable; nothing
+new is being created in this shape; and the exposure is unchanged from what it has been since
+the system was built. It is not getting worse.
+
+**What would change that.** Any evidence a URL has leaked, any subject access or SETA request
+that turns on it, or the cohort growing large enough that the tail of old files matters more
+than the risk of a bulk rewrite. The per-file remedy already exists and needs no new code: a
+learner re-uploading a document, or an assessor re-uploading a marked copy, supersedes the old
+row through the normal path.
+
+**If it is done properly**, do it as a resumable job with a completion log line and a reversal
+record, like `LegacySubmissionFileMigration` — not a script someone runs once and cannot
+answer questions about afterwards.
+
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 
 `Learner.onCreate` generates the code with `Math.random()` against a `unique = true` column, while `LearnerCodeSequence` and `LearnerCodeSequenceRepository` exist but are unused. A collision surfaces as a raw constraint violation during self-registration. Use the sequence entity.
@@ -442,6 +470,15 @@ Acceptance criteria:
 - Pasting a Cloudinary URL for a new file into a logged-out browser fails.
 - Existing files uploaded before this phase still open in the app.
 
+Shipped alongside, in a follow-up PR: a boot-time delivery health check
+(`DeliveryHealthCheck`) that uploads a few bytes through the authenticated path, reads them
+back through a signed URL, compares them, deletes the probe, and logs the outcome in every
+case. It exists because this failure is silent: if signed delivery is rejected, uploads keep
+succeeding and rows keep being written, and the vault collects documents nobody can read while
+telling learners they were received. The check gates nothing — a transient Cloudinary problem
+must not take the vault down — but the log line answers the question without anyone having to
+go and test by hand.
+
 Left for later, deliberately:
 
 - **`ModuleFile` was not converted.** The brief's task list named it alongside `Submission`,
@@ -451,12 +488,19 @@ Left for later, deliberately:
   different change with a different blast radius. Facilitator guides are also course material
   rather than a named learner's personal evidence, so the exposure is not the same as an ID
   copy. Do it when the serving endpoint exists.
+  **Phase 8 will meet this.** The export reads module files for section 3 (Assessment
+  Guidelines), so its worker encounters `ModuleFile.filePath` in both a public-URL and a
+  `/uploads/...` web-path shape. Read them through `StoredFileService` like everything else
+  rather than fetching the value directly, and the eventual conversion to public_ids costs
+  the exporter nothing.
 - **Submission DTOs still ship `filePath` and `markedFilePath` to clients.** For files stored
   after Phase 4 these are harmless public_ids, but for legacy rows they are still working
   public URLs, handed to every client that lists submissions — including a lecturer listing a
   whole session. The frontend only ever uses these fields as presence flags
   (`!!submission.markedFilePath`), so replacing them with a boolean costs three small frontend
-  edits and closes the leak for legacy rows too.
+  edits and closes the leak for legacy rows too. **Closed in a follow-up PR, not deferred to
+  Phase 5** — once a URL is out it is out, so access control on the endpoint does not help
+  retrospectively.
 
 ---
 

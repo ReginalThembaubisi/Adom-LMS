@@ -107,11 +107,19 @@ public class CloudinaryService {
      * Cloudinary, so nothing depends on the extension surviving.
      */
     public String uploadLearnerFile(MultipartFile file) throws IOException {
+        return uploadLearnerFile(file.getInputStream(), file.getOriginalFilename());
+    }
+
+    /**
+     * As {@link #uploadLearnerFile(MultipartFile)}, for callers that already hold the bytes.
+     * Mirrors {@code uploadBackup}, which takes the same shape for the same reason.
+     */
+    public String uploadLearnerFile(Object content, String originalFilename) throws IOException {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }
-        String publicId = SECURE_PREFIX + secureName(file.getOriginalFilename());
-        cloudinary.uploader().upload(file.getInputStream(), ObjectUtils.asMap(
+        String publicId = SECURE_PREFIX + secureName(originalFilename);
+        cloudinary.uploader().upload(content, ObjectUtils.asMap(
             "resource_type", "raw",
             "type", "authenticated",
             "public_id", publicId
@@ -177,6 +185,20 @@ public class CloudinaryService {
      */
     public String getSignedBackupUrl(String publicId) {
         return getSignedUrl(publicId);
+    }
+
+    /**
+     * Deletes an authenticated raw resource. Used by the delivery health check to clean up
+     * after itself; failure is not worth propagating, since a stray probe file is harmless.
+     */
+    public void deleteLearnerFile(String publicId) throws IOException {
+        if (this.cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
+        }
+        cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(
+            "resource_type", "raw",
+            "type", "authenticated"
+        ));
     }
 
     @SuppressWarnings("unchecked")
