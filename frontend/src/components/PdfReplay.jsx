@@ -95,7 +95,7 @@ const PdfReplay = ({ documentUrl, strokes }) => {
         }
         const annotCtx = annotCanvas.getContext('2d');
         annotCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
-        (strokes[pageNum] || []).forEach(s => drawStroke(annotCtx, s));
+        (strokes[pageNum] || []).forEach(s => drawStroke(annotCtx, s, RENDER_SCALE));
     }, [strokes]);
 
     useEffect(() => {
