@@ -6,6 +6,7 @@ import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.*;
 import com.example.learnerassignments.service.AuditLogService;
 import com.example.learnerassignments.service.BackupService;
+import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.service.CloudinaryService;
 import com.example.learnerassignments.service.DeliveryHealthCheck;
 import jakarta.validation.Valid;
@@ -627,6 +628,53 @@ public class AdminController {
                 "ok", result.ok(),
                 "step", result.step(),
                 "detail", result.detail()));
+    }
+
+    /**
+     * What the submissions table actually contains, for the two questions this build raised
+     * that could not be answered from outside: how many submissions the grading console used
+     * to hide, and how the stored file paths are shaped.
+     *
+     * Read-only. It exists because Render's free plan has no shell, so there is otherwise no
+     * way to run a query against production at all.
+     */
+    @GetMapping("/diagnostics/submissions")
+    public ResponseEntity<?> submissionDiagnostics() {
+        long total = submissionRepository.count();
+        long missingFromRoster = submissionRepository.countMissingFromRoster();
+        long legacyUrls = submissionRepository.countLegacyUrlPaths();
+        long authenticated = submissionRepository.countAuthenticatedPublicIds();
+
+        List<java.util.Map<String, Object>> sample = submissionRepository
+                .findMissingFromRoster(org.springframework.data.domain.PageRequest.of(0, 20))
+                .stream()
+                .map(s -> {
+                    java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    row.put("submissionId", s.getId());
+                    row.put("learnerCode", s.getLearner() == null ? null : s.getLearner().getLearnerCode());
+                    row.put("learnerName", s.getLearner() == null ? null : s.getLearner().getFullName());
+                    row.put("session", s.getSession() == null ? null : s.getSession().getSessionName());
+                    row.put("submittedAt", s.getSubmittedAt());
+                    row.put("graded", s.getGradedAt() != null);
+                    // Deliberately not the file path: this is a diagnostic, not a way to hand
+                    // out storage locations.
+                    return row;
+                })
+                .collect(Collectors.toList());
+
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("totalSubmissions", total);
+        body.put("missingFromRoster", missingFromRoster);
+        body.put("missingFromRosterUngraded", sample.stream().filter(r -> !((Boolean) r.get("graded"))).count());
+        body.put("storageShapes", java.util.Map.of(
+                "legacyPublicUrl", legacyUrls,
+                "authenticatedPublicId", authenticated,
+                "diskPath", total - legacyUrls - authenticated));
+        body.put("sample", sample);
+        body.put("note", "missingFromRoster counts submissions whose learner has no learner_modules "
+                + "row for the session's module. Before the grading console stopped deriving its "
+                + "list from the roster, these were invisible to whoever had to mark them.");
+        return ResponseEntity.ok(body);
     }
 
     // --- MARKING BACKLOG ---

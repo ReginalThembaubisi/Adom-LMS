@@ -46,4 +46,39 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             ORDER BY COUNT(s.id) DESC
             """)
     List<MarkingBacklogEntryDto> findFacilitatorMarkingBacklog();
+
+    /**
+     * Submissions whose learner has no learner_modules row for the module the session belongs
+     * to — the ones the grading console could not show before the list stopped being derived
+     * from the roster (finding 4.2d). Counted rather than inferred, because the alternative is
+     * guessing whether any learner work went unmarked.
+     */
+    @Query("""
+           SELECT COUNT(s) FROM Submission s
+           WHERE NOT EXISTS (
+               SELECT 1 FROM Learner l JOIN l.modules m
+               WHERE l.id = s.learner.id
+                 AND m.id = s.session.assignment.module.id
+           )
+           """)
+    long countMissingFromRoster();
+
+    /** The same rows, newest first, for following up with the learners concerned. */
+    @Query("""
+           SELECT s FROM Submission s
+           WHERE NOT EXISTS (
+               SELECT 1 FROM Learner l JOIN l.modules m
+               WHERE l.id = s.learner.id
+                 AND m.id = s.session.assignment.module.id
+           )
+           ORDER BY s.submittedAt DESC
+           """)
+    List<Submission> findMissingFromRoster(org.springframework.data.domain.Pageable pageable);
+
+    /** How stored file paths are shaped, which says when each storage era actually applied. */
+    @Query("SELECT COUNT(s) FROM Submission s WHERE s.filePath LIKE 'http%'")
+    long countLegacyUrlPaths();
+
+    @Query("SELECT COUNT(s) FROM Submission s WHERE s.filePath LIKE 'lms_secure/%'")
+    long countAuthenticatedPublicIds();
 }
