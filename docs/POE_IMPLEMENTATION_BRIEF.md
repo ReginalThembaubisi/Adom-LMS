@@ -684,6 +684,26 @@ Tasks:
 
 This screen replaces the admin manually opening folders to check readiness before a SETA submission. It is the highest-value screen in the project — build it properly.
 
+**More than one learnership runs at a time.** The model already supports it — each learnership
+owns its own Fundamental/Core/Elective categories, and a learner belongs to exactly one
+learnership — but this phase as written assumes there is only one, in two places.
+
+- **Required document types are a global enum.** `PoeDocumentType` fixes CV, ID copy,
+  agreement and matric as required for everybody. Different qualifications require different
+  evidence, so the required set belongs to the learnership rather than to the codebase. The
+  lighter change is to keep the enum as the vocabulary of document *types* and move the
+  *required set* — with the `required_from` date this section already calls for — into
+  per-learnership configuration; a learnership that does not need a matric certificate then
+  stops showing every learner as red for a document it never asked for. The heavier change,
+  only if a learnership needs a type the enum does not have, is to make the type itself a table
+  rather than an enum. Decide which before building the checklist, because the checklist reads
+  this on every row.
+- **The dashboard must filter by learnership and cohort.** "How many are complete" is not a
+  meaningful number across two qualifications with different requirements, and the admin
+  preparing a SETA submission is looking at one of them, not both.
+
+---
+
 ---
 
 ### Phase 8 — Export
@@ -695,6 +715,12 @@ export_job    id, requested_by_id, requested_by_role, scope_type, scope_ref,
               status, learner_count, file_count, result_public_id,
               created_at, completed_at, error
 ```
+
+Export scopes: a single learner, a cohort, **a whole learnership**, a moderation sample, or a
+single section. The learnership scope is the one SETA actually asks for — verification happens
+per qualification, so the admin exports one learnership at a time rather than every learner the
+system holds. It is also the largest job by far, which is worth knowing while sizing the worker
+and the zip.
 
 Flow:
 
@@ -809,6 +835,44 @@ Acceptance criteria:
 - Migrating to S3/MinIO (keep Cloudinary; just switch to authenticated delivery).
 - Rewriting the existing lecturer or admin dashboards.
 - Changing the Orbital design system.
+
+### A learner belongs to exactly one learnership
+
+`Learner.learnership` is a single `@ManyToOne`, so the model cannot represent someone who
+finishes one qualification and starts another. They would need a second learner record, with a
+second learner code and no connection to their own history.
+
+**This is a deliberate constraint, not an oversight.** Every learner in the system today is on
+one qualification, the SETA verifies one qualification at a time, and a portfolio is assembled
+per qualification — so a single learnership per learner is the honest shape of the data as it
+stands. Running several learnerships concurrently, which the system already does, is a
+different thing from one learner holding several.
+
+It becomes wrong the first time somebody progresses from one qualification to the next. What
+that would touch, so whoever picks it up can size it rather than discover it:
+
+- **`Learner.learnership`** becomes a collection, and almost certainly an enrolment entity
+  rather than a bare join table — a progression has a start date, an end date and an outcome,
+  and "which qualification was this learner on in March" is a question the SETA can ask.
+- **`LearnerCodeSequence`** allocates a code per learnership. One learner on two learnerships
+  either keeps their original code across both, or takes a code per enrolment. The first keeps
+  their history intact and is almost certainly right; it means a learner code no longer
+  identifies a learnership, which some code assumes.
+- **`ModuleService.isEnrolledOn`** falls back to the learner's single learnership. It would
+  have to match any of them, and — more subtly — only those active at the time being asked
+  about, or a learner would keep seeing material from a qualification they have finished.
+- **`EnrolmentService`** enrols a learnership's learners on a new module via
+  `findByLearnership_Id`, which becomes a join through the enrolment entity.
+- **`LearnerService` registration** enrols against one learnership's modules, and would need to
+  know which enrolment is being created.
+- **`ScopeService`** scopes moderators by learnership and cohort. A learner on two learnerships
+  is visible to two sets of moderators, but only for the work belonging to each — which is a
+  scoping rule this code does not currently have to express.
+- **The completeness dashboard and the export** both become per enrolment rather than per
+  learner. "Is this learner complete" stops being a question with one answer.
+
+None of that is hard on its own. It is spread across enough places that finding out the hard
+way, mid-phase, would be expensive — which is why it is written down here.
 
 ---
 
