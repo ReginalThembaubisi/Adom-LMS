@@ -111,4 +111,19 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
              AND s.session.assignment.module IS NOT NULL
            """)
     List<Object[]> findEnrolmentPairsProvenBySubmissions();
+
+    /**
+     * (learnerId, sessionId, gradedAt) for a set of learners.
+     *
+     * A projection, not entities: the completeness dashboard needs to know whether a learner
+     * submitted to a session and whether it has been marked, and nothing else. The entity's
+     * @SQLRestriction still keeps deleted submissions out.
+     */
+    @Query("""
+           SELECT s.learner.id, s.session.id, s.gradedAt
+           FROM Submission s
+           WHERE s.learner.id IN :learnerIds
+           """)
+    List<Object[]> findLearnerSessionMarkingPairs(
+            @org.springframework.data.repository.query.Param("learnerIds") java.util.Collection<Long> learnerIds);
 }
