@@ -734,6 +734,12 @@ Decisions taken while building it:
 - **`NotificationService.stripLinks` removes URLs from any body.** Belt to the braces of
   writing them carefully: the rule matters more than any one call site, and the next person
   adding a notification will not read that class first.
+- **The stream can be switched off from the environment.** `NOTIFICATIONS_STREAM_ENABLED=false`
+  makes the endpoint answer 503 and the portal keeps polling — a performance switch, not a
+  feature switch, because the badge is delivered by the poll either way. This instance has
+  512MB and the stream holds one connection per open portal; if that turns out to be the wrong
+  trade on a busy day, turning it off should be a restart rather than a code change, a review
+  and a deploy while people are trying to use the thing.
 - **Publishing module material is the only fan-out**, so it is the only place a mistake reaches
   a whole cohort at once. It reads enrolment from the join table — which is why populating that
   table mattered; before it was fixed, a new guide would have reached nobody.

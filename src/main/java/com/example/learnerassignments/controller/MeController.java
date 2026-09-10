@@ -179,9 +179,16 @@ public class MeController {
      * The client also polls. This is an optimisation over polling, not a replacement for it.
      */
     @GetMapping(value = "/notifications/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamMyNotifications() {
+    public ResponseEntity<SseEmitter> streamMyNotifications() {
         LearnerPrincipal principal = currentLearner.require();
-        return notificationStream.subscribe(principal.learnerId(), NotificationService.LEARNER_ROLE);
+        SseEmitter emitter = notificationStream.subscribe(principal.learnerId(), NotificationService.LEARNER_ROLE);
+        if (emitter == null) {
+            // Switched off. 503 rather than 404 because the endpoint exists and may be back:
+            // the portal treats any non-OK as "keep polling" and retries in a minute, so
+            // turning it on again needs no client change and no redeploy.
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        return ResponseEntity.ok(emitter);
     }
 
     /** Released marking only. A draft or an internal report is not reachable from here. */

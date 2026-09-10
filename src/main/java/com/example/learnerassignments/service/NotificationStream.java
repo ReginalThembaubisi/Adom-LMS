@@ -1,6 +1,7 @@
 package com.example.learnerassignments.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -36,7 +37,28 @@ public class NotificationStream {
      */
     private final Map<String, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
+    /**
+     * Whether to hold live connections at all.
+     *
+     * This runs on a 512MB instance and the stream holds one connection per open portal. If
+     * that turns out to be the wrong trade on a busy day, turning it off should be an
+     * environment variable and a restart, not a code change, a review and a deploy while
+     * people are trying to use the thing.
+     *
+     * Off is not a degraded mode. The badge is delivered by polling either way; the stream
+     * only makes it faster.
+     */
+    @Value("${notifications.stream.enabled:true}")
+    private boolean enabled;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     public SseEmitter subscribe(Long userId, String userRole) {
+        if (!enabled) {
+            return null;
+        }
         String key = key(userId, userRole);
         SseEmitter emitter = new SseEmitter(TIMEOUT_MS);
 
@@ -68,6 +90,9 @@ public class NotificationStream {
      */
     @Scheduled(fixedDelay = 30_000)
     public void heartbeat() {
+        if (!enabled) {
+            return;
+        }
         emitters.keySet().forEach(key -> send(key, "heartbeat", "."));
     }
 
