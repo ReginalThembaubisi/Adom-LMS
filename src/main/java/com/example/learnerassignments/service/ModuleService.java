@@ -9,6 +9,7 @@ import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.AssignmentRepository;
 import com.example.learnerassignments.repository.LearnerRepository;
+import com.example.learnerassignments.repository.ModuleFileRepository;
 import com.example.learnerassignments.repository.ModuleRepository;
 import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.repository.SubmissionSessionRepository;
@@ -29,6 +30,7 @@ public class ModuleService {
     private final ModuleRepository moduleRepository;
     private final SubmissionSessionRepository sessionRepository;
     private final SubmissionRepository submissionRepository;
+    private final ModuleFileRepository moduleFileRepository;
 
     @Transactional(readOnly = true)
     public List<ModuleResponseDto> getEnrolledModules(String studentNumber) {
@@ -65,7 +67,7 @@ public class ModuleService {
                                 .status(s.getStatus().name())
                                 .isSubmitted(submitted)
                                 .taskFileName(s.getTaskFileName())
-                                .taskFilePath(s.getTaskFilePath())
+                                .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
                                 .build();
                         })
                         .collect(Collectors.toList());
@@ -82,7 +84,6 @@ public class ModuleService {
                                 .map(f -> com.example.learnerassignments.dto.ModuleFileDto.builder()
                                         .id(f.getId())
                                         .title(f.getTitle())
-                                        .filePath(f.getFilePath())
                                         .originalFilename(f.getOriginalFilename())
                                         .fileType(f.getFileType())
                                         .build())
@@ -121,7 +122,7 @@ public class ModuleService {
                     .status(s.getStatus().name())
                     .isSubmitted(submitted)
                     .taskFileName(s.getTaskFileName())
-                    .taskFilePath(s.getTaskFilePath())
+                    .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
                     .build();
         }).collect(Collectors.toList());
 
@@ -138,7 +139,6 @@ public class ModuleService {
                         .map(f -> com.example.learnerassignments.dto.ModuleFileDto.builder()
                                 .id(f.getId())
                                 .title(f.getTitle())
-                                .filePath(f.getFilePath())
                                 .originalFilename(f.getOriginalFilename())
                                 .fileType(f.getFileType())
                                 .build())
@@ -165,6 +165,44 @@ public class ModuleService {
         }
 
         return getModuleDetails(moduleId, studentNumber);
+    }
+
+    /**
+     * A module file this learner is allowed to download, or 404.
+     *
+     * Enrolment is judged by the same rule that decides whether the module appears in their
+     * list at all, so a file is downloadable exactly when the module it belongs to is visible.
+     * Two rules would eventually disagree, and the disagreement would be a hole.
+     *
+     * Not found rather than forbidden, as everywhere else: ids are sequential, and a 403 on
+     * someone else's confirms it exists.
+     */
+    @Transactional(readOnly = true)
+    public ModuleFile requireModuleFileForLearner(Long fileId, String learnerCode) {
+        Learner learner = learnerRepository.findByLearnerCode(learnerCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Student number not found: " + learnerCode));
+        ModuleFile file = moduleFileRepository.findById(fileId)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found with id: " + fileId));
+
+        if (file.getModule() == null || !isEnrolledOn(learner, file.getModule())) {
+            throw new ResourceNotFoundException("File not found with id: " + fileId);
+        }
+        return file;
+    }
+
+    /** A session whose task brief this learner may download, or 404. Same rule as above. */
+    @Transactional(readOnly = true)
+    public SubmissionSession requireSessionForLearner(Long sessionId, String learnerCode) {
+        Learner learner = learnerRepository.findByLearnerCode(learnerCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Student number not found: " + learnerCode));
+        SubmissionSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + sessionId));
+
+        Module module = session.getAssignment() == null ? null : session.getAssignment().getModule();
+        if (module == null || !isEnrolledOn(learner, module)) {
+            throw new ResourceNotFoundException("Session not found with id: " + sessionId);
+        }
+        return session;
     }
 
     private boolean isEnrolledOn(Learner learner, Module module) {
@@ -216,6 +254,8 @@ public class ModuleService {
                             .endTime(s.getEndTime())
                             .status(s.getStatus().name())
                             .submitted(submitted)
+                            .taskFileName(s.getTaskFileName())
+                            .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
                             .build();
                 })
                 .collect(Collectors.toList());

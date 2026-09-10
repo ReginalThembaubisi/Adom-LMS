@@ -14,9 +14,12 @@ import com.example.learnerassignments.service.LearnerService;
 import com.example.learnerassignments.service.MessageService;
 import com.example.learnerassignments.service.ModuleService;
 import com.example.learnerassignments.model.LearnerDocument;
+import com.example.learnerassignments.model.ModuleFile;
+import com.example.learnerassignments.model.SubmissionSession;
 import com.example.learnerassignments.model.PoeDocumentType;
 import com.example.learnerassignments.model.ReviewStatus;
 import com.example.learnerassignments.service.LearnerDocumentService;
+import com.example.learnerassignments.service.StoredFileService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.exception.InvalidFileException;
 import org.springframework.http.HttpHeaders;
@@ -51,6 +54,7 @@ public class MeController {
     private final MessageService messageService;
     private final SubmissionService submissionService;
     private final ChatbotService chatbotService;
+    private final StoredFileService storedFileService;
     private final LearnerDocumentService documentService;
     private final LearnerTokenService tokenService;
     private final LecturerRepository lecturerRepository;
@@ -152,6 +156,66 @@ public class MeController {
                         "inline; filename=\"" + document.getOriginalFilename() + "\"")
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
                 .body(documentService.load(document));
+    }
+
+    /**
+     * A module file (facilitator guide, slides, notes) served through this application.
+     *
+     * The frontend used to send the browser straight to the stored URL. That produced a
+     * download named after the Cloudinary public_id, which by design carries no file
+     * extension — the raw/PDF delivery restriction keys off a recognised format, so files are
+     * stored under an extension-less id and the real name is kept here instead. The result was
+     * a learner downloading "1789044791251_Practical_2_-_LSUMS_IoT..." with no type, which
+     * Windows cannot open. Serving it here puts the real filename back on the response.
+     *
+     * It also means course material stops being fetched by the learner's browser from a third
+     * party, and stops being readable by anyone holding the URL.
+     */
+    @GetMapping("/module-files/{fileId}/download")
+    public ResponseEntity<?> downloadModuleFile(@PathVariable Long fileId) {
+        LearnerPrincipal principal = currentLearner.require();
+        ModuleFile file = moduleService.requireModuleFileForLearner(fileId, principal.learnerCode());
+
+        String filename = firstNonBlank(file.getOriginalFilename(), file.getTitle(), "document");
+        return fileResponse(file.getFilePath(), filename, "file");
+    }
+
+    /** The task brief attached to a session, on the same terms. */
+    @GetMapping("/sessions/{sessionId}/brief")
+    public ResponseEntity<?> downloadSessionBrief(@PathVariable Long sessionId) {
+        LearnerPrincipal principal = currentLearner.require();
+        SubmissionSession session = moduleService.requireSessionForLearner(sessionId, principal.learnerCode());
+
+        if (session.getTaskFilePath() == null || session.getTaskFilePath().isBlank()) {
+            throw new ResourceNotFoundException("This session has no brief attached.");
+        }
+        String filename = firstNonBlank(session.getTaskFileName(), "brief");
+        return fileResponse(session.getTaskFilePath(), filename, "brief");
+    }
+
+    /**
+     * Fetch-and-re-serve, with the filename the facilitator uploaded.
+     *
+     * Content-Disposition is "attachment" because both of these are things a learner saves and
+     * opens in Word or a PDF reader, not things the portal renders. The extension on that
+     * filename is what makes the saved file openable.
+     */
+    private ResponseEntity<?> fileResponse(String storedPath, String filename, String description) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(documentService.resolveContentType(filename)))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename.replace("\"", "") + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
+                .body(storedFileService.open(storedPath, description));
+    }
+
+    private String firstNonBlank(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return "document";
     }
 
     private PoeDocumentType parseType(String raw) {

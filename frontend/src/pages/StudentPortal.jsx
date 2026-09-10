@@ -294,17 +294,19 @@ const StudentPortal = () => {
         }
     };
 
-    // Guides and briefs are either an absolute Cloudinary URL, which the browser fetches
-    // directly, or a path under /uploads on this server — which now requires authentication,
-    // because that directory used to serve learner submissions to anyone who guessed a
-    // filename. An <a href> cannot send the token, so same-origin files are fetched here and
-    // saved from an object URL instead.
+    // Guides and briefs are fetched from this server and saved from an object URL.
+    //
+    // They used to be opened straight from the stored Cloudinary URL. That named the saved
+    // file after the public_id, which deliberately carries no extension — files are stored
+    // under an extension-less id to sidestep Cloudinary's raw/PDF delivery restriction, and
+    // the real name is kept in our database instead. A learner ended up with
+    // "1789044791251_Practical_2_-_LSUMS_IoT..." and no file type, which Windows will not
+    // open. The endpoint sends the real filename back, and this sets it on the download.
+    //
+    // An <a href> cannot carry the bearer token, which is the other reason it goes through
+    // fetch rather than a link.
     const openCourseFile = async (path, filename) => {
         if (!path) return;
-        if (path.startsWith('http://') || path.startsWith('https://')) {
-            window.open(path, '_blank', 'noopener,noreferrer');
-            return;
-        }
 
         try {
             const res = await authFetch(path);
@@ -646,7 +648,7 @@ const StudentPortal = () => {
                                                             <p className="font-semibold text-[13px] text-[#101425] truncate">{file.title || 'Untitled Material'}</p>
                                                             <p className="text-[10px] text-[#8A90A8] mt-0.5">{file.fileType}</p>
                                                         </div>
-                                                        <button onClick={() => openCourseFile(file.filePath, file.originalFilename || file.title)}
+                                                        <button onClick={() => openCourseFile(`/api/me/module-files/${file.id}/download`, file.originalFilename || file.title)}
                                                             className="text-[11px] font-semibold text-[#4A3AFF] flex-shrink-0 px-3 py-1.5 rounded-xl cursor-pointer"
                                                             style={{background:'#EEF0FF'}}>
                                                             Download
@@ -695,10 +697,10 @@ const StudentPortal = () => {
                                                     {s.description && <p className="text-[11px] text-[#8A90A8]">{s.description}</p>}
                                                 </div>
 
-                                                {s.taskFilePath && (
+                                                {s.hasBrief && (
                                                     <div className="flex justify-between items-center px-3 py-2 rounded-xl gap-2" style={{background:'#F6F7FB'}}>
                                                         <span className="text-[10px] font-semibold text-[#101425] truncate flex-shrink min-w-0">{s.taskFileName || 'Brief Attachment'}</span>
-                                                        <button onClick={() => openCourseFile(s.taskFilePath, s.taskFileName)}
+                                                        <button onClick={() => openCourseFile(`/api/me/sessions/${s.id}/brief`, s.taskFileName)}
                                                             className="text-[10px] font-semibold text-[#4A3AFF] flex-shrink-0 cursor-pointer">Download Brief</button>
                                                     </div>
                                                 )}
@@ -827,8 +829,8 @@ const StudentPortal = () => {
                                             style={{background:'#4A3AFF', boxShadow:'0 8px 18px -8px rgba(74,58,255,.7)'}}>
                                             Submit
                                         </button>
-                                        {timeline[0].taskFilePath && (
-                                            <button onClick={() => openCourseFile(timeline[0].taskFilePath, timeline[0].taskFileName)}
+                                        {timeline[0].hasBrief && (
+                                            <button onClick={() => openCourseFile(`/api/me/sessions/${timeline[0].sessionId}/brief`, timeline[0].taskFileName)}
                                                 className="flex-1 py-2.5 rounded-xl text-center font-semibold text-[13px] text-[#8A90A8] cursor-pointer"
                                                 style={{background:'#F6F7FB'}}>
                                                 Brief
