@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@lombok.extern.slf4j.Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -184,10 +185,32 @@ public class GlobalExceptionHandler {
         return text.toString();
     }
 
+    /**
+     * Anything not handled above.
+     *
+     * Spring's own MVC exceptions are let through with the status they already carry. Without
+     * that, this catch-all turned every one of them into a 500: a missing request parameter, a
+     * wrong HTTP method, an unsupported content type — all client mistakes — came back as
+     * "Internal Server Error". That is wrong twice over. The caller cannot tell they sent a bad
+     * request, and nobody watching error rates can tell a real fault from someone's typo.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
+
+        if (ex instanceof org.springframework.web.ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.valueOf(errorResponse.getStatusCode().value());
+            body.put("status", status.value());
+            body.put("error", status.getReasonPhrase());
+            body.put("message", ex.getMessage() != null ? ex.getMessage() : status.getReasonPhrase());
+            return ResponseEntity.status(status).body(body);
+        }
+
+        // A genuine, unexpected failure. Logged here because nothing else was logging it —
+        // which is why this handler quietly answering 500 went unnoticed for so long.
+        log.error("Unhandled exception", ex);
+
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", "Internal Server Error");
         body.put("message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred.");
