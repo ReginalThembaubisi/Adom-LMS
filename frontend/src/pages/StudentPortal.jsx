@@ -21,7 +21,8 @@ import {
     ClipboardText,
     UserCircle,
     MagnifyingGlass,
-    UploadSimple
+    UploadSimple,
+    Bell
 } from '@phosphor-icons/react';
 
 // Module/slot titles come from the backend in ALL CAPS (SETA unit-standard convention);
@@ -123,6 +124,8 @@ const StudentPortal = () => {
     const [history, setHistory] = useState([]);
     const [viewingSubmission, setViewingSubmission] = useState(null);
     const [unreadMessages, setUnreadMessages] = useState(0);
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const [notifications, setNotifications] = useState([]);
 
     // Calendar State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -172,6 +175,100 @@ const StudentPortal = () => {
         return () => clearInterval(interval);
     }, [studentNumber]);
 
+    /**
+     * Notification badge: polled always, pushed when possible.
+     *
+     * The poll is the delivery mechanism and the stream is an optimisation on top of it. That
+     * order matters here — learners are often on mobile connections that drop silently, behind
+     * proxies that buffer, or on phones that sleep through an event. If the stream never
+     * connected at all the badge would still be right within 45 seconds, which is the property
+     * worth protecting.
+     *
+     * Read with fetch rather than EventSource because EventSource cannot set a header, and the
+     * only alternative would be putting the session token in the query string — which is the
+     * exact leak that was removed from this codebase in Phase 1. A token in a URL ends up in
+     * access logs, browser history and referrer headers.
+     */
+    useEffect(() => {
+        if (!studentNumber) return;
+        let cancelled = false;
+        let retryTimer = null;
+
+        fetchUnreadNotifications();
+        const poll = setInterval(fetchUnreadNotifications, 45000);
+
+        const openStream = async () => {
+            try {
+                const res = await authFetch('/api/me/notifications/stream');
+                if (!res.ok || !res.body) throw new Error('stream unavailable');
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (!cancelled) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // Server-sent events are separated by a blank line. Anything after the last
+                    // one is a partial event and stays in the buffer.
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop() || '';
+                    for (const part of parts) {
+                        if (part.includes('event:notification') || part.includes('event: notification')) {
+                            // The push carries no content — it says go and look, and the fetch
+                            // below goes through the authenticated endpoint. One place decides
+                            // what this learner may see.
+                            fetchUnreadNotifications();
+                        }
+                    }
+                }
+            } catch (e) {
+                // Expected on a flaky connection. The poll above is still running.
+            }
+            if (!cancelled) {
+                retryTimer = setTimeout(openStream, 60000);
+            }
+        };
+        openStream();
+
+        return () => {
+            cancelled = true;
+            clearInterval(poll);
+            if (retryTimer) clearTimeout(retryTimer);
+        };
+    }, [studentNumber]);
+
+    const fetchUnreadNotifications = async () => {
+        try {
+            const res = await authFetch('/api/me/notifications/unread-count');
+            if (res.ok) {
+                const data = await res.json();
+                setUnreadNotifications(data.unread || 0);
+            }
+        } catch (e) {
+            // Silent — background poll.
+        }
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await authFetch('/api/me/notifications');
+            if (!res.ok) return;
+            const data = await res.json();
+            setNotifications(data.items || []);
+            setUnreadNotifications(data.unread || 0);
+            // Opening the list is reading them.
+            if ((data.unread || 0) > 0) {
+                await authFetch('/api/me/notifications/read', { method: 'POST' });
+                setUnreadNotifications(0);
+            }
+        } catch (e) {
+            // Silent.
+        }
+    };
+
     // Per-tab data fetch — fires only on first visit to each tab
     useEffect(() => {
         if (!studentNumber) return;
@@ -184,6 +281,7 @@ const StudentPortal = () => {
             fetchModules();
             fetchTimeline();
             fetchHistory();
+            fetchNotifications();
         } else if (activeTab === 'modules') {
             fetchModules();
             fetchTimeline();
@@ -777,6 +875,29 @@ const StudentPortal = () => {
                 {/* ── Home Tab ── */}
                 {activeTab === 'home' && !selectedModule && (
                     <div className="animate-fadeIn">
+                        {/* What has happened since they last looked. On Home because that is
+                            where a learner lands, and unread-first because the point of a badge
+                            is to lead somewhere. */}
+                        {notifications.length > 0 && (
+                            <div className="mx-4 mt-4 space-y-2">
+                                {notifications.slice(0, 4).map(n => (
+                                    <div key={n.id}
+                                        className="rounded-2xl px-4 py-3 flex items-start gap-3"
+                                        style={{background: n.read ? '#F6F7FB' : '#EEF0FF',
+                                                border: n.read ? '1px solid rgba(16,20,37,0.06)' : '1px solid rgba(74,58,255,0.25)'}}>
+                                        <Bell size={16} weight={n.read ? 'regular' : 'fill'}
+                                            color={n.read ? '#8A90A8' : '#4A3AFF'} className="mt-0.5 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] leading-snug text-[#101425]"
+                                                style={{fontWeight: n.read ? 500 : 700}}>{n.body}</p>
+                                            <p className="text-[10px] text-[#8A90A8] mt-0.5">
+                                                {new Date(n.createdAt).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         {/* Greeting banner — inset card on page bg */}
                         <div className="relative overflow-hidden mx-4 mt-4 px-5 pt-8 pb-7" style={{background:'#101425', borderRadius:'24px'}}>
                             <div className="absolute top-0 right-0 w-52 h-52 rounded-full pointer-events-none"
@@ -1227,6 +1348,12 @@ const StudentPortal = () => {
                                     <span className="absolute -top-1 right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
                                         style={{background:'#E0524A'}}>
                                         {unreadMessages}
+                                    </span>
+                                )}
+                                {id === 'home' && unreadNotifications > 0 && (
+                                    <span className="absolute -top-1 right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                                        style={{background:'#E0524A'}}>
+                                        {unreadNotifications}
                                     </span>
                                 )}
                             </button>

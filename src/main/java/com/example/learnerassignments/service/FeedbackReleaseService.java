@@ -1,7 +1,6 @@
 package com.example.learnerassignments.service;
 
 import com.example.learnerassignments.model.*;
-import com.example.learnerassignments.repository.NotificationRepository;
 import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.repository.SubmissionSessionRepository;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
@@ -31,7 +30,7 @@ public class FeedbackReleaseService {
 
     private final SubmissionSessionRepository sessionRepository;
     private final SubmissionRepository submissionRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     /** What a release did, so the caller can tell the facilitator something true. */
     public record ReleaseResult(int published, int alreadyPublished, int notified, int unmarked) {}
@@ -84,18 +83,12 @@ public class FeedbackReleaseService {
 
         String sessionName = session.getSessionName();
         for (Learner learner : learners) {
-            notificationRepository.save(Notification.builder()
-                    .userId(learner.getId())
-                    .userRole("LEARNER")
-                    .type(NotificationType.FEEDBACK_RELEASED)
-                    .refType("SESSION")
-                    .refId(session.getId())
-                    // Names this learner's own session and nobody else. No link: learners were
-                    // told this system will never send them one, and a notification carrying a
-                    // URL teaches them to click things that look like this.
-                    .body("Your marking for " + sessionName + " is ready. Open the portal to see it.")
-                    .createdAt(now)
-                    .build());
+            // Through NotificationService rather than the repository, so this row gets the same
+            // treatment as every other: no link, and the open portal is nudged to look.
+            notificationService.notifyLearner(learner, NotificationType.FEEDBACK_RELEASED,
+                    "SESSION", session.getId(),
+                    // Names this learner's own session and nobody else.
+                    "Your marking for " + sessionName + " is ready. Open the portal to see it.");
         }
 
         log.info("Feedback released for session {} ({}): published {}, already published {}, "

@@ -19,6 +19,8 @@ import com.example.learnerassignments.model.SubmissionSession;
 import com.example.learnerassignments.model.PoeDocumentType;
 import com.example.learnerassignments.model.ReviewStatus;
 import com.example.learnerassignments.service.LearnerDocumentService;
+import com.example.learnerassignments.service.NotificationService;
+import com.example.learnerassignments.service.NotificationStream;
 import com.example.learnerassignments.service.StoredFileService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.exception.InvalidFileException;
@@ -31,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -55,6 +58,8 @@ public class MeController {
     private final SubmissionService submissionService;
     private final ChatbotService chatbotService;
     private final StoredFileService storedFileService;
+    private final NotificationService notificationService;
+    private final NotificationStream notificationStream;
     private final LearnerDocumentService documentService;
     private final LearnerTokenService tokenService;
     private final LecturerRepository lecturerRepository;
@@ -121,6 +126,63 @@ public class MeController {
     // Learners supply these themselves. There is deliberately no path for an admin to upload
     // on their behalf: for a forty-learner cohort that is around a hundred and sixty uploads
     // done by hand, and the person who owns the document is the one who has it.
+
+    /** Everything this learner has been told, newest first. */
+    @GetMapping("/notifications")
+    public ResponseEntity<?> getMyNotifications() {
+        LearnerPrincipal principal = currentLearner.require();
+        List<NotificationDto> items = notificationService.listFor(principal.learnerId()).stream()
+                .map(n -> NotificationDto.builder()
+                        .id(n.getId())
+                        .type(n.getType() != null ? n.getType().name() : null)
+                        .refType(n.getRefType())
+                        .refId(n.getRefId())
+                        .body(n.getBody())
+                        .createdAt(n.getCreatedAt())
+                        .read(n.getReadAt() != null)
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("unread", notificationService.unreadCount(principal.learnerId()));
+        body.put("items", items);
+        return ResponseEntity.ok(body);
+    }
+
+    /** Just the badge, for a portal that only wants the number. */
+    @GetMapping("/notifications/unread-count")
+    public ResponseEntity<?> getMyUnreadNotificationCount() {
+        LearnerPrincipal principal = currentLearner.require();
+        return ResponseEntity.ok(java.util.Map.of("unread", notificationService.unreadCount(principal.learnerId())));
+    }
+
+    /**
+     * Clears the badge.
+     *
+     * Scoped to the learner the request authenticated as, never an id in the path — otherwise
+     * clearing somebody else's badge is one request away, and they would never know why they
+     * missed their result.
+     */
+    @PostMapping("/notifications/read")
+    public ResponseEntity<?> markMyNotificationsRead() {
+        LearnerPrincipal principal = currentLearner.require();
+        return ResponseEntity.ok(java.util.Map.of("markedRead", notificationService.markAllRead(principal.learnerId())));
+    }
+
+    /**
+     * Live push for an open portal.
+     *
+     * Carries no content — it says "go and look", and the client fetches through the
+     * authenticated endpoints above. That keeps one place deciding what a learner may see, and
+     * means a stale connection can never deliver something the learner should no longer have.
+     *
+     * The client also polls. This is an optimisation over polling, not a replacement for it.
+     */
+    @GetMapping(value = "/notifications/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMyNotifications() {
+        LearnerPrincipal principal = currentLearner.require();
+        return notificationStream.subscribe(principal.learnerId(), NotificationService.LEARNER_ROLE);
+    }
 
     /** Released marking only. A draft or an internal report is not reachable from here. */
     @GetMapping("/feedback")

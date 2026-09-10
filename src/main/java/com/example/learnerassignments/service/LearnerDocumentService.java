@@ -5,6 +5,7 @@ import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.model.Learner;
 import com.example.learnerassignments.model.LearnerDocument;
 import com.example.learnerassignments.model.PoeDocumentType;
+import com.example.learnerassignments.model.NotificationType;
 import com.example.learnerassignments.model.ReviewStatus;
 import com.example.learnerassignments.repository.LearnerDocumentRepository;
 import com.example.learnerassignments.repository.LearnerRepository;
@@ -45,6 +46,7 @@ public class LearnerDocumentService {
     private final LearnerRepository learnerRepository;
     private final CloudinaryService cloudinaryService;
     private final StoredFileService storedFileService;
+    private final NotificationService notificationService;
 
     /** Documents are personal, so they never go in the publicly served uploads directory. */
     @Value("${file.submission-dir:private-uploads}")
@@ -139,6 +141,20 @@ public class LearnerDocumentService {
         document.setReviewNote(note == null || note.isBlank() ? null : note.trim());
         document.setReviewedAt(LocalDateTime.now());
         document.setReviewedBy(reviewedBy);
+
+        // Only a rejection is worth telling them about: an acceptance needs nothing from them,
+        // and a badge that lights up for things requiring no action stops being read.
+        if (status == ReviewStatus.REJECTED) {
+            notificationService.notifyLearner(
+                    document.getLearner(),
+                    NotificationType.DOCUMENT_REJECTED,
+                    "DOCUMENT", document.getId(),
+                    // The reviewer's own words. Being told a document was rejected without the
+                    // reason means guessing, re-uploading the same thing, and being rejected
+                    // again.
+                    "Your " + document.getDocumentType().getLabel() + " needs to be uploaded again: "
+                            + document.getReviewNote());
+        }
         return document;
     }
 

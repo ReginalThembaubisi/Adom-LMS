@@ -41,6 +41,8 @@ public class LecturerController {
     private final SubmissionService submissionService;
     private final CloudinaryService cloudinaryService;
     private final EnrolmentService enrolmentService;
+    private final com.example.learnerassignments.repository.LearnerRepository learnerRepository;
+    private final com.example.learnerassignments.service.NotificationService notificationService;
     private final com.example.learnerassignments.service.AuditLogService auditLogService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
@@ -145,6 +147,14 @@ public class LecturerController {
                 .sha256(com.example.learnerassignments.service.ContentHash.of(file))
                 .build();
         moduleFileRepository.save(moduleFile);
+
+        // Everyone on the module is told once. Enrolment comes from the join table, which is
+        // why populating it mattered: before that a new guide would have reached nobody.
+        notificationService.notifyModuleLearners(
+                learnerRepository.findByModules_Id(module.getId()),
+                com.example.learnerassignments.model.NotificationType.GUIDE_PUBLISHED,
+                "MODULE", module.getId(),
+                "New material for " + module.getModuleName() + ": " + title);
 
         // Keep updating legacy filePath for "Syllabus" files
         if ("Syllabus".equalsIgnoreCase(fileType)) {
