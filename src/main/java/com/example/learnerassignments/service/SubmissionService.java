@@ -12,8 +12,6 @@ import com.example.learnerassignments.repository.SubmissionSessionRepository;
 import com.example.learnerassignments.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -21,11 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -87,7 +80,11 @@ public class SubmissionService {
         String filePathString;
         if (cloudinaryService.isConfigured()) {
             try {
-                filePathString = cloudinaryService.uploadFile(file);
+                // Stores the public_id, not the secure_url. The file goes up as an
+                // authenticated resource, so the URL alone no longer opens it — every read
+                // goes through the ownership check in SubmissionController and a signature
+                // generated here.
+                filePathString = cloudinaryService.uploadLearnerFile(file);
             } catch (IOException e) {
                 throw new RuntimeException("Could not upload file to Cloudinary. Please try again!", e);
             }
@@ -320,25 +317,6 @@ public class SubmissionService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public Map.Entry<Submission, Resource> loadSubmissionResource(Long submissionId) {
-        Submission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
-
-        try {
-            Path filePath = Paths.get(submission.getFilePath()).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
-                return new AbstractMap.SimpleEntry<>(submission, resource);
-            } else {
-                throw new ResourceNotFoundException("Could not read file for submission id: " + submissionId);
-            }
-        } catch (MalformedURLException ex) {
-            throw new ResourceNotFoundException("File path invalid for submission id: " + submissionId);
-        }
-    }
-
     @Transactional
     public SubmissionResponse gradeSubmission(Long submissionId, GradeSubmissionRequest request, String graderRole, String graderName) {
         if (request.getOutcome() != SubmissionStatus.COMPETENT && request.getOutcome() != SubmissionStatus.NOT_YET_COMPETENT) {
@@ -395,11 +373,13 @@ public class SubmissionService {
             throw new IllegalStateException("File storage is not configured.");
         }
         String markedSha256 = ContentHash.of(file);
-        String url = cloudinaryService.uploadFile(file);
-        submission.setMarkedFilePath(url);
+        // A marked copy carries the assessor's decision on somebody's work, so it is stored
+        // exactly like the original: authenticated, addressed by public_id.
+        String publicId = cloudinaryService.uploadLearnerFile(file);
+        submission.setMarkedFilePath(publicId);
         submission.setMarkedSha256(markedSha256);
         submissionRepository.save(submission);
-        return url;
+        return publicId;
     }
 
     @Transactional(readOnly = true)
@@ -437,57 +417,11 @@ public class SubmissionService {
                 .collect(Collectors.toList());
     }
 
-    public Resource loadLocalResource(String pathStr) {
-        try {
-            Path path = Paths.get(pathStr).normalize();
-            Resource resource = new UrlResource(path.toUri());
-            if (resource.exists() || resource.isReadable()) {
-                return resource;
-            } else {
-                throw new ResourceNotFoundException("Could not read file at path: " + pathStr);
-            }
-        } catch (MalformedURLException ex) {
-            throw new ResourceNotFoundException("Invalid file path: " + pathStr);
-        }
-    }
-
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";
         }
         return filename.substring(filename.lastIndexOf(".") + 1);
-    }
-
-    // Cloudinary serves "raw" resources (how submission files are stored) without a
-    // reliable, inline-renderable Content-Type — embedding the raw Cloudinary URL directly
-    // in an <iframe> left the viewer blank instead of showing the document. Fetching the
-    // bytes ourselves and re-serving them with a Content-Type we control fixes that.
-    public byte[] fetchExternalFile(String url) {
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpResponse<byte[]> response = client.send(
-                    HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
-
-            if (response.statusCode() != 200) {
-                // The body has been empty every time so far — Cloudinary sometimes puts the
-                // real reason for a CDN-edge rejection in a response header instead (e.g.
-                // x-cld-error). Surface both, plus which URL was actually requested, so this
-                // is finally diagnosable instead of another guess.
-                String cloudinaryBody = new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
-                if (cloudinaryBody.length() > 300) {
-                    cloudinaryBody = cloudinaryBody.substring(0, 300);
-                }
-                String headers = response.headers().map().entrySet().stream()
-                        .map(e -> e.getKey() + "=" + e.getValue())
-                        .collect(Collectors.joining("; "));
-                throw new ResourceNotFoundException(
-                        "Could not retrieve file from storage (status " + response.statusCode() + ") url=" + url
-                                + " body=" + cloudinaryBody + " headers=" + headers);
-            }
-            return response.body();
-        } catch (IOException | InterruptedException e) {
-            throw new ResourceNotFoundException("Could not retrieve file from storage: " + e.getMessage());
-        }
     }
 
     @Transactional
