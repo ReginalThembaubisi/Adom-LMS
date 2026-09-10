@@ -282,4 +282,84 @@ class FeedbackPublicationTest {
         return new World(learner.getId(), learner.getLearnerCode(), learner.getFullName(),
                 session.getId(), submission.getId(), learnership.getId());
     }
+
+    @Test
+    @DisplayName("The console is told what is held, what is released, and who a release would notify")
+    void consoleSeesReleaseState() {
+        World w = seed();
+        Learner other = extraLearner(w, "TWICE");
+        SubmissionSession session = sessionRepository.findById(w.sessionId).orElseThrow();
+        // One learner, two submissions: two held rows but one person to notify.
+        Submission a = submissionRepository.save(Submission.builder()
+                .learner(other).session(session).filePath("lms_secure/x").originalFilename("x.pdf")
+                .submittedAt(LocalDateTime.now()).status(SubmissionStatus.SUBMITTED).build());
+        Submission b = submissionRepository.save(Submission.builder()
+                .learner(other).session(session).filePath("lms_secure/y").originalFilename("y.pdf")
+                .submittedAt(LocalDateTime.now()).status(SubmissionStatus.SUBMITTED).build());
+        grade(a.getId(), "FACILITATOR", "a", 60);
+        grade(b.getId(), "FACILITATOR", "b", 65);
+
+        var overview = submissionService.getSessionSubmissionsOverview(w.sessionId, null);
+
+        assertThat(overview.getHeldCount()).isEqualTo(2);
+        assertThat(overview.getReleasedCount()).isZero();
+        // The confirmation the facilitator reads counts people, not submissions.
+        assertThat(overview.getWouldNotifyCount()).isEqualTo(1);
+        assertThat(overview.getSubmitted())
+                .filteredOn(row -> row.getLearnerCode().equals(other.getLearnerCode()))
+                .allSatisfy(row -> assertThat(row.isFeedbackReleased()).isFalse());
+    }
+
+    @Test
+    @DisplayName("After releasing, the console shows nothing held and the rows read as released")
+    void consoleSeesReleasedState() {
+        World w = seed();
+        grade(w.submissionId, "FACILITATOR", "Good work", 80);
+        releaseService.release(w.sessionId);
+
+        var overview = submissionService.getSessionSubmissionsOverview(w.sessionId, null);
+
+        assertThat(overview.getHeldCount()).isZero();
+        assertThat(overview.getReleasedCount()).isEqualTo(1);
+        assertThat(overview.getWouldNotifyCount()).isZero();
+        assertThat(overview.getSubmitted().get(0).isFeedbackReleased()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Unmarked and internal work is not counted as something a release would send")
+    void heldCountExcludesUnmarkedAndInternal() {
+        World w = seed();
+        Submission s = submissionRepository.findById(w.submissionId).orElseThrow();
+        s.setGradedAt(LocalDateTime.now());
+        s.setFeedbackStatus(FeedbackStatus.DRAFT);
+        s.setFeedbackVisibility(FeedbackVisibility.INTERNAL);
+        submissionRepository.save(s);
+
+        var overview = submissionService.getSessionSubmissionsOverview(w.sessionId, null);
+
+        // An internal report is never going to a learner, so offering to release it would be
+        // a lie about what the button does.
+        assertThat(overview.getHeldCount()).isZero();
+        assertThat(overview.getWouldNotifyCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("A learner who submitted twice is one person told, not two")
+    void notifiedCountsPeopleNotSubmissions() {
+        World w = seed();
+        SubmissionSession session = sessionRepository.findById(w.sessionId).orElseThrow();
+        Submission second = submissionRepository.save(Submission.builder()
+                .learner(learnerRepository.findById(w.learnerId).orElseThrow()).session(session)
+                .filePath("lms_secure/z").originalFilename("z.pdf")
+                .submittedAt(LocalDateTime.now()).status(SubmissionStatus.SUBMITTED).build());
+        grade(w.submissionId, "FACILITATOR", "one", 60);
+        grade(second.getId(), "FACILITATOR", "two", 70);
+
+        FeedbackReleaseService.ReleaseResult result = releaseService.release(w.sessionId);
+
+        // Two submissions published, one person notified. The message the facilitator reads is
+        // built from notified, not published, or it would overstate who was told.
+        assertThat(result.published()).isEqualTo(2);
+        assertThat(result.notified()).isEqualTo(1);
+    }
 }

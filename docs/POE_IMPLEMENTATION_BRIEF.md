@@ -675,6 +675,13 @@ Decisions taken while building it, because the tasks above do not settle them:
   annotations. Releasing an outcome with no explanation would be worse than releasing nothing,
   and the status a learner sees while marking is withheld is derived from the due date rather
   than remembered, since grading overwrites it.
+- **The Grading Console says the marking is held, and releases it.** A facilitator who does not
+  know feedback is being withheld will not go looking for a button, so the console shows how
+  many marked submissions are not visible to learners and offers the release beside that. The
+  confirmation names how many *learners* will be notified rather than asking "are you sure":
+  from the learner's side this is one-way, because once somebody has seen a result they have
+  told somebody. Counts are in people, not submissions — a learner who submitted twice is one
+  person told.
 - **`notifications` is Phase 6's table, built to its shape here.** Phase 5 only writes the
   feedback-released row; Phase 6 adds the badge counts and the live push that read it. Building
   a temporary notification to throw away would have cost more than agreeing the schema early.

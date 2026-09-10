@@ -230,7 +230,33 @@ public class SubmissionService {
                     .marksAwarded(latestSubmission.getMarksAwarded())
                     .hasMarkedCopy(latestSubmission.getMarkedFilePath() != null)
                     .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
+                    .feedbackReleased(latestSubmission.isMarkingVisibleToLearner())
                     .build());
+        }
+
+        // What a release would actually do, counted the same way the release itself counts:
+        // marked, learner-facing, not yet published. A facilitator deciding whether to press
+        // the button needs the number it will act on, not the number of rows on screen.
+        int heldCount = 0;
+        int releasedCount = 0;
+        Set<Long> wouldNotify = new HashSet<>();
+        for (Submission submission : submissions) {
+            if (submission.getGradedAt() == null
+                    || submission.getFeedbackVisibility() == FeedbackVisibility.INTERNAL) {
+                continue;
+            }
+            if (visibleLearnerIds != null && submission.getLearner() != null
+                    && !visibleLearnerIds.contains(submission.getLearner().getId())) {
+                continue;
+            }
+            if (submission.getFeedbackStatus() == FeedbackStatus.PUBLISHED) {
+                releasedCount++;
+            } else {
+                heldCount++;
+                if (submission.getLearner() != null) {
+                    wouldNotify.add(submission.getLearner().getId());
+                }
+            }
         }
 
         submittedList.sort(Comparator.comparing(
@@ -265,6 +291,9 @@ public class SubmissionService {
                 .endTime(session.getEndTime())
                 .dueDate(assignment.getDueDate())
                 .totalLearners(submittedList.size() + unsubmittedList.size())
+                .heldCount(heldCount)
+                .releasedCount(releasedCount)
+                .wouldNotifyCount(wouldNotify.size())
                 .submittedCount(submittedList.size())
                 .unsubmittedCount(unsubmittedList.size())
                 .submitted(submittedList)

@@ -99,11 +99,20 @@ public class SubmissionSessionController {
         body.put("alreadyPublished", result.alreadyPublished());
         body.put("notified", result.notified());
         body.put("unmarked", result.unmarked());
-        body.put("message", result.unmarked() > 0
-                ? result.published() + " learner(s) can now see their marking. "
-                        + result.unmarked() + " submission(s) in this session have not been marked yet "
-                        + "and were left alone."
-                : result.published() + " learner(s) can now see their marking.");
+        // Counted in people, because that is what the facilitator is deciding about, and
+        // because published counts submissions — a learner who submitted twice is one person
+        // told, not two. Saying "3 learners" when two were notified is the kind of small lie
+        // that stops people trusting the screen.
+        String released = result.notified() == 1
+                ? "1 learner can now see their marking."
+                : result.notified() + " learners can now see their marking.";
+        String leftover = result.unmarked() == 1
+                ? " 1 submission in this session has not been marked yet and was left alone."
+                : " " + result.unmarked() + " submissions in this session have not been marked yet "
+                        + "and were left alone.";
+        body.put("message", result.notified() == 0 && result.published() == 0
+                ? "Nothing new to release." + (result.unmarked() > 0 ? leftover : "")
+                : released + (result.unmarked() > 0 ? leftover : ""));
         return ResponseEntity.ok(body);
     }
 

@@ -38,4 +38,12 @@ public class SubmittedLearnerDto {
      */
     private boolean hasMarkedCopy;
     private boolean hasAnnotations;
+
+    /**
+     * Whether this learner can see the marking yet.
+     *
+     * The console shows it per row because "everything is marked" and "everything is released"
+     * look identical without it, and the difference is whether the learner knows their result.
+     */
+    private boolean feedbackReleased;
 }
