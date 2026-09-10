@@ -160,6 +160,13 @@ class LearnerAccessControlIntegrationTest {
                 .gradedByRole("LECTURER")
                 .gradedByName("Prof. Owner")
                 .marksAwarded(80)
+                // Released, because these tests are about who can see whose work, not about
+                // whether marking has been published. Leaving it a draft would make them pass
+                // for the wrong reason: the feedback would be hidden from everybody, including
+                // the learner it belongs to, and the scoping assertions would prove nothing.
+                .feedbackStatus(FeedbackStatus.PUBLISHED)
+                .feedbackVisibility(FeedbackVisibility.LEARNER)
+                .publishedAt(LocalDateTime.now())
                 .build());
     }
 

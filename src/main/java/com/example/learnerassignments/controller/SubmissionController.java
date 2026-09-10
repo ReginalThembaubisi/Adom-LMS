@@ -63,6 +63,11 @@ public class SubmissionController {
                 .orElse(false);
     }
 
+    /** Staff see drafts because they are the ones writing them; learners do not. */
+    private boolean isLearner(Authentication auth) {
+        return auth != null && auth.getPrincipal() instanceof LearnerPrincipal;
+    }
+
     /**
      * The submission, or 404 if this caller may not read it.
      *
@@ -95,6 +100,13 @@ public class SubmissionController {
         // The marked (annotated) copy is always uploaded as a PDF regardless of the original
         // format, since it's flattened from rendered pages — so it's served as one whenever
         // present, rather than falling back to the original's filename-derived content type.
+        // A learner asking for the marked copy of unreleased work gets the original, not a
+        // preview of marking nobody has published. Staff are unaffected — withholding a draft
+        // from the person marking it would make marking impossible.
+        if (marked && isLearner(auth) && !submission.isMarkingVisibleToLearner()) {
+            marked = false;
+        }
+
         String pathStr = (marked && submission.getMarkedFilePath() != null)
                 ? submission.getMarkedFilePath()
                 : submission.getFilePath();
@@ -151,7 +163,12 @@ public class SubmissionController {
 
     @GetMapping("/{id}/annotations")
     public ResponseEntity<String> getAnnotations(@PathVariable Long id, Authentication auth) {
-        requireReadable(id, auth);
+        Submission submission = requireReadable(id, auth);
+        // Strokes are marking too. Gating the marked copy but not these would publish the
+        // marking through the other door.
+        if (isLearner(auth) && !submission.isMarkingVisibleToLearner()) {
+            return ResponseEntity.noContent().build();
+        }
         String json = submissionService.getAnnotationsJson(id);
         if (json == null) return ResponseEntity.noContent().build();
         return ResponseEntity.ok()

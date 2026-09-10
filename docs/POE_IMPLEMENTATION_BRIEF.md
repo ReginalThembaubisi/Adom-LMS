@@ -641,7 +641,7 @@ which is the one claim the phase shipped unverified.
 
 ---
 
-### Phase 5 — Feedback draft/publish and visibility
+### Phase 5 — Feedback draft/publish and visibility — **COMPLETE**
 
 Tasks:
 
@@ -655,6 +655,39 @@ Acceptance criteria:
 - Draft feedback is invisible to the learner via API and portal.
 - An `INTERNAL` record appears in the export but not in `GET /api/me/feedback`.
 - Releasing a session creates exactly one notification per learner, containing no other learner's name.
+
+Decisions taken while building it, because the tasks above do not settle them:
+
+- **A moderator's report does not replace the facilitator's feedback.** A submission has one
+  feedback field but several reports over its life. Marking the submission INTERNAL because a
+  moderator wrote a report would hide the facilitator's comment from the learner too, which is
+  the opposite of what moderation is for. Visibility therefore also lives on
+  `SubmissionGradingHistory`, per report: the moderator's outcome and marks update the
+  submission, their written report is INTERNAL and stays in the history for the export, and the
+  learner keeps reading what the facilitator wrote.
+- **Re-marking released work stays released.** Retracting feedback somebody has already read is
+  worse than showing them a correction, so a re-mark on published work publishes immediately
+  rather than dropping back to draft.
+- **Releasing is ADMIN and LECTURER only**, because `POST /api/sessions/**` already is.
+  Assessors mark; the facilitator decides when a cohort sees its results. If assessors should
+  release too, that is a `SecurityConfig` change and a deliberate one.
+- **The whole of marking is withheld together** — outcome, marks, comment, marked copy and
+  annotations. Releasing an outcome with no explanation would be worse than releasing nothing,
+  and the status a learner sees while marking is withheld is derived from the due date rather
+  than remembered, since grading overwrites it.
+- **`notifications` is Phase 6's table, built to its shape here.** Phase 5 only writes the
+  feedback-released row; Phase 6 adds the badge counts and the live push that read it. Building
+  a temporary notification to throw away would have cost more than agreeing the schema early.
+
+**A publication backfill ships with it, and is the part that matters most.** Until this phase
+nothing read `feedback_status`, so every marked submission was visible whatever it said. Phase
+2's backfill tried to prevent Phase 5 retracting that, and mostly did, but it decided by looking
+for a rasterized marked copy or a non-empty comment — which misses work graded with an outcome
+and marks but no written comment, and everything marked after that backfill ran, which takes the
+entity default of DRAFT. `FeedbackPublicationBackfill` publishes anything with a `graded_at`,
+which is the honest record that marking happened and the learner could see it, stamping
+`published_at` with the date it was marked rather than the date of the backfill. Internal
+reports are never published.
 
 ---
 
