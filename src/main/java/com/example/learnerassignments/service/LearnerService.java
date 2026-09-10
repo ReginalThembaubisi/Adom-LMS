@@ -123,7 +123,7 @@ public class LearnerService {
                         .gradedByRole(s.getGradedByRole())
                         .gradedByName(s.getGradedByName())
                         .marksAwarded(s.getMarksAwarded())
-                        .markedFilePath(s.getMarkedFilePath())
+                        .hasMarkedCopy(s.getMarkedFilePath() != null)
                         .hasAnnotations(s.getAnnotationsJson() != null)
                         .build())
                 .collect(Collectors.toList());

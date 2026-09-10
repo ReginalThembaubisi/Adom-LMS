@@ -17,7 +17,7 @@ const SubmissionViewer = ({ submission, onClose }) => {
     const [loadError, setLoadError] = useState(false);
 
     const hasAnnotations = submission.hasAnnotations;
-    const hasMarkedCopy = !!submission.markedFilePath && !hasAnnotations;
+    const hasMarkedCopy = submission.hasMarkedCopy && !hasAnnotations;
 
     // The document is fetched here, with the learner's token, and rendered from an object
     // URL. Nothing else works without handing the file to somebody: an <iframe> pointed at
