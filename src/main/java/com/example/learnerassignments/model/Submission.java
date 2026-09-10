@@ -80,6 +80,39 @@ public class Submission {
     @Column(name = "annotations_json", columnDefinition = "TEXT")
     private String annotationsJson;
 
+    // --- Portfolio of Evidence columns (Phase 2) ---
+    // Added and backfilled only. Nothing reads them yet; the phases that do are named below.
+
+    /**
+     * The ModuleFile version of the brief this learner actually worked from.
+     *
+     * A plain id rather than a relationship: the brief specifies a nullable bigint, and a
+     * foreign key here would constrain existing rows that have no guide to point at. Phase 8
+     * resolves it so a moderator sees the brief as it was, not as it has since been reissued.
+     */
+    @Column(name = "guide_version_id")
+    private Long guideVersionId;
+
+    /** Whether marking has been released to the learner. Enforced from Phase 5. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "feedback_status", length = 20)
+    @Builder.Default
+    private FeedbackStatus feedbackStatus = FeedbackStatus.DRAFT;
+
+    /** Who the feedback is for. INTERNAL exports but never reaches the portal, from Phase 5. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "feedback_visibility", length = 20)
+    @Builder.Default
+    private FeedbackVisibility feedbackVisibility = FeedbackVisibility.LEARNER;
+
+    /** Content hash of the submitted file, computed at upload. */
+    @Column(name = "sha256", length = 64)
+    private String sha256;
+
+    /** Content hash of the marked copy, computed at upload. */
+    @Column(name = "marked_sha256", length = 64)
+    private String markedSha256;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

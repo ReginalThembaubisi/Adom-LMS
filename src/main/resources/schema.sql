@@ -263,3 +263,20 @@ CREATE TABLE IF NOT EXISTS moderator_assignments (
 );
 CREATE INDEX IF NOT EXISTS idx_moderator_assignment_moderator ON moderator_assignments(moderator_id);
 CREATE INDEX IF NOT EXISTS idx_moderator_assignment_learnership ON moderator_assignments(learnership_id);
+
+-- 14. Portfolio of Evidence columns (Phase 2)
+-- Every column is nullable. They are added to tables that already hold rows, and a NOT NULL
+-- column cannot be added to a populated table without a database default — which would fail
+-- the boot that ships it. PoeSchemaBackfill fills the existing rows; new rows arrive with
+-- values already set. A later phase can tighten these once no nulls remain.
+ALTER TABLE module_files ADD COLUMN IF NOT EXISTS poe_section INTEGER NULL;
+ALTER TABLE module_files ADD COLUMN IF NOT EXISTS version INTEGER NULL;
+ALTER TABLE module_files ADD COLUMN IF NOT EXISTS is_current BOOLEAN NULL;
+ALTER TABLE module_files ADD COLUMN IF NOT EXISTS visible_from TIMESTAMP NULL;
+ALTER TABLE module_files ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64) NULL;
+
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS guide_version_id BIGINT NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS feedback_status VARCHAR(20) NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS feedback_visibility VARCHAR(20) NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64) NULL;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS marked_sha256 VARCHAR(64) NULL;
