@@ -99,4 +99,16 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     @Query("SELECT COUNT(s) FROM Submission s WHERE s.filePath LIKE 'lms_secure/%'")
     long countAuthenticatedPublicIds();
+
+    /**
+     * Every (learner, module) pair a submission proves. Someone who submitted work for a module
+     * was enrolled on it, whatever the join table says.
+     */
+    @Query("""
+           SELECT DISTINCT s.learner.id, s.session.assignment.module.id
+           FROM Submission s
+           WHERE s.learner IS NOT NULL
+             AND s.session.assignment.module IS NOT NULL
+           """)
+    List<Object[]> findEnrolmentPairsProvenBySubmissions();
 }

@@ -33,6 +33,7 @@ public class SubmissionService {
     private final LearnerRepository learnerRepository;
     private final AssignmentRepository assignmentRepository;
     private final CloudinaryService cloudinaryService;
+    private final EnrolmentService enrolmentService;
     private final SubmissionGradingHistoryRepository gradingHistoryRepository;
 
     // Deliberately NOT the "uploads" directory: that one is mapped as a public static
@@ -128,6 +129,11 @@ public class SubmissionService {
                 .build();
 
         Submission savedSubmission = submissionRepository.save(submission);
+
+        // Accepting the work is the last honest moment to record that they were on the module.
+        // The roster is fixed at module creation now, but if that is ever missed again a
+        // submission must not be the thing that goes unrecorded.
+        enrolmentService.ensureEnrolled(learner, assignment.getModule());
 
         String successMessage = String.format(
                 "Submission received successfully for %s on session '%s' (%s) at %s (Status: %s).",

@@ -8,6 +8,7 @@ import com.example.learnerassignments.service.AuditLogService;
 import com.example.learnerassignments.service.BackupService;
 import com.example.learnerassignments.repository.SubmissionRepository;
 import com.example.learnerassignments.service.CloudinaryService;
+import com.example.learnerassignments.service.EnrolmentService;
 import com.example.learnerassignments.service.DeliveryHealthCheck;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class AdminController {
     private final com.example.learnerassignments.service.LearnerDocumentService learnerDocumentService;
     private final BackupService backupService;
     private final CloudinaryService cloudinaryService;
+    private final EnrolmentService enrolmentService;
     private final DeliveryHealthCheck deliveryHealthCheck;
     private final PasswordEncoder passwordEncoder;
 
@@ -100,6 +102,9 @@ public class AdminController {
                 .build();
 
         Module saved = moduleRepository.save(module);
+        // A module created after a cohort registered used to leave every one of them off its
+        // roster, because registration only enrols against the modules that exist at the time.
+        enrolmentService.enrolExistingLearnersOn(saved);
 
         AdminModuleResponse response = AdminModuleResponse.builder()
                 .id(saved.getId())

@@ -7,6 +7,7 @@ import com.example.learnerassignments.repository.*;
 import com.example.learnerassignments.service.SubmissionSessionService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.service.CloudinaryService;
+import com.example.learnerassignments.service.EnrolmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ public class LecturerController {
     private final SubmissionSessionService sessionService;
     private final SubmissionService submissionService;
     private final CloudinaryService cloudinaryService;
+    private final EnrolmentService enrolmentService;
     private final com.example.learnerassignments.service.AuditLogService auditLogService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
@@ -412,6 +414,9 @@ public class LecturerController {
                 .build();
 
         Module saved = moduleRepository.save(module);
+        // A module created after a cohort registered used to leave every one of them off its
+        // roster, because registration only enrols against the modules that exist at the time.
+        enrolmentService.enrolExistingLearnersOn(saved);
 
         AdminModuleResponse response = AdminModuleResponse.builder()
                 .id(saved.getId())
@@ -456,6 +461,9 @@ public class LecturerController {
         module.setModuleCode(request.getModuleCode());
         module.setCategory(category);
         Module saved = moduleRepository.save(module);
+        // A module created after a cohort registered used to leave every one of them off its
+        // roster, because registration only enrols against the modules that exist at the time.
+        enrolmentService.enrolExistingLearnersOn(saved);
 
         AdminModuleResponse response = AdminModuleResponse.builder()
                 .id(saved.getId())
