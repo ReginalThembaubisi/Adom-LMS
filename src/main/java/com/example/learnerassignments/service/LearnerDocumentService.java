@@ -189,6 +189,13 @@ public class LearnerDocumentService {
                 // anyone who ever sees that URL can read it, logged in or not, forever.
                 return cloudinaryService.uploadLearnerFile(file);
             } catch (IOException e) {
+                // Log the cause. This used to discard it, which meant a learner saw "please try
+                // again", the logs said nothing at all, and the only way to find out why the
+                // vault was rejecting documents was to guess. The learner-facing message stays
+                // generic — storage errors are not theirs to act on — but the reason has to
+                // land somewhere.
+                log.error("Could not upload {} for learner {} to Cloudinary.",
+                        documentType, learner.getLearnerCode(), e);
                 throw new InvalidFileException("That file could not be uploaded. Please try again.");
             }
         }
@@ -206,6 +213,8 @@ public class LearnerDocumentService {
             }
             return target.toString();
         } catch (IOException e) {
+            log.error("Could not write {} for learner {} to {}.",
+                    documentType, learner.getLearnerCode(), directory, e);
             throw new InvalidFileException("That file could not be saved. Please try again.");
         }
     }

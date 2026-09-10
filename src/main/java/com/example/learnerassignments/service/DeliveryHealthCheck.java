@@ -70,8 +70,19 @@ public class DeliveryHealthCheck {
         thread.start();
     }
 
+    /**
+     * The outcome of one probe, for the admin diagnostic endpoint. The boot path ignores it
+     * and reads the log instead; both come from the same run, so they cannot disagree.
+     *
+     * @param ok      whether a file uploaded through the authenticated path was read back intact
+     * @param step    which step was reached: upload, delivery, compare, or none
+     * @param detail  what happened, including the storage provider's own error where there is
+     *                one. Admin-only, and never contains a signed URL.
+     */
+    public record Result(boolean ok, String step, String detail) {}
+
     /** Visible for testing. Never throws. */
-    void run() {
+    Result run() {
         String publicId = null;
         long startedAt = System.currentTimeMillis();
         try {
@@ -91,7 +102,7 @@ public class DeliveryHealthCheck {
                         + "not be uploaded to storage at all. Learners will see uploads fail. Files "
                         + "already stored are unaffected and still open.",
                         System.currentTimeMillis() - startedAt, e);
-                return;
+                return new Result(false, "upload", describe(e));
             }
 
             if (publicId.startsWith("http")) {
@@ -100,7 +111,7 @@ public class DeliveryHealthCheck {
                 log.error("Authenticated delivery health check FAILED: the uploader returned a URL "
                         + "instead of a public_id. New learner files are being stored as publicly "
                         + "readable links.");
-                return;
+                return new Result(false, "upload", "The uploader returned a URL instead of a public_id.");
             }
 
             byte[] fetched;
@@ -117,28 +128,68 @@ public class DeliveryHealthCheck {
                         + "authenticated delivery are unaffected and still open. Do not announce the "
                         + "Documents tab until this line reads 'passed'. public_id={}",
                         System.currentTimeMillis() - startedAt, publicId, e);
-                return;
+                return new Result(false, "delivery", describe(e));
             }
 
             if (!Arrays.equals(probe, fetched)) {
                 log.error("Authenticated delivery health check FAILED: signed delivery returned {} "
                         + "bytes but they are not the bytes that were uploaded. Learner files may be "
                         + "served as the wrong content. public_id={}", fetched.length, publicId);
-                return;
+                return new Result(false, "compare",
+                        "Delivery returned " + fetched.length + " bytes, but not the ones uploaded.");
             }
 
             log.info("Authenticated delivery health check passed: uploaded {} bytes and read them "
                     + "back through a signed URL in {} ms. New learner uploads are readable.",
                     probe.length, System.currentTimeMillis() - startedAt);
+            return new Result(true, "complete",
+                    "Uploaded " + probe.length + " bytes and read them back through a signed URL.");
 
         } catch (Exception e) {
             // Anything the two named steps did not already account for.
             log.error("Authenticated delivery health check FAILED after {} ms for an unexpected "
                     + "reason. Treat new learner uploads as unproven until this reads 'passed'. "
                     + "public_id={}", System.currentTimeMillis() - startedAt, publicId, e);
+            return new Result(false, "unknown", describe(e));
         } finally {
             cleanUp(publicId);
         }
+    }
+
+    /**
+     * The provider's own words, which are the only part of a storage failure worth reading.
+     * Cloudinary says things like "Invalid Signature" or "Untrusted customer"; the wrapping
+     * exception class name says nothing. Includes the cause because the SDK usually wraps.
+     */
+    private String describe(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        for (Throwable t = e; t != null && sb.length() < 500; t = t.getCause()) {
+            if (t.getMessage() != null && !t.getMessage().isBlank()) {
+                if (sb.length() > 0) {
+                    sb.append(" — caused by: ");
+                }
+                sb.append(t.getMessage());
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+        return sb.length() == 0 ? e.getClass().getSimpleName() : sb.toString();
+    }
+
+    /**
+     * Runs the same probe on demand, for the admin diagnostic endpoint.
+     *
+     * Fixing a storage configuration problem otherwise means a redeploy and a cold start per
+     * attempt, with the answer only visible in the platform's log viewer.
+     */
+    public Result checkNow() {
+        if (!cloudinaryService.isConfigured()) {
+            return new Result(false, "configuration",
+                    "Cloudinary is not configured, so learner files are stored on local disk. "
+                            + "On this deployment that disk is ephemeral — files do not survive a restart.");
+        }
+        return run();
     }
 
     private void cleanUp(String publicId) {

@@ -189,4 +189,77 @@ class DeliveryHealthCheckTest {
     private List<Level> levels() {
         return logged.list.stream().map(ILoggingEvent::getLevel).toList();
     }
+
+    // --- the on-demand path, which is what an admin will actually use to diagnose this ---
+
+    @Test
+    @DisplayName("checkNow reports the storage provider's own error, not the wrapper's class name")
+    void checkNowSurfacesTheProviderMessage() throws Exception {
+        when(cloudinary.isConfigured()).thenReturn(true);
+        when(cloudinary.uploadLearnerFile(any(), anyString()))
+                .thenThrow(new java.io.IOException("Invalid Signature abc123. String to sign - 'public_id=...'"));
+
+        DeliveryHealthCheck.Result result = check.checkNow();
+
+        // "IOException" tells an admin nothing. Cloudinary's own words are the whole diagnosis.
+        assertThat(result.ok()).isFalse();
+        assertThat(result.step()).isEqualTo("upload");
+        assertThat(result.detail()).contains("Invalid Signature");
+    }
+
+    @Test
+    @DisplayName("checkNow unwraps a cause, since the SDK usually wraps the real error")
+    void checkNowUnwrapsCauses() throws Exception {
+        when(cloudinary.isConfigured()).thenReturn(true);
+        when(cloudinary.uploadLearnerFile(any(), anyString())).thenThrow(
+                new java.io.IOException("upload failed", new IllegalStateException("Untrusted customer")));
+
+        DeliveryHealthCheck.Result result = check.checkNow();
+
+        assertThat(result.detail()).contains("upload failed");
+        assertThat(result.detail()).contains("Untrusted customer");
+    }
+
+    @Test
+    @DisplayName("checkNow names the delivery step when storing worked and reading did not")
+    void checkNowDistinguishesDeliveryFromUpload() throws Exception {
+        when(cloudinary.isConfigured()).thenReturn(true);
+        when(cloudinary.uploadLearnerFile(any(), anyString())).thenReturn("lms_secure/1730_probe");
+        when(storedFiles.readBytes(anyString(), anyString()))
+                .thenThrow(new ResourceNotFoundException("could not be retrieved from storage"));
+
+        DeliveryHealthCheck.Result result = check.checkNow();
+
+        // Upload and delivery fail for different reasons and need different fixes; an admin
+        // staring at one message needs to know which half is broken.
+        assertThat(result.step()).isEqualTo("delivery");
+    }
+
+    @Test
+    @DisplayName("checkNow says so when there is no Cloudinary rather than reporting a pass")
+    void checkNowReportsMissingConfiguration() {
+        when(cloudinary.isConfigured()).thenReturn(false);
+
+        DeliveryHealthCheck.Result result = check.checkNow();
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.step()).isEqualTo("configuration");
+        assertThat(result.detail()).contains("not configured");
+    }
+
+    @Test
+    @DisplayName("A passing check reports it, so a green answer is distinguishable from a silent one")
+    void checkNowReportsSuccess() throws Exception {
+        when(cloudinary.isConfigured()).thenReturn(true);
+        when(cloudinary.uploadLearnerFile(any(), anyString())).thenAnswer(invocation -> {
+            uploaded = (byte[]) invocation.getArgument(0);
+            return "lms_secure/1730_probe";
+        });
+        when(storedFiles.readBytes(anyString(), anyString())).thenAnswer(invocation -> uploaded);
+
+        DeliveryHealthCheck.Result result = check.checkNow();
+
+        assertThat(result.ok()).isTrue();
+        assertThat(result.step()).isEqualTo("complete");
+    }
 }

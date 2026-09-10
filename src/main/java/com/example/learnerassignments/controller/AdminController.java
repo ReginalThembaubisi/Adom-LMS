@@ -7,6 +7,7 @@ import com.example.learnerassignments.repository.*;
 import com.example.learnerassignments.service.AuditLogService;
 import com.example.learnerassignments.service.BackupService;
 import com.example.learnerassignments.service.CloudinaryService;
+import com.example.learnerassignments.service.DeliveryHealthCheck;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,7 @@ public class AdminController {
     private final com.example.learnerassignments.service.LearnerDocumentService learnerDocumentService;
     private final BackupService backupService;
     private final CloudinaryService cloudinaryService;
+    private final DeliveryHealthCheck deliveryHealthCheck;
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/lecturers")
@@ -605,6 +607,26 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("message", "Failed to list backups: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Runs the storage delivery probe on demand and reports what happened.
+     *
+     * Diagnosing a storage configuration problem otherwise costs a redeploy and a cold start
+     * per attempt, with the answer only readable in the hosting platform's log viewer. This
+     * does the same upload-fetch-compare-delete as the boot check and returns the result,
+     * including the storage provider's own error text — which is the only part worth reading,
+     * and which the vault's learner-facing message deliberately does not show.
+     *
+     * Admin-only, because that error text is internal detail. It never contains a signed URL.
+     */
+    @PostMapping("/diagnostics/storage")
+    public ResponseEntity<?> checkStorage() {
+        DeliveryHealthCheck.Result result = deliveryHealthCheck.checkNow();
+        return ResponseEntity.ok(java.util.Map.of(
+                "ok", result.ok(),
+                "step", result.step(),
+                "detail", result.detail()));
     }
 
     // --- MARKING BACKLOG ---
