@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -59,8 +60,8 @@ class DeliveryHealthCheckTest {
     @DisplayName("A working round trip says so, and cleans up after itself")
     void passingRoundTripIsLogged() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenAnswer(invocation -> {
-            uploaded = (byte[]) invocation.getArgument(0);
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenAnswer(invocation -> {
+            uploaded = ((MultipartFile) invocation.getArgument(0)).getBytes();
             return "lms_secure/1730_probe";
         });
         when(storedFiles.readBytes(eq("lms_secure/1730_probe"), anyString()))
@@ -80,7 +81,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("A signed fetch that fails says what it means for the vault, not just that it failed")
     void failingFetchIsLoggedWithItsConsequence() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenReturn("lms_secure/1730_probe");
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenReturn("lms_secure/1730_probe");
         when(storedFiles.readBytes(anyString(), anyString()))
                 .thenThrow(new ResourceNotFoundException("could not be retrieved from storage"));
 
@@ -104,7 +105,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("Bytes that come back different are a failure, not a pass")
     void mismatchedBytesFail() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenReturn("lms_secure/1730_probe");
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenReturn("lms_secure/1730_probe");
         when(storedFiles.readBytes(anyString(), anyString()))
                 .thenReturn("something else entirely".getBytes(StandardCharsets.UTF_8));
 
@@ -117,7 +118,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("An uploader that goes back to returning URLs is caught")
     void aUrlFromTheUploaderIsAFailure() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString()))
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class)))
                 .thenReturn("https://res.cloudinary.com/x/raw/upload/lms_files/y");
 
         check.run();
@@ -130,7 +131,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("An upload that throws does not take the application down with it")
     void anUploadFailureIsContained() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString()))
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class)))
                 .thenThrow(new java.io.IOException("connection reset"));
 
         check.run();
@@ -147,8 +148,8 @@ class DeliveryHealthCheckTest {
     @DisplayName("A cleanup that fails does not turn a pass into a failure")
     void cleanupFailureDoesNotMaskAPass() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenAnswer(invocation -> {
-            uploaded = (byte[]) invocation.getArgument(0);
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenAnswer(invocation -> {
+            uploaded = ((MultipartFile) invocation.getArgument(0)).getBytes();
             return "lms_secure/1730_probe";
         });
         when(storedFiles.readBytes(anyString(), anyString())).thenAnswer(invocation -> uploaded);
@@ -196,7 +197,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("checkNow reports the storage provider's own error, not the wrapper's class name")
     void checkNowSurfacesTheProviderMessage() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString()))
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class)))
                 .thenThrow(new java.io.IOException("Invalid Signature abc123. String to sign - 'public_id=...'"));
 
         DeliveryHealthCheck.Result result = check.checkNow();
@@ -211,7 +212,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("checkNow unwraps a cause, since the SDK usually wraps the real error")
     void checkNowUnwrapsCauses() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenThrow(
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenThrow(
                 new java.io.IOException("upload failed", new IllegalStateException("Untrusted customer")));
 
         DeliveryHealthCheck.Result result = check.checkNow();
@@ -224,7 +225,7 @@ class DeliveryHealthCheckTest {
     @DisplayName("checkNow names the delivery step when storing worked and reading did not")
     void checkNowDistinguishesDeliveryFromUpload() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenReturn("lms_secure/1730_probe");
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenReturn("lms_secure/1730_probe");
         when(storedFiles.readBytes(anyString(), anyString()))
                 .thenThrow(new ResourceNotFoundException("could not be retrieved from storage"));
 
@@ -251,8 +252,8 @@ class DeliveryHealthCheckTest {
     @DisplayName("A passing check reports it, so a green answer is distinguishable from a silent one")
     void checkNowReportsSuccess() throws Exception {
         when(cloudinary.isConfigured()).thenReturn(true);
-        when(cloudinary.uploadLearnerFile(any(), anyString())).thenAnswer(invocation -> {
-            uploaded = (byte[]) invocation.getArgument(0);
+        when(cloudinary.uploadLearnerFile(any(MultipartFile.class))).thenAnswer(invocation -> {
+            uploaded = ((MultipartFile) invocation.getArgument(0)).getBytes();
             return "lms_secure/1730_probe";
         });
         when(storedFiles.readBytes(anyString(), anyString())).thenAnswer(invocation -> uploaded);

@@ -6,8 +6,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -93,7 +98,12 @@ public class DeliveryHealthCheck {
             byte[] probe = ("adom-lms delivery probe " + nonce()).getBytes(StandardCharsets.UTF_8);
 
             try {
-                publicId = cloudinaryService.uploadLearnerFile(probe, "delivery-probe");
+                // Through the MultipartFile entry point, not the byte[] one. The first version
+                // of this check called the byte[] overload directly and passed in production
+                // while every real upload failed, because the two took different branches
+                // inside the storage SDK. A probe that does not enter where the caller enters
+                // proves nothing about the caller.
+                publicId = cloudinaryService.uploadLearnerFile(new ProbeFile(probe));
             } catch (Exception e) {
                 // Storing is what failed. This one is at least loud at the point of use: a
                 // learner trying to upload gets an error and knows their document did not
@@ -202,6 +212,31 @@ public class DeliveryHealthCheck {
             // A leftover probe file is a few bytes and harmless; failing to remove it is not
             // worth a second scary line under the one that matters.
             log.debug("Could not remove the delivery health check probe {}.", publicId, e);
+        }
+    }
+
+    /**
+     * The smallest thing that satisfies the same entry point a learner upload arrives through,
+     * so the probe and the real path cannot diverge again.
+     */
+    private static final class ProbeFile implements MultipartFile {
+        private final byte[] content;
+
+        private ProbeFile(byte[] content) {
+            this.content = content;
+        }
+
+        @Override public String getName() { return "file"; }
+        @Override public String getOriginalFilename() { return "delivery-probe"; }
+        @Override public String getContentType() { return "text/plain"; }
+        @Override public boolean isEmpty() { return content.length == 0; }
+        @Override public long getSize() { return content.length; }
+        @Override public byte[] getBytes() { return content; }
+        @Override public InputStream getInputStream() { return new ByteArrayInputStream(content); }
+
+        @Override
+        public void transferTo(java.io.File destination) throws IOException {
+            Files.write(destination.toPath(), content);
         }
     }
 
