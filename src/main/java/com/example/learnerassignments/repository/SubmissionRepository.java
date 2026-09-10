@@ -75,6 +75,24 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
            """)
     List<Submission> findMissingFromRoster(org.springframework.data.domain.Pageable pageable);
 
+    /**
+     * Of those, the ones nobody has graded — the actual harm, counted across the whole table.
+     *
+     * The first version of this derived the number from the twenty-row sample, so it could
+     * never report more than twenty however much work was affected. A count that silently
+     * caps itself is worse than no count: it reads as reassurance.
+     */
+    @Query("""
+           SELECT COUNT(s) FROM Submission s
+           WHERE s.gradedAt IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM Learner l JOIN l.modules m
+               WHERE l.id = s.learner.id
+                 AND m.id = s.session.assignment.module.id
+           )
+           """)
+    long countMissingFromRosterUngraded();
+
     /** How stored file paths are shaped, which says when each storage era actually applied. */
     @Query("SELECT COUNT(s) FROM Submission s WHERE s.filePath LIKE 'http%'")
     long countLegacyUrlPaths();
