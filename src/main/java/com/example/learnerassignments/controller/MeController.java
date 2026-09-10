@@ -122,6 +122,13 @@ public class MeController {
     // on their behalf: for a forty-learner cohort that is around a hundred and sixty uploads
     // done by hand, and the person who owns the document is the one who has it.
 
+    /** Released marking only. A draft or an internal report is not reachable from here. */
+    @GetMapping("/feedback")
+    public ResponseEntity<List<LearnerFeedbackDto>> getMyFeedback() {
+        LearnerPrincipal principal = currentLearner.require();
+        return ResponseEntity.ok(learnerService.getReleasedFeedback(principal.learnerCode()));
+    }
+
     @GetMapping("/documents")
     public ResponseEntity<LearnerDocumentDtos.MyDocumentsResponse> getMyDocuments() {
         LearnerPrincipal principal = currentLearner.require();

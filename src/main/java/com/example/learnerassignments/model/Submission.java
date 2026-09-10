@@ -105,6 +105,43 @@ public class Submission {
     @Builder.Default
     private FeedbackVisibility feedbackVisibility = FeedbackVisibility.LEARNER;
 
+    /**
+     * When the feedback was released to the learner, or null while it is still a draft.
+     *
+     * Nullable, like every column added to this table after it had rows in it: a NOT NULL
+     * column with no default fails the boot that ships it.
+     */
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    /**
+     * Whether this submission's marking is the learner's to see.
+     *
+     * One rule, asked in every learner-facing path, because the ways a learner can reach
+     * marking are several — the history list, the feedback list, the marked copy, the
+     * annotations — and a rule written out four times is a rule that will be wrong in one of
+     * them. Draft marking is not theirs yet; an internal report never will be.
+     */
+    public boolean isMarkingVisibleToLearner() {
+        return feedbackStatus == FeedbackStatus.PUBLISHED
+                && feedbackVisibility != FeedbackVisibility.INTERNAL
+                && gradedAt != null;
+    }
+
+    /**
+     * What the learner should see as the state of this submission while marking is withheld:
+     * what it was before anyone marked it. Derived rather than remembered, because grading
+     * overwrites status and the original is not kept anywhere.
+     */
+    public SubmissionStatus statusBeforeMarking() {
+        LocalDateTime due = session != null && session.getAssignment() != null
+                ? session.getAssignment().getDueDate()
+                : null;
+        return due != null && submittedAt != null && submittedAt.isAfter(due)
+                ? SubmissionStatus.LATE
+                : SubmissionStatus.SUBMITTED;
+    }
+
     /** Content hash of the submitted file, computed at upload. */
     @Column(name = "sha256", length = 64)
     private String sha256;

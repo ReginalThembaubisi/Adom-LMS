@@ -354,12 +354,35 @@ public class SubmissionService {
 
         LocalDateTime now = LocalDateTime.now();
 
+        // A moderator's report is for the record and the export, not the portal. It still
+        // changes the outcome — that is what moderation is for — but its written report does
+        // not replace what the facilitator told the learner. One submission has one feedback
+        // field and several reports over its life; treating the moderator's as the learner's
+        // would delete the facilitator's feedback from the learner's view.
+        boolean internalReport = "MODERATOR".equalsIgnoreCase(graderRole);
+
         submission.setStatus(request.getOutcome());
-        submission.setFeedback(request.getFeedback());
         submission.setMarksAwarded(request.getMarksAwarded());
         submission.setGradedAt(now);
         submission.setGradedByRole(graderRole);
         submission.setGradedByName(graderName);
+
+        if (!internalReport) {
+            submission.setFeedback(request.getFeedback());
+            submission.setFeedbackVisibility(FeedbackVisibility.LEARNER);
+        } else if (submission.getFeedback() == null || submission.getFeedback().isBlank()) {
+            // Moderated with nothing the learner was ever meant to read.
+            submission.setFeedbackVisibility(FeedbackVisibility.INTERNAL);
+        }
+
+        // Marking is a draft until somebody releases the session. The exception is work whose
+        // feedback the learner has already been shown: a correction to released marking reaches
+        // them immediately rather than disappearing back into a draft they cannot see, because
+        // retracting feedback somebody has read is worse than publishing a change they did not
+        // ask for.
+        if (submission.getFeedbackStatus() != FeedbackStatus.PUBLISHED) {
+            submission.setFeedbackStatus(FeedbackStatus.DRAFT);
+        }
 
         Submission saved = submissionRepository.save(submission);
 
@@ -374,6 +397,7 @@ public class SubmissionService {
                 .gradedByRole(graderRole)
                 .gradedByName(graderName)
                 .gradedAt(now)
+                .feedbackVisibility(internalReport ? FeedbackVisibility.INTERNAL : FeedbackVisibility.LEARNER)
                 .build());
 
         return SubmissionResponse.builder()

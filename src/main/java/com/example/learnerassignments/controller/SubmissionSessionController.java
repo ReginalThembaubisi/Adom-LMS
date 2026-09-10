@@ -6,6 +6,7 @@ import com.example.learnerassignments.dto.SessionSubmissionOverviewResponse;
 import com.example.learnerassignments.exception.ResourceNotFoundException;
 import com.example.learnerassignments.security.CurrentStaff;
 import com.example.learnerassignments.security.StaffPrincipal;
+import com.example.learnerassignments.service.FeedbackReleaseService;
 import com.example.learnerassignments.service.ScopeService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.service.SubmissionSessionService;
@@ -27,6 +28,7 @@ public class SubmissionSessionController {
     private final SubmissionService submissionService;
     private final CurrentStaff currentStaff;
     private final ScopeService scopeService;
+    private final FeedbackReleaseService feedbackReleaseService;
 
     @PostMapping
     public ResponseEntity<SessionResponse> createSession(@Valid @RequestBody CreateSessionRequest request) {
@@ -69,6 +71,40 @@ public class SubmissionSessionController {
         SessionSubmissionOverviewResponse overview = submissionService.getSessionSubmissionsOverview(
                 id, principal.isAdmin() ? null : scopeService.accessibleLearnerIds(principal));
         return ResponseEntity.ok(overview);
+    }
+
+    /**
+     * Releases this session's marking to its learners.
+     *
+     * Scoped like reading the session is: somebody who cannot see a session cannot publish its
+     * results, and an assessor or moderator holding no assignment rows reaches nothing. Not
+     * found rather than forbidden, as everywhere else.
+     *
+     * Releasing twice is not an error. It publishes whatever is newly marked and says so; the
+     * facilitator who marks the last three scripts after releasing should not have to think
+     * about whether pressing it again will re-notify the whole cohort. It will not — only
+     * learners whose work was published by that call are told.
+     */
+    @PostMapping("/{id}/release-feedback")
+    public ResponseEntity<?> releaseFeedback(@PathVariable Long id, Authentication auth) {
+        StaffPrincipal principal = currentStaff.require(auth);
+        if (!scopeService.canAccessSession(principal, id)) {
+            throw new ResourceNotFoundException("Submission session not found with id: " + id);
+        }
+
+        FeedbackReleaseService.ReleaseResult result = feedbackReleaseService.release(id);
+
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("published", result.published());
+        body.put("alreadyPublished", result.alreadyPublished());
+        body.put("notified", result.notified());
+        body.put("unmarked", result.unmarked());
+        body.put("message", result.unmarked() > 0
+                ? result.published() + " learner(s) can now see their marking. "
+                        + result.unmarked() + " submission(s) in this session have not been marked yet "
+                        + "and were left alone."
+                : result.published() + " learner(s) can now see their marking.");
+        return ResponseEntity.ok(body);
     }
 
     @PutMapping("/{id}/close")

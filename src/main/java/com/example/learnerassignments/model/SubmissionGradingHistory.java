@@ -44,6 +44,18 @@ public class SubmissionGradingHistory {
     @Column(name = "graded_at", nullable = false)
     private LocalDateTime gradedAt;
 
+    /**
+     * Who this particular report is for.
+     *
+     * Visibility belongs on the record, not only on the submission: a submission has one
+     * feedback field but several reports over its life, and a moderator's report being internal
+     * must not hide the facilitator's from the learner. INTERNAL records export to the PoE for
+     * SETA and never appear in the portal.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "feedback_visibility", length = 20)
+    private FeedbackVisibility feedbackVisibility;
+
     @PrePersist
     protected void onCreate() {
         if (this.gradedAt == null) {

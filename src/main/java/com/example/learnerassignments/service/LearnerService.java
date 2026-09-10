@@ -106,7 +106,9 @@ public class LearnerService {
 
         List<Submission> submissions = submissionRepository.findByLearner_LearnerCodeOrderBySubmittedAtDesc(studentNumber);
         return submissions.stream()
-                .map(s -> StudentSubmissionHistoryDto.builder()
+                .map(s -> {
+                    boolean visible = s.isMarkingVisibleToLearner();
+                    return StudentSubmissionHistoryDto.builder()
                         .submissionId(s.getId())
                         .sessionName(s.getSession() != null ? s.getSession().getSessionName() : "Assignment Window")
                         .assignmentTitle(s.getSession() != null && s.getSession().getAssignment() != null
@@ -117,12 +119,50 @@ public class LearnerService {
                                 : "General")
                         .originalFilename(s.getOriginalFilename())
                         .submittedAt(s.getSubmittedAt())
-                        .status(s.getStatus().name())
+                        // Everything marking produced is withheld together while it is a draft:
+                        // the outcome, the marks, the comment, the marked-up copy and who
+                        // marked it. Releasing half of it — an outcome with no explanation —
+                        // would be worse than releasing none.
+                        .status(visible ? s.getStatus().name() : s.statusBeforeMarking().name())
+                        .feedback(visible ? s.getFeedback() : null)
+                        .gradedAt(visible ? s.getGradedAt() : null)
+                        .gradedByRole(visible ? s.getGradedByRole() : null)
+                        .gradedByName(visible ? s.getGradedByName() : null)
+                        .marksAwarded(visible ? s.getMarksAwarded() : null)
+                        .hasMarkedCopy(visible && s.getMarkedFilePath() != null)
+                        .hasAnnotations(visible && s.getAnnotationsJson() != null)
+                        .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Released marking for this learner, newest first.
+     *
+     * Filters on published and learner-facing unconditionally — not as a default a caller can
+     * override, because there is no caller who should. A draft belongs to the person writing
+     * it and an internal report belongs to the moderator and the SETA export; neither is a
+     * thing this endpoint can be asked for.
+     */
+    @Transactional(readOnly = true)
+    public List<LearnerFeedbackDto> getReleasedFeedback(String studentNumber) {
+        return submissionRepository.findByLearner_LearnerCodeOrderBySubmittedAtDesc(studentNumber).stream()
+                .filter(Submission::isMarkingVisibleToLearner)
+                .map(s -> LearnerFeedbackDto.builder()
+                        .submissionId(s.getId())
+                        .moduleName(s.getSession() != null && s.getSession().getAssignment() != null
+                                && s.getSession().getAssignment().getModule() != null
+                                ? s.getSession().getAssignment().getModule().getModuleName() : "General")
+                        .assignmentTitle(s.getSession() != null && s.getSession().getAssignment() != null
+                                ? s.getSession().getAssignment().getTitle() : "Assignment")
+                        .sessionName(s.getSession() != null ? s.getSession().getSessionName() : "Assignment Window")
+                        .originalFilename(s.getOriginalFilename())
+                        .outcome(s.getStatus() != null ? s.getStatus().name() : null)
+                        .marksAwarded(s.getMarksAwarded())
                         .feedback(s.getFeedback())
-                        .gradedAt(s.getGradedAt())
                         .gradedByRole(s.getGradedByRole())
                         .gradedByName(s.getGradedByName())
-                        .marksAwarded(s.getMarksAwarded())
+                        .publishedAt(s.getPublishedAt())
                         .hasMarkedCopy(s.getMarkedFilePath() != null)
                         .hasAnnotations(s.getAnnotationsJson() != null)
                         .build())
