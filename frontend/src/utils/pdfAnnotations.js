@@ -15,7 +15,7 @@
  * exactly as they were before, because there is no way to recover a scale that was never
  * recorded. Those stay approximate — re-mark them if the placement matters.
  */
-function scaleFactor(stroke, renderScale) {
+export function scaleFactor(stroke, renderScale) {
     const captured = stroke && stroke.s;
     if (!captured || !renderScale || captured <= 0) return 1;
     return renderScale / captured;
@@ -62,4 +62,55 @@ export function drawStroke(ctx, stroke, renderScale) {
         else ctx.lineTo(p.x * k, p.y * k);
     });
     ctx.stroke();
+}
+
+/**
+ * Whether a click at (x, y) — in the scale currently rendered — lands on this stroke.
+ *
+ * Used by the eraser, so a marker can remove one mark instead of undoing everything placed
+ * after it. Undo is last-in-first-out; taking out an early tick used to mean discarding every
+ * later one and redoing them, which is not a reasonable thing to ask of someone marking a
+ * hundred scripts.
+ *
+ * The stroke is converted into the current scale first, for the same reason drawing is: its
+ * stored coordinates are in whatever scale it was drawn at, which is not necessarily this one.
+ * Tolerances are deliberately generous — a pen line one or two pixels wide is not something
+ * anyone can click precisely, and the cost of a near miss is an erase that does nothing while
+ * the cost of a slightly wide hit is an undo away.
+ */
+export function strokeHitTest(stroke, x, y, renderScale) {
+    if (!stroke) return false;
+    const k = scaleFactor(stroke, renderScale);
+
+    if (stroke.tool === 'tick' || stroke.tool === 'cross') {
+        const cx = stroke.x * k;
+        const cy = stroke.y * k;
+        const half = (stroke.size || 28) * k * 0.6;
+        return x >= cx - half && x <= cx + half && y >= cy - half && y <= cy + half;
+    }
+
+    const points = stroke.points;
+    if (!points || points.length === 0) return false;
+    const tolerance = Math.max((stroke.thickness || 2) * k, 10) / 2 + 4;
+
+    if (points.length === 1) {
+        return Math.hypot(x - points[0].x * k, y - points[0].y * k) <= tolerance;
+    }
+    for (let i = 1; i < points.length; i++) {
+        const ax = points[i - 1].x * k, ay = points[i - 1].y * k;
+        const bx = points[i].x * k, by = points[i].y * k;
+        if (distanceToSegment(x, y, ax, ay, bx, by) <= tolerance) return true;
+    }
+    return false;
+}
+
+function distanceToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared === 0) return Math.hypot(px - ax, py - ay);
+    // Position of the closest point along the segment, clamped so it stays on it.
+    let t = ((px - ax) * dx + (py - ay) * dy) / lengthSquared;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }

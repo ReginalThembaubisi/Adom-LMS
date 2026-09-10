@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { drawStroke } from '../utils/pdfAnnotations';
+import { drawStroke, strokeHitTest } from '../utils/pdfAnnotations';
 
 let _pdfjsLib = null;
 async function getPdfjs() {
@@ -311,6 +311,10 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
     const handlePointerDown = (e, pageNum) => {
         e.preventDefault();
         const point = getPoint(e, pageNum);
+        if (tool === 'erase') {
+            eraseAt(pageNum, point);
+            return;
+        }
         if (tool === 'tick' || tool === 'cross') {
             // The scale these pixels are in. Without it a replay at any other scale
             // puts the mark somewhere the marker never clicked.
@@ -358,6 +362,29 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
             if (annotCanvas) drawStroke(annotCanvas.getContext('2d'), stroke, renderScaleRef.current);
         }
         bumpVersion(n => n + 1);
+    };
+
+    /**
+     * Removes the one mark under the pointer.
+     *
+     * Undo only takes the most recent stroke, so correcting an early tick meant undoing every
+     * mark placed after it and putting them all back. Searching newest-first means the mark
+     * drawn on top is the one that goes, which is what someone clicking a pile of overlapping
+     * marks expects.
+     */
+    const eraseAt = (pageNum, point) => {
+        const strokes = strokesByPageRef.current[pageNum];
+        if (!strokes || !strokes.length) return;
+
+        for (let i = strokes.length - 1; i >= 0; i--) {
+            if (strokeHitTest(strokes[i], point.x, point.y, renderScaleRef.current)) {
+                strokes.splice(i, 1);
+                lastAnnotatedPageRef.current = pageNum;
+                redrawStaticLayer(pageNum); // the removed stroke may be under others
+                bumpVersion(n => n + 1);
+                return;
+            }
+        }
     };
 
     // Undo and clear target the page the grader last annotated, not the scroll position.
@@ -431,6 +458,11 @@ const PdfAnnotator = ({ documentUrl, onSave, saving, saveError, initialStrokes }
                 <button type="button" onClick={() => setTool('cross')}
                     className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'cross' ? 'bg-blue-600 text-[#f8fafc]' : 'bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155]'}`}>
                     ✗ Wrong Stamp
+                </button>
+                <button type="button" onClick={() => setTool('erase')}
+                    title="Click a mark to remove just that one"
+                    className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer ${tool === 'erase' ? 'bg-blue-600 text-[#f8fafc]' : 'bg-[#1e293b] text-[#e2e8f0] hover:bg-[#334155]'}`}>
+                    Erase
                 </button>
 
                 <div className="flex items-center gap-1.5 bg-[#1e293b] rounded-lg px-2 py-1.5">

@@ -281,6 +281,12 @@ a tick is part of what the assessor asserted.
 **The fix**: each stroke records the scale it was drawn at (`s`), and every draw converts into
 the scale being rendered now. Position, stamp size and pen thickness all convert.
 
+**Removing one mark.** Undo is last-in-first-out, so correcting an early tick meant undoing
+every mark placed after it and redoing them — not a reasonable thing to ask of someone marking
+a cohort. An Erase tool removes the mark under the pointer, searching newest-first so the mark
+drawn on top is the one that goes. Hit-testing converts the stroke into the current scale
+first, for the same reason drawing does.
+
 **Marks saved before this stay approximate.** They carry no recorded scale, so there is nothing
 to convert from; they are drawn unconverted, exactly as before. Any submission whose placement
 matters should be re-marked. Nothing can recover a scale that was never written down.
