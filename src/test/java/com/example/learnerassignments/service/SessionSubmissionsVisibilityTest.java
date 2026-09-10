@@ -55,7 +55,7 @@ class SessionSubmissionsVisibilityTest {
         assertThat(overview.getSubmitted())
                 .as("the submission exists, so the marker must be able to see it")
                 .hasSize(1);
-        assertThat(overview.getSubmitted().get(0).getLearnerCode()).isEqualTo("VIS001");
+        assertThat(overview.getSubmitted().get(0).getLearnerCode()).isEqualTo(f.learnerCode());
         assertThat(overview.getSubmitted().get(0).getOriginalFilename()).isEqualTo("essay.pdf");
     }
 
@@ -102,7 +102,7 @@ class SessionSubmissionsVisibilityTest {
         assertThat(scoped.getSubmitted()).hasSize(1);
     }
 
-    private record Fixture(Long sessionId, Long learnerId) {}
+    private record Fixture(Long sessionId, Long learnerId, String learnerCode) {}
 
     private Fixture seed(boolean enrolInModule) {
         long unique = System.nanoTime();
@@ -121,7 +121,7 @@ class SessionSubmissionsVisibilityTest {
 
         Learner learner = Learner.builder()
                 .fullName("Visible Learner")
-                .learnerCode("VIS001")
+                .learnerCode("VIS" + unique)
                 .email("vis" + unique + "@example.com")
                 .phoneNumber("0700000000")
                 .learnership(learnership)
@@ -155,6 +155,30 @@ class SessionSubmissionsVisibilityTest {
                 .status(SubmissionStatus.SUBMITTED)
                 .build());
 
-        return new Fixture(session.getId(), learner.getId());
+        return new Fixture(session.getId(), learner.getId(), learner.getLearnerCode());
+    }
+
+    @Test
+    @DisplayName("The diagnostic counts what the console used to hide")
+    void diagnosticCountsHiddenSubmissions() {
+        seed(false);   // a submitter with no join-table row
+        seed(true);    // an ordinary enrolled submitter
+
+        // Render's free plan has no shell, so this query is the only way to find out whether
+        // any learner work went unmarked in production. It has to be right.
+        assertThat(submissionRepository.countMissingFromRoster()).isEqualTo(1);
+        assertThat(submissionRepository.findMissingFromRoster(
+                org.springframework.data.domain.PageRequest.of(0, 20)))
+                .hasSize(1)
+                .allSatisfy(s -> assertThat(s.getOriginalFilename()).isEqualTo("essay.pdf"));
+    }
+
+    @Test
+    @DisplayName("Storage shapes are counted separately, so each era is distinguishable")
+    void storageShapesAreCounted() {
+        seed(false);
+
+        assertThat(submissionRepository.countAuthenticatedPublicIds()).isEqualTo(1);
+        assertThat(submissionRepository.countLegacyUrlPaths()).isZero();
     }
 }
