@@ -71,7 +71,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     // When hasAnnotations, load the original and replay strokes client-side via PdfAnnotator.
     // Only fall back to the rasterized marked copy for legacy submissions that have one but
     // no annotationsJson (so old marks are still visible while new saves use the JSON path).
-    const hasMarkedCopy = !!submission.markedFilePath && !submission.hasAnnotations;
+    const hasMarkedCopy = submission.hasMarkedCopy && !submission.hasAnnotations;
 
     // The document is fetched with the staff credential in a header and rendered from an
     // object URL. It used to be an <iframe> pointed at a URL carrying ?authToken=<base64
@@ -260,7 +260,7 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                 )}
                                 {markedSaved ? (
                                     <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to the student and other graders.</p>
-                                ) : submission.markedFilePath ? (
+                                ) : submission.hasMarkedCopy ? (
                                     <p className="text-[10px] text-slate-500 pt-1">Showing a previously marked-up copy — any new marks you add and save will be added on top of it.</p>
                                 ) : null}
                             </div>

@@ -493,14 +493,15 @@ Left for later, deliberately:
   `/uploads/...` web-path shape. Read them through `StoredFileService` like everything else
   rather than fetching the value directly, and the eventual conversion to public_ids costs
   the exporter nothing.
-- **Submission DTOs still ship `filePath` and `markedFilePath` to clients.** For files stored
-  after Phase 4 these are harmless public_ids, but for legacy rows they are still working
-  public URLs, handed to every client that lists submissions — including a lecturer listing a
-  whole session. The frontend only ever uses these fields as presence flags
-  (`!!submission.markedFilePath`), so replacing them with a boolean costs three small frontend
-  edits and closes the leak for legacy rows too. **Closed in a follow-up PR, not deferred to
-  Phase 5** — once a URL is out it is out, so access control on the endpoint does not help
-  retrospectively.
+- **Submission DTOs shipped `filePath` and `markedFilePath` to clients — RESOLVED.** For
+  files stored after Phase 4 these were harmless public_ids, but for legacy rows they were
+  working public URLs, handed to every client that lists submissions — including a lecturer
+  listing a whole session. Access control on the view endpoint does not help retrospectively:
+  once a URL is out it is out. The frontend only ever used these fields as presence flags, so
+  `SubmittedLearnerDto` and `StudentSubmissionHistoryDto` now carry `hasMarkedCopy`, and
+  neither they nor `SubmissionResponse` carry `filePath` at all. **Do not add a storage path
+  back to a DTO.** A client that needs the file fetches `/api/submissions/{id}/view`, which
+  checks ownership before it reads anything.
 
 ---
 

@@ -22,7 +22,8 @@ public class SubmissionResponse {
     private Long assignmentId;
     private String assignmentTitle;
     private String originalFilename;
-    private String filePath;
+    // No filePath. Echoing the storage location back to the uploader served no caller and,
+    // for a legacy row, is a public URL to the file.
     private LocalDateTime submittedAt;
     private SubmissionStatus status;
     private String message;
