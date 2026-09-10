@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -190,5 +191,37 @@ class NotificationTest {
                 .fullName(tag + " Learner").learnerCode(tag + unique)
                 .email(tag + unique + "@example.com").phoneNumber("0700000000")
                 .learnership(learnership).modules(new HashSet<>()).build());
+    }
+
+    @Test
+    @DisplayName("Switched off, the stream refuses connections but notifications still arrive")
+    void streamCanBeSwitchedOff() {
+        ReflectionTestUtils.setField(notificationStream, "enabled", false);
+        try {
+            Learner learner = learner("OFF");
+
+            assertThat(notificationStream.subscribe(learner.getId(), NotificationService.LEARNER_ROLE)).isNull();
+
+            // The switch is about how fast the badge updates, not whether it is right. Off must
+            // not lose a notification, or turning it off under load would cost learners their
+            // results rather than costing them latency.
+            notificationService.notifyLearner(learner, NotificationType.FEEDBACK_RELEASED,
+                    "SESSION", 1L, "Your marking is ready.");
+            assertThat(notificationService.unreadCount(learner.getId())).isEqualTo(1);
+        } finally {
+            ReflectionTestUtils.setField(notificationStream, "enabled", true);
+        }
+    }
+
+    @Test
+    @DisplayName("Switched off, the heartbeat does nothing rather than failing")
+    void heartbeatIsInertWhenDisabled() {
+        ReflectionTestUtils.setField(notificationStream, "enabled", false);
+        try {
+            notificationStream.heartbeat();
+            assertThat(notificationStream.openConnections()).isZero();
+        } finally {
+            ReflectionTestUtils.setField(notificationStream, "enabled", true);
+        }
     }
 }
