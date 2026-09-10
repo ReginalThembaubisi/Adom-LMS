@@ -245,7 +245,25 @@ SELECT COUNT(*) FROM submissions s
                                            WHERE ss.id = s.session_id));
 ```
 
-Anything above zero is work that was submitted and never appeared for marking.
+**Measured in production on 2026-09-10: 114 of 299 submissions — 38% — were invisible to the
+marker.** The affected rows belong to named cohort learners (Banele Mgwambi, Simlindile
+Mazibuko, Sibusiso khoza, Amanda Randy Mndawe among them), most submitted on 2026-09-02, none
+graded. The work was accepted, stored, and shown to the learner as "Submitted", and no
+facilitator screen ever listed it.
+
+They are visible now, so the remedy is to mark them, not to repair data. But **nobody should
+assume the cohort's assessment record is complete until those are worked through** — a learner
+who submitted on 2 September and was never assessed looks identical, in every report, to one
+who never submitted.
+
+Two follow-ups this exposes:
+
+- **`learner_modules` is not populated for a large share of learners.** Visibility no longer
+  depends on it, but the *unsubmitted* list still does, so "who has not submitted" is
+  understated by the same gap. Phase 7's completeness dashboard will inherit that unless the
+  enrolment rows are backfilled or the roster is derived the way `isEnrolledOn` derives it.
+- **`submitAssignment` does not check enrolment at all.** Any valid learner code can submit to
+  any session. That is why the two rules could drift this far apart without anything failing.
 
 ### 4.3 Learner code generation can collide — **RESOLVED (Phase 0)**
 

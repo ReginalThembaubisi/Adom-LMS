@@ -665,11 +665,12 @@ public class AdminController {
         java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("totalSubmissions", total);
         body.put("missingFromRoster", missingFromRoster);
-        body.put("missingFromRosterUngraded", sample.stream().filter(r -> !((Boolean) r.get("graded"))).count());
+        body.put("missingFromRosterUngraded", submissionRepository.countMissingFromRosterUngraded());
         body.put("storageShapes", java.util.Map.of(
                 "legacyPublicUrl", legacyUrls,
                 "authenticatedPublicId", authenticated,
                 "diskPath", total - legacyUrls - authenticated));
+        body.put("sampleSize", sample.size());
         body.put("sample", sample);
         body.put("note", "missingFromRoster counts submissions whose learner has no learner_modules "
                 + "row for the session's module. Before the grading console stopped deriving its "

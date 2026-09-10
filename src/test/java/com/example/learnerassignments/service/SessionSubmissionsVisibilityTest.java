@@ -167,6 +167,9 @@ class SessionSubmissionsVisibilityTest {
         // Render's free plan has no shell, so this query is the only way to find out whether
         // any learner work went unmarked in production. It has to be right.
         assertThat(submissionRepository.countMissingFromRoster()).isEqualTo(1);
+        // Counted across the table, not across the sample: the first version of this capped
+        // silently at the sample size, which would have under-reported the harm.
+        assertThat(submissionRepository.countMissingFromRosterUngraded()).isEqualTo(1);
         assertThat(submissionRepository.findMissingFromRoster(
                 org.springframework.data.domain.PageRequest.of(0, 20)))
                 .hasSize(1)
