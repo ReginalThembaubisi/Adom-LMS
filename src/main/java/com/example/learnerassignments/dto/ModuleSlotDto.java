@@ -21,5 +21,7 @@ public class ModuleSlotDto {
     private String status; // Session Status (SCHEDULED, OPEN, CLOSED)
     private boolean isSubmitted; // True if logged-in learner has submitted to this session
     private String taskFileName;
-    private String taskFilePath;
+    /** Whether a brief is attached. Replaces taskFilePath: a client needs to know that one
+     *  exists, not where it is stored. It downloads via /api/me/sessions/{id}/brief. */
+    private boolean hasBrief;
 }

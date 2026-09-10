@@ -526,11 +526,16 @@ Left for later, deliberately:
   different change with a different blast radius. Facilitator guides are also course material
   rather than a named learner's personal evidence, so the exposure is not the same as an ID
   copy. Do it when the serving endpoint exists.
-  **Phase 8 will meet this.** The export reads module files for section 3 (Assessment
+  **The learner half is now done.** A facilitator's `.docx` brief downloaded as
+  `1789044791251_Practical_2_-_LSUMS_IoT...` with no extension, because the browser was sent
+  straight to the stored URL and named the file after the extension-less public_id. Learners
+  now download through `/api/me/module-files/{id}/download` and
+  `/api/me/sessions/{id}/brief`, which check enrolment, fetch through `StoredFileService` and
+  send the real filename back. **The staff dashboards still link to `filePath` directly and
+  still produce the extension-less download** — same fix, staff-scoped, not yet done.
+  **Phase 8 will meet this too.** The export reads module files for section 3 (Assessment
   Guidelines), so its worker encounters `ModuleFile.filePath` in both a public-URL and a
-  `/uploads/...` web-path shape. Read them through `StoredFileService` like everything else
-  rather than fetching the value directly, and the eventual conversion to public_ids costs
-  the exporter nothing.
+  `/uploads/...` web-path shape. Read them through `StoredFileService` like everything else.
 - **Submission DTOs shipped `filePath` and `markedFilePath` to clients — RESOLVED.** For
   files stored after Phase 4 these were harmless public_ids, but for legacy rows they were
   working public URLs, handed to every client that lists submissions — including a lecturer

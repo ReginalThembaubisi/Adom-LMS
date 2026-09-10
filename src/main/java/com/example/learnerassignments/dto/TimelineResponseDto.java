@@ -20,4 +20,9 @@ public class TimelineResponseDto {
     private LocalDateTime endTime;
     private String status;
     private boolean submitted;
+    /** The brief's real filename, for the download; never its storage location. */
+    private String taskFileName;
+    /** Whether a brief is attached. The Home card's Brief button used to test taskFilePath,
+     *  which this DTO has never carried, so the button could never appear. */
+    private boolean hasBrief;
 }
