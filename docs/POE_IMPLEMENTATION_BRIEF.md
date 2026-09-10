@@ -698,7 +698,7 @@ reports are never published.
 
 ---
 
-### Phase 6 — Notifications and live push
+### Phase 6 — Notifications and live push — **COMPLETE**
 
 Tasks:
 
@@ -711,6 +711,32 @@ notification    id, user_id, user_role, type, ref_type, ref_id, created_at, read
 - `SseEmitter` endpoint for live push to the open portal. Fall back to polling every 45 seconds if the connection drops — learners are often on poor mobile connections.
 
 Do not use WebSockets; one-way push is all this needs.
+
+Decisions taken while building it:
+
+- **The poll is the delivery mechanism; the stream is an optimisation on top of it.** The
+  client polls every 45 seconds whether or not the stream is connected, rather than only when
+  it drops. Learners are on mobile connections that fail silently, behind proxies that buffer,
+  and on phones that sleep through events; if the stream never connected at all the badge would
+  still be right within 45 seconds. If `NotificationStream` stopped working entirely the
+  product would be slower and still correct.
+- **The push carries no content.** It says "go and look" and the client fetches through the
+  authenticated endpoints, so one place decides what a learner may see and a stale connection
+  can never deliver something they should no longer have.
+- **The client reads the stream with `fetch`, not `EventSource`.** `EventSource` cannot set a
+  header, and the only alternative would be the session token in the query string — the exact
+  leak removed in Phase 1, which puts credentials into access logs, browser history and
+  referrer headers. Streaming `fetch` keeps it in a header.
+- **Only a rejection notifies, not an acceptance.** A badge that lights up for things needing
+  no action stops being read, which then hides the one that mattered. The rejection carries the
+  reviewer's note, because being told a document was rejected without the reason means
+  guessing, re-uploading the same thing, and being rejected again.
+- **`NotificationService.stripLinks` removes URLs from any body.** Belt to the braces of
+  writing them carefully: the rule matters more than any one call site, and the next person
+  adding a notification will not read that class first.
+- **Publishing module material is the only fan-out**, so it is the only place a mistake reaches
+  a whole cohort at once. It reads enrolment from the join table — which is why populating that
+  table mattered; before it was fixed, a new guide would have reached nobody.
 
 ---
 
