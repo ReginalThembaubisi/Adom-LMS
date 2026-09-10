@@ -6,6 +6,7 @@ import MessagesPanel from '../components/MessagesPanel';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel, getStatusDotClasses, getStatusContainerClasses } from '../utils/colors';
 import {
+    FolderSimple,
     ChalkboardTeacher,
     Clock,
     CheckCircle,
@@ -151,6 +152,12 @@ const StudentPortal = () => {
     const [inlineAlerts, setInlineAlerts] = useState({});
     const [lastSubmission, setLastSubmission] = useState(null);
 
+    // Personal documents (CV, ID copy, matric, agreement)
+    const [documents, setDocuments] = useState(null);
+    const [documentsLoading, setDocumentsLoading] = useState(false);
+    const [uploadingType, setUploadingType] = useState(null);
+    const [documentAlert, setDocumentAlert] = useState({ type: '', message: '' });
+
     // File upload state
     const [attachedFile, setAttachedFile] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -182,6 +189,8 @@ const StudentPortal = () => {
             fetchTimeline();
         } else if (activeTab === 'history') {
             fetchHistory();
+        } else if (activeTab === 'documents') {
+            fetchDocuments();
         }
     }, [activeTab, studentNumber]);
 
@@ -311,6 +320,60 @@ const StudentPortal = () => {
             URL.revokeObjectURL(objectUrl);
         } catch {
             setAlert({ type: 'error', message: 'That file could not be downloaded. Please try again.' });
+        }
+    };
+
+    const fetchDocuments = async () => {
+        setDocumentsLoading(true);
+        try {
+            const res = await authFetch('/api/me/documents');
+            if (!checkStudentResponse(res)) return;
+            if (res.ok) setDocuments(await res.json());
+        } catch {
+            setDocumentAlert({ type: 'error', message: 'Could not load your documents.' });
+        } finally {
+            setDocumentsLoading(false);
+        }
+    };
+
+    const handleDocumentUpload = async (documentType, file) => {
+        if (!file) return;
+        setUploadingType(documentType);
+        setDocumentAlert({ type: '', message: '' });
+
+        const formData = new FormData();
+        formData.append('document_type', documentType);
+        formData.append('file', file);
+
+        try {
+            const res = await authFetch('/api/me/documents', { method: 'POST', body: formData });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Upload failed.');
+            setDocumentAlert({ type: 'success', message: 'Uploaded. Your facilitator will review it.' });
+            await fetchDocuments();
+        } catch (err) {
+            setDocumentAlert({ type: 'error', message: err.message || 'Upload failed.' });
+        } finally {
+            setUploadingType(null);
+        }
+    };
+
+    // Fetched with the token and opened from an object URL, so the file never travels as a
+    // link anyone else could follow.
+    const openDocument = async (documentId, filename) => {
+        try {
+            const res = await authFetch(`/api/me/documents/${documentId}/view`);
+            if (!res.ok) throw new Error('Could not open that document.');
+            const objectUrl = URL.createObjectURL(await res.blob());
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename || 'document';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } catch (err) {
+            setDocumentAlert({ type: 'error', message: err.message || 'Could not open that document.' });
         }
     };
 
@@ -491,6 +554,7 @@ const StudentPortal = () => {
         { id: 'home',     label: 'Home',        Icon: House        },
         { id: 'modules',  label: 'Modules',     Icon: Stack        },
         { id: 'history',  label: 'Submissions', Icon: ClipboardText },
+        { id: 'documents', label: 'Documents',  Icon: FolderSimple  },
         { id: 'messages', label: 'Messages',    Icon: ChatCircleDots },
         { id: 'profile',  label: 'Profile',     Icon: UserCircle   },
     ];
@@ -920,6 +984,148 @@ const StudentPortal = () => {
                                 sendMessage={sendStudentMessage}
                             />
                         </div>
+                    </div>
+                )}
+
+                {/* ── Documents Tab ── */}
+                {activeTab === 'documents' && !selectedModule && (
+                    <div className="px-4 pt-12 pb-6 space-y-4 animate-fadeIn">
+                        <div className="pt-4 pb-1">
+                            <h2 className="text-lg text-[#101425]" style={{fontWeight:800, letterSpacing:'-0.02em'}}>My documents</h2>
+                            <p className="text-[12px] text-[#8A90A8] mt-1 leading-relaxed">
+                                These go into your portfolio. Upload each one and your facilitator will check it.
+                                PDF, JPG, PNG or Word, up to 10&nbsp;MB.
+                            </p>
+                        </div>
+
+                        {documents && (
+                            <div className="px-3.5 py-3 rounded-2xl flex items-center justify-between" style={{background:'#F6F7FB'}}>
+                                <span className="text-[12px] font-semibold text-[#101425]">
+                                    {documents.requiredAccepted} of {documents.requiredTotal} accepted
+                                </span>
+                                <div className="flex gap-1">
+                                    {Array.from({ length: documents.requiredTotal }).map((_, i) => (
+                                        <span key={i} className="w-6 h-1.5 rounded-full"
+                                            style={{background: i < documents.requiredAccepted ? '#16A34A' : '#DDE1EC'}} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {documentAlert.message && (
+                            <div className={`px-3.5 py-2.5 rounded-2xl text-[12px] font-medium ${
+                                documentAlert.type === 'error' ? 'text-[#B42318]' : 'text-[#027A48]'}`}
+                                style={{background: documentAlert.type === 'error' ? '#FEF3F2' : '#ECFDF3'}}>
+                                {documentAlert.message}
+                            </div>
+                        )}
+
+                        {documentsLoading && !documents && (
+                            <p className="text-[12px] text-[#8A90A8] py-6 text-center">Loading your documents...</p>
+                        )}
+
+                        {documents?.slots?.map((slot) => {
+                            const current = slot.current;
+                            const status = current?.status;
+                            const uploading = uploadingType === slot.documentType;
+
+                            return (
+                                <div key={slot.documentType} className="rounded-2xl p-3.5 space-y-2.5" style={{background:'#F6F7FB'}}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-[13px] font-bold text-[#101425]">{slot.documentLabel}</p>
+                                            <p className="text-[10px] text-[#8A90A8] mt-0.5">
+                                                Section {slot.poeSection}{slot.required ? ' · Required' : ''}
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                                            style={
+                                                status === 'ACCEPTED' ? {background:'#ECFDF3', color:'#027A48'} :
+                                                status === 'REJECTED' ? {background:'#FEF3F2', color:'#B42318'} :
+                                                status === 'PENDING'  ? {background:'#FFFAEB', color:'#B54708'} :
+                                                                        {background:'#EEF0FF', color:'#4A3AFF'}
+                                            }>
+                                            {status === 'ACCEPTED' ? 'Accepted'
+                                                : status === 'REJECTED' ? 'Needs another copy'
+                                                : status === 'PENDING' ? 'Being checked'
+                                                : 'Not uploaded'}
+                                        </span>
+                                    </div>
+
+                                    {current && (
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[11px] text-[#5A6072] truncate">
+                                                {current.originalFilename}
+                                                {current.version > 1 && (
+                                                    <span className="text-[#8A90A8]"> · version {current.version}</span>
+                                                )}
+                                            </span>
+                                            <button onClick={() => openDocument(current.id, current.originalFilename)}
+                                                className="text-[11px] font-semibold text-[#4A3AFF] flex-shrink-0 cursor-pointer">
+                                                Open
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* The reviewer's own words, so the learner knows what to fix rather
+                                        than guessing at why it came back. */}
+                                    {status === 'REJECTED' && current?.reviewNote && (
+                                        <p className="text-[11px] leading-relaxed px-3 py-2 rounded-xl"
+                                            style={{background:'#FEF3F2', color:'#B42318'}}>
+                                            {current.reviewNote}
+                                        </p>
+                                    )}
+
+                                    <label className="block">
+                                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.docx" className="hidden"
+                                            disabled={uploading}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = '';
+                                                handleDocumentUpload(slot.documentType, file);
+                                            }} />
+                                        <span className="block w-full text-center py-2.5 rounded-xl text-[12px] font-semibold cursor-pointer"
+                                            style={{background: uploading ? '#DDE1EC' : '#EEF0FF', color:'#4A3AFF'}}>
+                                            {uploading ? 'Uploading...'
+                                                : current ? 'Upload a new version'
+                                                : `Upload ${slot.documentLabel}`}
+                                        </span>
+                                    </label>
+
+                                    {/* Nothing is overwritten, so an earlier version stays visible —
+                                        which is what makes a rejection and its fix legible later. */}
+                                    {slot.history?.length > 0 && (
+                                        <details>
+                                            <summary className="text-[10px] text-[#8A90A8] cursor-pointer">
+                                                {slot.history.length} earlier version{slot.history.length > 1 ? 's' : ''}
+                                            </summary>
+                                            <div className="pt-2 space-y-1">
+                                                {slot.history.map(h => (
+                                                    <div key={h.id} className="flex items-center justify-between text-[10px] text-[#8A90A8]">
+                                                        <span className="truncate">v{h.version} · {h.originalFilename}</span>
+                                                        <button onClick={() => openDocument(h.id, h.originalFilename)}
+                                                            className="font-semibold text-[#4A3AFF] flex-shrink-0 cursor-pointer">Open</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </details>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {documents?.other?.length > 0 && (
+                            <div className="rounded-2xl p-3.5 space-y-2" style={{background:'#F6F7FB'}}>
+                                <p className="text-[13px] font-bold text-[#101425]">Other evidence</p>
+                                {documents.other.map(d => (
+                                    <div key={d.id} className="flex items-center justify-between text-[11px]">
+                                        <span className="text-[#5A6072] truncate">{d.originalFilename}</span>
+                                        <button onClick={() => openDocument(d.id, d.originalFilename)}
+                                            className="font-semibold text-[#4A3AFF] flex-shrink-0 cursor-pointer">Open</button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

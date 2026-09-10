@@ -37,6 +37,7 @@ public class AdminController {
     private final AuditLogService auditLogService;
     private final AssessorAssignmentRepository assessorAssignmentRepository;
     private final ModeratorAssignmentRepository moderatorAssignmentRepository;
+    private final com.example.learnerassignments.service.LearnerDocumentService learnerDocumentService;
     private final BackupService backupService;
     private final CloudinaryService cloudinaryService;
     private final PasswordEncoder passwordEncoder;
@@ -765,6 +766,85 @@ public class AdminController {
                 .cohort(a.getCohort())
                 .scope(a.getScope() != null ? a.getScope().name() : null)
                 .assignedAt(a.getAssignedAt())
+                .build();
+    }
+
+    // --- Learner documents (Phase 3) ---
+    //
+    // Review only. There is deliberately no endpoint here for uploading a document on a
+    // learner's behalf: learners supply their own, which is what removes the roughly hundred
+    // and sixty manual uploads a forty-learner cohort would otherwise cost.
+
+    @GetMapping("/learners/{learnerId}/documents")
+    public ResponseEntity<List<LearnerDocumentDtos.DocumentResponse>> listLearnerDocuments(
+            @PathVariable Long learnerId) {
+        learnerRepository.findById(learnerId)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Student not found"));
+        return ResponseEntity.ok(learnerDocumentService.listFor(learnerId).stream()
+                .map(this::toLearnerDocumentResponse)
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @PutMapping("/documents/{documentId}/review")
+    public ResponseEntity<LearnerDocumentDtos.DocumentResponse> reviewLearnerDocument(
+            @PathVariable Long documentId,
+            @RequestBody LearnerDocumentDtos.ReviewDocumentRequest request,
+            Authentication auth) {
+
+        com.example.learnerassignments.model.ReviewStatus status;
+        try {
+            status = com.example.learnerassignments.model.ReviewStatus.valueOf(
+                    String.valueOf(request.getStatus()).trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("A review decision must be ACCEPTED or REJECTED.");
+        }
+
+        var reviewed = learnerDocumentService.review(
+                documentId, status, request.getNote(), auth != null ? auth.getName() : null);
+
+        auditLogService.log(auth, "REVIEW_LEARNER_DOCUMENT", "LearnerDocument", documentId,
+                status + (reviewed.getReviewNote() != null ? ": " + reviewed.getReviewNote() : ""));
+        return ResponseEntity.ok(toLearnerDocumentResponse(reviewed));
+    }
+
+    /**
+     * A learner's document, for the reviewer who has to look at it before deciding.
+     *
+     * Admin-only by the security rules, and streamed rather than linked, so the file is never
+     * reachable except through a request this application has authorised.
+     */
+    @GetMapping("/documents/{documentId}/view")
+    public ResponseEntity<?> viewLearnerDocument(@PathVariable Long documentId) {
+        var document = learnerDocumentService.require(documentId);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        learnerDocumentService.resolveContentType(document.getOriginalFilename())))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + document.getOriginalFilename() + "\"")
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
+                .body(learnerDocumentService.load(document));
+    }
+
+    private LearnerDocumentDtos.DocumentResponse toLearnerDocumentResponse(
+            com.example.learnerassignments.model.LearnerDocument d) {
+        return LearnerDocumentDtos.DocumentResponse.builder()
+                .id(d.getId())
+                .documentType(d.getDocumentType().name())
+                .documentLabel(d.getDocumentType().getLabel())
+                .poeSection(d.getDocumentType().getPoeSection())
+                .required(d.getDocumentType().isRequired())
+                .originalFilename(d.getOriginalFilename())
+                .version(d.getVersion())
+                // Not superseded, rather than current = true: a null would drop the row and
+                // read as a document that was never supplied.
+                .current(!Boolean.FALSE.equals(d.getCurrent()))
+                .status(d.getStatus() == null
+                        ? com.example.learnerassignments.model.ReviewStatus.PENDING.name()
+                        : d.getStatus().name())
+                .reviewNote(d.getReviewNote())
+                .reviewedAt(d.getReviewedAt())
+                .uploadedAt(d.getUploadedAt())
+                .uploadedByRole(d.getUploadedByRole())
                 .build();
     }
 }
