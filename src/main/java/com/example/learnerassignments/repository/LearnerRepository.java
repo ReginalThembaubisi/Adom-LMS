@@ -25,4 +25,20 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
 
     /** Everyone on a learnership, for enrolling them onto a module created after they joined. */
     java.util.List<Learner> findByLearnership_Id(Long learnershipId);
+
+    /**
+     * (learnerId, moduleId) for a set of learners, read straight off the join table.
+     *
+     * The alternative is touching learner.getModules() per learner, which is one query each and
+     * turns a 300-learner dashboard into 300 round trips.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT l.id, m.id FROM Learner l JOIN l.modules m WHERE l.id IN :learnerIds")
+    java.util.List<Object[]> findLearnerModulePairs(
+            @org.springframework.data.repository.query.Param("learnerIds") java.util.Collection<Long> learnerIds);
+
+    /** The cohort names actually in use, for the dashboard filter. */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT l.cohort FROM Learner l WHERE l.cohort IS NOT NULL AND l.cohort <> '' ORDER BY l.cohort")
+    java.util.List<String> findDistinctCohorts();
 }

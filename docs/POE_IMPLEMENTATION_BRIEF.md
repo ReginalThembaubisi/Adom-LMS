@@ -746,7 +746,7 @@ Decisions taken while building it:
 
 ---
 
-### Phase 7 — Completeness dashboard
+### Phase 7 — Completeness dashboard — **COMPLETE**
 
 Tasks:
 
@@ -773,6 +773,57 @@ learnership — but this phase as written assumes there is only one, in two plac
 - **The dashboard must filter by learnership and cohort.** "How many are complete" is not a
   meaningful number across two qualifications with different requirements, and the admin
   preparing a SETA submission is looking at one of them, not both.
+
+Decisions taken while building it:
+
+- **The enum stayed the vocabulary; the required set moved to a table.** The lighter of the two
+  options above. `poe_document_requirements` holds (learnership, document type, required,
+  required_from); `PoeDocumentType` still names the types. No learnership so far wants a type
+  the enum does not have, and making the type a table would have put a join on every row of the
+  highest-traffic screen in the project to buy nothing anybody has asked for.
+- **Every count says whether it counts people or things, and there is no field named
+  `outstanding` on its own.** Two bugs in this build came from counting rows where people were
+  meant. `documentsOutstanding` and `learnersWithDocumentsOutstanding` are different numbers on
+  the same screen — 8 and 3 on the verification data — and a facilitator does different work
+  with each. "Most commonly outstanding" counts learners per item, not rows, for the same
+  reason.
+- **The four learner-state counts are mutually exclusive and sum to the learners in scope**, so
+  the screen can be checked by adding up. The two "learners short of a document / short of a
+  submission" figures deliberately overlap, and the screen says so where they appear.
+- **Exempt is a state of its own, shown and counted, never folded into green or red.** A learner
+  who registered before a requirement took effect was never asked for the document, so counting
+  it missing is an accusation; but a portfolio of exempt items is not one to send to a SETA, so
+  exempt items keep a learner out of Complete and land them in "not fully in scope". The failure
+  this avoids is the dangerous one: a screen that says complete, a submission that gets rejected.
+- **`required_from` is seeded to the day a learnership is first seeded.** For learnerships that
+  existed before this shipped, that is the deploy date — which is exactly what stops the current
+  cohort appearing as a wall of red for documents nobody has asked them for yet. An admin who
+  wants that cohort chased clears the date under "Required documents", *after* the cohort has
+  actually been asked. Clearing it is one click and takes effect immediately.
+- **The same principle applies to submissions, which the phase as written did not mention.** A
+  session that closed before a learner registered is exempt too. Without it, every learner who
+  joined a running cohort would show red for every task that closed before they arrived — the
+  same wall of red, arriving through the other half of the checklist.
+- **Requirements are seeded when a learnership is created, not only at boot.** Otherwise a
+  learnership created between deploys has learners and no requirements, and the fallback would
+  have to guess. The fallback still exists for a learnership that reaches production unseeded,
+  and it over-reports rather than under-reports — the screen names any learnership it applies
+  to. Reporting somebody complete because nobody configured anything is the failure that reaches
+  a SETA; reporting them incomplete when they are fine is a phone call.
+- **A learner with no learnership gets an explicit red row rather than an empty checklist.**
+  There is no requirement set to measure them against, and an empty checklist would report them
+  complete.
+- **Admin only, deliberately.** The screen reports on every learner in a learnership, which is
+  more than any one facilitator is scoped to see. Opening it to facilitators means routing it
+  through `ScopeService` first; that is a decision to take on purpose rather than by leaving a
+  path off the deny list.
+- **`marked` wins over `submitted` when a session has more than one submission row.** A
+  resubmission leaves two; reporting the session as still awaiting marking would send a
+  facilitator after work already assessed.
+
+Known limitation: a session with no closing date is reported "not yet due" rather than missing.
+The column is NOT NULL so this cannot arise today; if it ever does, the non-accusatory reading is
+the right default, and the learner still shows as "not fully in scope" rather than complete.
 
 ---
 

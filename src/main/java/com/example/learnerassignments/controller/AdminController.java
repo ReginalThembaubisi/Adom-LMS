@@ -46,6 +46,7 @@ public class AdminController {
     private final EnrolmentService enrolmentService;
     private final DeliveryHealthCheck deliveryHealthCheck;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.learnerassignments.service.PoeRequirementService poeRequirementService;
 
     @PostMapping("/lecturers")
     public ResponseEntity<AdminLecturerResponse> createLecturer(@Valid @RequestBody CreateLecturerRequest request) {
@@ -209,6 +210,10 @@ public class AdminController {
                 .qualificationCode(request.getQualificationCode())
                 .build();
         com.example.learnerassignments.model.Learnership saved = learnershipRepository.save(learnership);
+        // Seed its document requirements now rather than at the next boot, so there is never a
+        // window where a learnership has learners but no requirements and the completeness
+        // dashboard reports every one of them complete.
+        poeRequirementService.seedDefaults(saved, java.time.LocalDate.now());
         LearnershipResponseDto dto = LearnershipResponseDto.builder()
                 .id(saved.getId())
                 .name(saved.getName())

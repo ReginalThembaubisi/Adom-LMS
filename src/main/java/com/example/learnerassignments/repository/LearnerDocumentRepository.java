@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +47,21 @@ public interface LearnerDocumentRepository extends JpaRepository<LearnerDocument
            """)
     Optional<Integer> findHighestVersion(@Param("learnerId") Long learnerId,
                                          @Param("documentType") PoeDocumentType documentType);
+
+    /**
+     * Every current document for a set of learners, in one read.
+     *
+     * Same "not superseded" filter as {@link #findCurrentForType}, for the same reason. Ordered
+     * by version so a caller keeping the last row per (learner, type) keeps the highest version
+     * if bad data ever leaves two rows current at once.
+     */
+    @Query("""
+           SELECT d FROM LearnerDocument d
+           WHERE d.learner.id IN :learnerIds
+             AND (d.current IS NULL OR d.current = true)
+           ORDER BY d.version ASC
+           """)
+    List<LearnerDocument> findCurrentForLearners(@Param("learnerIds") Collection<Long> learnerIds);
 
     /** One document, but only if it belongs to this learner. Used to answer 404 rather than 403. */
     Optional<LearnerDocument> findByIdAndLearner_Id(Long id, Long learnerId);

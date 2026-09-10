@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PoeCompleteness from '../components/PoeCompleteness';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -660,7 +661,8 @@ const AdminDashboard = () => {
                                 { id: 'programs', label: 'Programs & Categories', icon: '🎓' },
                                 { id: 'modules', label: 'Modules Directory', icon: '📚' },
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
-                                { id: 'students', label: 'Student Directory', icon: '👤' }
+                                { id: 'students', label: 'Student Directory', icon: '👤' },
+                                { id: 'completeness', label: 'Portfolio Completeness', icon: '✅' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -681,6 +683,17 @@ const AdminDashboard = () => {
 
                     {/* Right Content Workspace */}
                     <div className="lg:col-span-9 space-y-6">
+                        {activeTab === 'completeness' && (
+                            <PoeCompleteness
+                                token={token}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                            />
+                        )}
+
                         {activeTab === 'overview' && (
                             <div className="space-y-6">
                                 <div className="border-b border-slate-300 pb-3">

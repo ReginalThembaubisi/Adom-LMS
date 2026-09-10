@@ -28,4 +28,21 @@ public interface SubmissionSessionRepository extends JpaRepository<SubmissionSes
 
     @Query("SELECT s FROM SubmissionSession s WHERE s.status <> 'CLOSED' AND s.endTime <= :now")
     List<SubmissionSession> findExpiredNonClosedSessions(@Param("now") LocalDateTime now);
+
+    /**
+     * (sessionId, sessionName, endTime, moduleId) for the modules given.
+     *
+     * A projection rather than entities: the dashboard needs four columns per session and
+     * nothing else, and the @SQLRestriction on the entity still keeps deleted sessions out.
+     * Sessions whose assignment has no module are excluded by the join — there is no enrolled
+     * learner they could be expected of.
+     */
+    @Query("""
+           SELECT s.id, s.sessionName, s.endTime, m.id
+           FROM SubmissionSession s
+           JOIN s.assignment a
+           JOIN a.module m
+           WHERE m.id IN :moduleIds
+           """)
+    List<Object[]> findSessionModulePairs(@Param("moduleIds") Collection<Long> moduleIds);
 }
