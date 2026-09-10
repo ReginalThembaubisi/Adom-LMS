@@ -333,6 +333,31 @@ UPDATE module_files SET poe_section = 3, version = 1, is_current = TRUE;
 
 Compute `sha256` at upload time going forward. Do not attempt to backfill hashes by re-downloading from Cloudinary.
 
+**As shipped, every one of these columns is nullable, including the ones listed above with a
+default.** That was not a preference. A `NOT NULL` column cannot be added to a table that
+already holds rows without a database default, and this schema is managed by
+`ddl-auto=update` where the generated DDL is not ours to write — on a deployment with
+`SPRING_SQL_INIT_MODE=never`, `schema.sql` never runs and Hibernate emits the DDL itself. A
+`NOT NULL` add would have failed the boot that shipped it, and a failed boot on auto-deploy
+is a portal that is down for learners.
+
+Two things follow, and both are easy to lose.
+
+**Follow-up: tighten the columns.** Not yet done. The condition is that no nulls remain in
+`module_files.poe_section`, `version`, `is_current` and in `submissions.feedback_status`,
+`feedback_visibility` — the backfill's completion log reports this on every boot — *and* that
+`SPRING_SQL_INIT_MODE` is known for the deployment, so the DDL path is understood rather than
+guessed. Until both hold, leave them nullable. Without this written down, the next person
+reads a nullable column and reasonably concludes that null means something.
+
+**Until then, every query over these columns must treat null defensively.** `WHERE is_current
+= true` silently drops rows where `is_current` is null, and `feedback_status = 'PUBLISHED'`
+drops rows that were never backfilled. That is the worst failure shape available here: the
+data exists, the query succeeds, and the row simply does not appear. Phase 3 onwards writes
+those queries. Write them as `is_current IS NOT FALSE` / `(feedback_status IS NULL OR
+feedback_status = ...)`, or establish first that the backfill has run against the database
+you are querying.
+
 ---
 
 ### Phase 3 — Learner document vault (sections 1, 2, 6)
@@ -621,6 +646,13 @@ document. So, before any deploy that carries a data migration:
   that cannot be reconstructed from anything else.
 - **Understand that rolling back means restoring both together**, in step with each other —
   not redeploying the old jar.
+- **After any restore, resync `learner_code_sequences` before letting anyone register.** The
+  sequence table comes back with the backup. If its value is behind the highest existing code
+  in `learners` — which is what happens when the backup predates registrations that the
+  restore does not — the next self-registration collides on a unique constraint. Set
+  `last_seq` for the current year to the highest sequence number already issued, then test one
+  registration before reopening. This is cheap to do and hard to diagnose afterwards, since it
+  surfaces to a learner as a failed registration rather than to you as an error.
 
 - **Capture the migration's output and store it with the backups.** Every move is logged as
   `Moved submission file out of the public directory: from -> to`, and a run that will move

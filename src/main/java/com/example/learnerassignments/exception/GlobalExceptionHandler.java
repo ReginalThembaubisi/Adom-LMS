@@ -93,14 +93,95 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /**
+     * Database constraint violations, told apart rather than lumped together.
+     *
+     * This used to answer every violation with "This item can't be deleted because other
+     * records still depend on it" — including a duplicate-key violation on an insert, where
+     * nothing was being deleted and no dependent records existed. The moment that matters is
+     * a restore: learner_code_sequences comes back with the backup, and if it is behind the
+     * learners table, the next self-registration collides and the learner is told their item
+     * cannot be deleted. That is a misleading signal during a recovery, which is exactly when
+     * clear ones are needed.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String detail = rootCauseText(ex);
+
+        String message;
+        if (isDuplicateViolation(ex, detail)) {
+            message = detail.toLowerCase().contains("learner_code")
+                    // Named because the cause is almost never the learner and never obvious:
+                    // the code is allocated from a sequence table, and a restore can bring
+                    // that table back behind the learners it is meant to number.
+                    ? "That learner code is already taken. This usually means "
+                      + "learner_code_sequences is behind the learners table — after a database "
+                      + "restore it needs resyncing to the highest existing code before anyone "
+                      + "registers."
+                    : "Something with those details already exists. Check for a duplicate before retrying.";
+        } else if (isForeignKeyViolation(ex, detail)) {
+            message = "This item can't be deleted because other records still depend on it. "
+                    + "Remove or reassign those first.";
+        } else {
+            message = "The database rejected that change because it would leave the data "
+                    + "inconsistent. Nothing was saved.";
+        }
+
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.CONFLICT.value());
         body.put("error", "Conflict");
-        body.put("message", "This item can't be deleted because other records still depend on it. Remove or reassign those first.");
+        body.put("message", message);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    private boolean isDuplicateViolation(DataIntegrityViolationException ex, String detail) {
+        if (ex instanceof org.springframework.dao.DuplicateKeyException) {
+            return true;
+        }
+        // SQLState 23505 is a unique violation on H2 and PostgreSQL; MySQL reports 23000 for
+        // integrity violations generally and distinguishes duplicates by message.
+        if ("23505".equals(sqlStateOf(ex))) {
+            return true;
+        }
+        String lower = detail.toLowerCase();
+        return lower.contains("duplicate entry")
+                || lower.contains("duplicate key")
+                || lower.contains("unique constraint")
+                || lower.contains("unique index");
+    }
+
+    private boolean isForeignKeyViolation(DataIntegrityViolationException ex, String detail) {
+        if ("23503".equals(sqlStateOf(ex))) {
+            return true;
+        }
+        String lower = detail.toLowerCase();
+        return lower.contains("foreign key") || lower.contains("referential integrity");
+    }
+
+    private String sqlStateOf(Throwable ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sqlException) {
+                return sqlException.getSQLState();
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return null;
+    }
+
+    private String rootCauseText(Throwable ex) {
+        StringBuilder text = new StringBuilder();
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null) {
+                text.append(cause.getMessage()).append(' ');
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return text.toString();
     }
 
     @ExceptionHandler(Exception.class)
