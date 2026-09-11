@@ -130,4 +130,43 @@ public class EmailService {
             log.error("Failed to send new-message email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
+
+    /**
+     * Tells a staff member their PoE export finished. Carries no link.
+     *
+     * Every other file this system hands to anyone goes through a fetch-and-re-serve endpoint
+     * rather than a direct storage URL, specifically so a leaked or forwarded link is never
+     * itself a working credential — see {@code StoredFileService}. An export bundle is that
+     * same rule under more pressure, not less: it is a whole learnership's personal documents
+     * zipped into one file, sent to whichever inbox is on record. This email says the bundle is
+     * ready and where to sign in and get it; it never says where the bytes live.
+     */
+    @Async("emailTaskExecutor")
+    public void sendExportReadyEmail(String toEmail, String recipientName, String scopeLabel) {
+        if (toEmail == null || toEmail.isBlank()) {
+            log.debug("No email address on file for {}, skipping export-ready email.", recipientName);
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
+            message.setFrom(sender);
+            message.setTo(toEmail.trim());
+            message.setSubject("Your PoE export is ready");
+            message.setText(String.format(
+                    "Hi %s,\n\nYour export for \"%s\" has finished and is ready to download.\n\n"
+                            + "Sign in to your dashboard and open the Exports panel to download it — "
+                            + "this email intentionally does not carry a direct link.\n\n"
+                            + "Best regards,\nLearner Assignments System",
+                    recipientName,
+                    scopeLabel
+            ));
+
+            mailSender.send(message);
+            log.info("Successfully dispatched export-ready email to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send export-ready email to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
 }

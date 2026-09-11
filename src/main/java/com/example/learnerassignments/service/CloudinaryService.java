@@ -127,6 +127,24 @@ public class CloudinaryService {
      * compile error instead.
      */
     public String uploadLearnerFile(byte[] content, String originalFilename) throws IOException {
+        return uploadLearnerFile((Object) content, originalFilename);
+    }
+
+    /**
+     * As {@link #uploadLearnerFile(byte[], String)}, for a file already sitting on disk.
+     *
+     * The PoE export (Phase 8) builds a zip that can run to hundreds of megabytes on a 512MB
+     * instance and writes it straight to a temp file rather than a {@code byte[]} for that
+     * reason. Adding this overload lets the upload go straight from that file to Cloudinary —
+     * the SDK dispatches on {@code File} exactly as it does on {@code byte[]}, so this is the
+     * one case where handing it something other than bytes is not the mistake documented on
+     * the {@code byte[]} overload below.
+     */
+    public String uploadLearnerFile(java.io.File content, String originalFilename) throws IOException {
+        return uploadLearnerFile((Object) content, originalFilename);
+    }
+
+    private String uploadLearnerFile(Object content, String originalFilename) throws IOException {
         if (this.cloudinary == null) {
             throw new IllegalStateException("Cloudinary is not configured. Please set Cloudinary environment variables.");
         }

@@ -65,4 +65,12 @@ public interface LearnerDocumentRepository extends JpaRepository<LearnerDocument
 
     /** One document, but only if it belongs to this learner. Used to answer 404 rather than 403. */
     Optional<LearnerDocument> findByIdAndLearner_Id(Long id, Long learnerId);
+
+    /**
+     * Every version this learner has ever supplied — current and superseded alike, oldest
+     * first. Used by the PoE export (Phase 8): a portfolio being audited needs the full
+     * history of a rejected-then-resupplied document, not only the version that currently
+     * counts.
+     */
+    List<LearnerDocument> findByLearner_IdOrderByDocumentTypeAscVersionAsc(Long learnerId);
 }

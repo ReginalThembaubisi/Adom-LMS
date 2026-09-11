@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PoeCompleteness from '../components/PoeCompleteness';
+import PoeExports from '../components/PoeExports';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -77,6 +78,9 @@ const AdminDashboard = () => {
             fetchAssessors();
         } else if (activeTab === 'students') {
             fetchLearners();
+        } else if (activeTab === 'export') {
+            fetchLearnerships();
+            fetchCategories();
         }
     }, [activeTab, token]);
 
@@ -662,7 +666,8 @@ const AdminDashboard = () => {
                                 { id: 'modules', label: 'Modules Directory', icon: '📚' },
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
                                 { id: 'students', label: 'Student Directory', icon: '👤' },
-                                { id: 'completeness', label: 'Portfolio Completeness', icon: '✅' }
+                                { id: 'completeness', label: 'Portfolio Completeness', icon: '✅' },
+                                { id: 'export', label: 'SETA Export', icon: '📦' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -691,6 +696,20 @@ const AdminDashboard = () => {
                                     navigate('/admin-login');
                                 }}
                                 onError={(message) => showMsg('error', message)}
+                            />
+                        )}
+
+                        {activeTab === 'export' && (
+                            <PoeExports
+                                token={token}
+                                learnerships={learnerships}
+                                categories={categories}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => showMsg('success', message)}
                             />
                         )}
 

@@ -135,6 +135,14 @@ public class SecurityConfig {
                         // express "only the modules your assigned learners are enrolled on".
                         .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
                         .requestMatchers("/api/sessions/**").hasAnyRole("ADMIN", "LECTURER", "ASSESSOR", "MODERATOR")
+
+                        // The PoE export (Phase 8). Role-gated the same way as modules/sessions
+                        // above: open to the three roles who can request one, narrowed per
+                        // scope type by PoeExportService — a cohort or whole-learnership export
+                        // is admin-only there, a moderation sample resolves to the caller's own
+                        // ScopeService reach. Not LECTURER: nothing gives a facilitator a reason
+                        // to pull a portfolio bundle.
+                        .requestMatchers("/api/poe/**").hasAnyRole("ADMIN", "ASSESSOR", "MODERATOR")
                         // The full roster, including every learner code in the cohort.
                         .requestMatchers(HttpMethod.GET, "/api/learners").hasAnyRole("ADMIN", "LECTURER")
                         .requestMatchers(HttpMethod.POST, "/api/assignments/**").hasAnyRole("ADMIN", "LECTURER")

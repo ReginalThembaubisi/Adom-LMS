@@ -41,4 +41,7 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
     @org.springframework.data.jpa.repository.Query(
             "SELECT DISTINCT l.cohort FROM Learner l WHERE l.cohort IS NOT NULL AND l.cohort <> '' ORDER BY l.cohort")
     java.util.List<String> findDistinctCohorts();
+
+    /** Everyone in one cohort within one learnership — the PoE export's COHORT scope. */
+    java.util.List<Learner> findByLearnership_IdAndCohort(Long learnershipId, String cohort);
 }

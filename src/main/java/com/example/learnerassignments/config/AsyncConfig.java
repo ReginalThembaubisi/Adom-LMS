@@ -19,4 +19,25 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    /**
+     * The PoE export worker (Phase 8).
+     *
+     * Core and max pool size are both 1, deliberately, on a 512MB instance: building a
+     * whole-learnership zip holds every fetched file's bytes plus the zip's own write buffer
+     * at once, and two of those running together is the more realistic way this box runs out
+     * of memory than any one export alone. A queue of 20 lets requests queue up rather than be
+     * rejected outright — an export is not time-critical the way a page load is, so waiting
+     * behind another export is a wait, not a failure.
+     */
+    @Bean(name = "exportTaskExecutor")
+    public Executor exportTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("poe-export-");
+        executor.initialize();
+        return executor;
+    }
 }
