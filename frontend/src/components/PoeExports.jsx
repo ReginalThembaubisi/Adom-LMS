@@ -160,6 +160,12 @@ const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, o
                 </p>
             </div>
 
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-xs font-semibold">
+                Not submission-ready yet: digital declarations are not built. Every row in the
+                index reads "Not signed", and the signatures file is empty by design. Sign-off
+                still has to happen outside this system before a pack goes to the SETA.
+            </div>
+
             <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 space-y-4">
                 <div className="flex flex-wrap gap-4 items-end">
                     <div>

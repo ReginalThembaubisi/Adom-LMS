@@ -962,6 +962,41 @@ written:
   throws the right exception type could not see this gap; only a request through the whole
   stack could.
 
+Three more decisions, added on review before merge:
+
+- **DRAFT marking is exported, not filtered — labelled, not hidden.** Phase 5 made release a
+  learner-visibility gate, not an existence gate, and a moderator reviewing a portfolio needs
+  the assessor's judgement whether or not the learner has been told yet. Filtering DRAFT out
+  would mean section 5 arrives at the SETA missing marking that exists; including it silently
+  would risk it read as final when it is not. So it is included, and said twice: a banner at
+  the top of the rendered feedback text, and a release tag on that entry's own line in
+  `00_INDEX.pdf` — `[released]` or `[DRAFT - NOT YET RELEASED]`. The tag is carried as its own
+  field on the index entry rather than folded into the free-text label, specifically so a long
+  session name being truncated in the index can never clip the tag itself — a truncated "not
+  yet released" reads as a corrupted line, not a status, which is worse than not tagging it at
+  all.
+- **A failed job now says which stage it failed in** — resolving scope, building the bundle, or
+  storing the result — rather than one generic message for every failure. A job stuck at
+  RUNNING with no reason is the state an admin cannot act on: they cannot tell whether a retry
+  is worth trying from one that will fail identically. The RUNNING transition itself is now
+  inside the same try/catch as the rest of the job, closing the one narrow window where an
+  early failure could previously leave a job with no recorded reason at all. Still uncaught:
+  the JVM process itself dying mid-export (killed, OOM) leaves no chance to record anything —
+  no code can catch that, and it is a different, harder problem than a job that fails cleanly.
+- **The zip was already streamed to a temp file rather than held in memory**, and the temp file
+  was already cleaned up in every outcome — this was checked, not changed, and is now also
+  covered by a test that asserts no `poe-export-*` file survives a run, success or failure.
+
+**Found while verifying this, outside Phase 8's own scope: `FeedbackPublicationBackfill` (Phase
+5) republishes DRAFT marking on every boot, not only once.** Its condition — graded, not yet
+published, not INTERNAL — matches any submission graded through the real `gradeSubmission()`
+path today exactly as well as it matches the historical rows it was written for, because
+`gradeSubmission()` sets `gradedAt` and `DRAFT` together on every grading action. On an instance
+that restarts (a redeploy, a free-tier spin-down), any marking held as a draft is at real risk
+of being auto-published on the next boot with no facilitator action. This needs its own fix and
+its own decision about how to make the backfill one-shot rather than perpetual; it is not fixed
+in Phase 8's PR.
+
 ---
 
 ### Phase 9 — Digital signatures

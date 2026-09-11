@@ -408,6 +408,122 @@ class PoeExportServiceTest {
         }
     }
 
+    // ------------------------------------------------------------------ draft feedback
+
+    @Test
+    @DisplayName("Unreleased (DRAFT) marking is included, banner-flagged in the text and tagged in the index")
+    void draftFeedbackIsIncludedAndLabelled() throws Exception {
+        Learnership learnership = learnership("Draft");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        SubmissionSession session = session(module, "Ungated Task", LocalDateTime.now().minusDays(1));
+        // gradedAt set, feedbackStatus DRAFT (never released) -- see the submit() fixture.
+        submit(learner, session, LocalDateTime.now(), "Solid attempt, needs a stronger conclusion.",
+                "FACILITATOR", FeedbackVisibility.LEARNER);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        String feedbackText = readEntryContaining(job.getResultPublicId(), "5. FEEDBACK");
+        assertThat(feedbackText).startsWith("*** DRAFT");
+        assertThat(feedbackText).contains("Solid attempt, needs a stronger conclusion.");
+        assertThat(feedbackText).contains("Released to learner: No");
+
+        String indexText = readIndexText(job.getResultPublicId());
+        assertThat(indexText).contains("[DRAFT - NOT YET RELEASED]");
+    }
+
+    @Test
+    @DisplayName("A long session name never truncates the DRAFT tag itself")
+    void draftTagSurvivesTruncationOfALongLabel() throws Exception {
+        Learnership learnership = learnership("LongName");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        // Long enough that the old design — folding the tag into the truncated label — clipped
+        // "not yet released" down to a single stray letter. The tag must survive regardless of
+        // how long the free-text part of the label is.
+        String longSessionName = "A Very Long Assignment Name That Runs On For Quite A While Indeed";
+        SubmissionSession session = session(module, longSessionName, LocalDateTime.now().minusDays(1));
+        submit(learner, session, LocalDateTime.now(), "Feedback text.", "FACILITATOR", FeedbackVisibility.LEARNER);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        String indexText = readIndexText(job.getResultPublicId());
+        assertThat(indexText).contains("[DRAFT - NOT YET RELEASED]");
+        assertThat(indexText).doesNotContain("not yet r ");
+    }
+
+    @Test
+    @DisplayName("Published, released marking carries no draft banner")
+    void publishedFeedbackHasNoDraftBanner() throws Exception {
+        Learnership learnership = learnership("Published");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        SubmissionSession session = session(module, "Released Task", LocalDateTime.now().minusDays(1));
+        Submission submission = submit(learner, session, LocalDateTime.now(), "Well done.", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submission.setFeedbackStatus(FeedbackStatus.PUBLISHED);
+        submissionRepository.save(submission);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        String feedbackText = readEntryContaining(job.getResultPublicId(), "5. FEEDBACK");
+        assertThat(feedbackText).doesNotContain("DRAFT");
+        assertThat(feedbackText).contains("Released to learner: Yes");
+    }
+
+    // ------------------------------------------------------------------ failure diagnostics & cleanup
+
+    @Test
+    @DisplayName("A run that finishes cleanly leaves no temp file behind")
+    void successfulRunLeavesNoTempFile() throws Exception {
+        Learnership learnership = learnership("CleanSuccess");
+        learner(learnership, "A", LocalDateTime.now());
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+        assertThat(countTempFilesForJob(job.getId())).isZero();
+    }
+
+    @Test
+    @DisplayName("A failure names the stage it happened in, and still leaves no temp file behind")
+    void failureNamesItsStageAndCleansUp() throws Exception {
+        Learnership learnership = learnership("Corrupted");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = exportService.createJob(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        // Corrupt the persisted scope after validation, forcing a failure inside the worker
+        // rather than at request time -- exactly the class of failure the job's error column
+        // exists to explain.
+        job.setScopeRef("not valid json");
+        exportJobRepository.save(job);
+
+        exportService.runExport(job.getId());
+
+        ExportJob failed = exportJobRepository.findById(job.getId()).orElseThrow();
+        assertThat(failed.getStatus()).isEqualTo(ExportJobStatus.FAILED);
+        assertThat(failed.getError()).contains("resolving who is in scope");
+        assertThat(countTempFilesForJob(job.getId())).isZero();
+    }
+
+    private String readIndexText(String zipPath) throws Exception {
+        try (ZipFile zip = new ZipFile(new File(zipPath))) {
+            ZipEntry entry = zip.getEntry("00_INDEX.pdf");
+            byte[] pdfBytes = zip.getInputStream(entry).readAllBytes();
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(pdfBytes)) {
+                return new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+            }
+        }
+    }
+
+    private long countTempFilesForJob(Long jobId) throws Exception {
+        Path tmp = Path.of(System.getProperty("java.io.tmpdir"));
+        try (var stream = Files.list(tmp)) {
+            return stream.filter(p -> p.getFileName().toString().startsWith("poe-export-" + jobId + "-")).count();
+        }
+    }
+
     // ------------------------------------------------------------------ fixture
 
     private CreateExportRequest request(String scopeType, Long learnershipId, Long learnerId, Long categoryId) {

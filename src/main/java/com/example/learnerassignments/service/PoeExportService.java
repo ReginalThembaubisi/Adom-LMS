@@ -298,18 +298,25 @@ public class PoeExportService {
             log.warn("PoE export {} vanished before the worker could start it.", jobId);
             return;
         }
-        job.setStatus(ExportJobStatus.RUNNING);
-        job.setStartedAt(LocalDateTime.now());
-        exportJobRepository.save(job);
 
+        // Named so a failure can say what it was doing, not just that it failed. A job stuck
+        // at RUNNING with no reason is the state an admin cannot act on: they cannot tell a
+        // retry is worth trying from one that will fail identically.
+        String stage = "starting the export";
         Path tempZip = null;
         try {
+            job.setStatus(ExportJobStatus.RUNNING);
+            job.setStartedAt(LocalDateTime.now());
+            exportJobRepository.save(job);
+
+            stage = "resolving who is in scope";
             List<Learner> learners = resolveLearnerIds(job).stream()
                     .map(id -> learnerRepository.findById(id).orElse(null))
                     .filter(Objects::nonNull)
                     .sorted(Comparator.comparing(Learner::getFullName, Comparator.nullsLast(String::compareToIgnoreCase)))
                     .toList();
 
+            stage = "building the export bundle";
             tempZip = Files.createTempFile("poe-export-" + jobId + "-", ".zip");
             Counters counters = new Counters();
             List<IndexEntry> indexEntries = new ArrayList<>();
@@ -325,6 +332,7 @@ public class PoeExportService {
                 writeSignaturesCsv(zos);
             }
 
+            stage = "storing the finished export";
             String resultId = store(tempZip, jobId);
             // The local-disk fallback moves the temp file to its resting place, so there is
             // nothing left at tempZip to clean up. The Cloudinary path uploads *from* the file
@@ -354,9 +362,9 @@ public class PoeExportService {
 
             notifyRequester(job);
         } catch (Exception e) {
-            log.error("PoE export {} failed.", jobId, e);
+            log.error("PoE export {} failed while {}.", jobId, stage, e);
             job.setStatus(ExportJobStatus.FAILED);
-            job.setError(safeErrorMessage(e));
+            job.setError(safeErrorMessage(stage, e));
             job.setCompletedAt(LocalDateTime.now());
             exportJobRepository.save(job);
             auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_FAILED",
@@ -450,8 +458,16 @@ public class PoeExportService {
                 if (submission.getGradedAt() != null) {
                     String feedbackEntry = sectionPath(moduleBase, 5) + canonicalFeedbackFilename(learner, sessionName, ordinal);
                     writeBytes(zos, feedbackEntry, renderFeedback(submission).getBytes(StandardCharsets.UTF_8), counters);
+                    // DRAFT is included on purpose — see renderFeedback's note — but the index
+                    // is the one place a verifier scans every row without opening each file, so
+                    // the status has to be visible there too, not only inside the .txt itself.
+                    // Carried as its own tag rather than folded into the label: a label can be
+                    // truncated on a long session name, and a truncated "not yet released" is
+                    // worse than no tag at all — it reads as a corrupted line, not a status.
+                    String releaseTag = submission.getFeedbackStatus() == FeedbackStatus.PUBLISHED
+                            ? "released" : "DRAFT - NOT YET RELEASED";
                     indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
-                            sessionName + " feedback v" + ordinal, submission.getGradedAt()));
+                            sessionName + " feedback v" + ordinal, submission.getGradedAt(), releaseTag));
 
                     if (submission.getMarkedFilePath() != null && !submission.getMarkedFilePath().isBlank()) {
                         String markedEntry = sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal);
@@ -513,9 +529,20 @@ public class PoeExportService {
      * the original file and there is no server-side renderer for them yet, so this is what can
      * be handed over honestly today. It deliberately ignores {@code isMarkingVisibleToLearner}:
      * this is the one place an INTERNAL moderator report is meant to appear.
+     *
+     * <p>Unreleased (DRAFT) marking is included, not filtered out. A moderator reviewing a
+     * portfolio needs to see the assessor's judgement whether or not the learner has been told
+     * yet — Phase 5 made release a learner-visibility gate, not an existence gate — but nobody
+     * reading this file may mistake a draft for a final result, so a draft says so twice: a
+     * banner at the very top of the text, and the release state on this entry's line in
+     * {@code 00_INDEX.pdf}.
      */
     private String renderFeedback(Submission submission) {
         StringBuilder sb = new StringBuilder();
+        if (submission.getFeedbackStatus() != FeedbackStatus.PUBLISHED) {
+            sb.append("*** DRAFT — this marking has not been released to the learner. ")
+                    .append("Treat it as preliminary. ***\n\n");
+        }
         sb.append("Outcome: ").append(submission.getStatus() == null ? "Not recorded" : submission.getStatus()).append('\n');
         if (submission.getMarksAwarded() != null) {
             sb.append("Marks: ").append(submission.getMarksAwarded()).append('\n');
@@ -622,8 +649,14 @@ public class PoeExportService {
                         cs[0] = new PDPageContentStream(doc, page[0]);
                         y[0] = page[0].getMediaBox().getHeight() - margin;
                     }
-                    String line = String.format("[%s] %s - %s - Not signed",
-                            entry.section(), truncate(entry.label(), 50),
+                    // The tag (draft/released) is never truncated, even if the label is: a
+                    // clipped free-text label just looks abbreviated, but a clipped status tag
+                    // reads as a different, wrong status, or as a corrupted line. The label's
+                    // truncation budget shrinks to make room for it instead.
+                    String tagSuffix = entry.tag() == null ? "" : " [" + entry.tag() + "]";
+                    int labelBudget = Math.max(15, 50 - tagSuffix.length());
+                    String line = String.format("[%s] %s%s - %s - Not signed",
+                            entry.section(), truncate(entry.label(), labelBudget), tagSuffix,
                             entry.at() == null ? "date not recorded" : entry.at().toString());
                     y[0] = writeLine(cs[0], font, fontSize, margin + 12, y[0], line);
                 }
@@ -929,14 +962,21 @@ public class PoeExportService {
     /**
      * Never built from a raw exception message — the same discipline as everywhere else a
      * signed URL could conceivably surface in an underlying I/O error, and this column is
-     * rendered straight back to an admin dashboard.
+     * rendered straight back to an admin dashboard. It does say which stage failed, though:
+     * "storing the finished export" and "building the export bundle" are different problems an
+     * admin acts on differently, and a message that cannot tell them apart makes a retry a
+     * guess rather than a decision.
      */
-    private String safeErrorMessage(Exception e) {
+    private String safeErrorMessage(String stage, Exception e) {
         if (e instanceof IllegalStateException && e.getMessage() != null
                 && e.getMessage().contains("Cloudinary is not configured")) {
-            return "Storage is not configured on this deployment.";
+            return "Storage is not configured on this deployment (failed while " + stage + ").";
         }
-        return "The export could not be completed. See the server log for detail.";
+        if (e instanceof IOException) {
+            return "A storage error occurred while " + stage
+                    + ". This can mean the instance is low on disk space. See the server log for detail.";
+        }
+        return "The export failed while " + stage + ". See the server log for detail.";
     }
 
     private String writeJson(Map<String, Object> map) {
@@ -960,5 +1000,9 @@ public class PoeExportService {
         int filesSkipped = 0;
     }
 
-    private record IndexEntry(Learner learner, String section, String label, LocalDateTime at) { }
+    private record IndexEntry(Learner learner, String section, String label, LocalDateTime at, String tag) {
+        IndexEntry(Learner learner, String section, String label, LocalDateTime at) {
+            this(learner, section, label, at, null);
+        }
+    }
 }
