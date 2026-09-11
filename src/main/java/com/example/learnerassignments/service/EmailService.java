@@ -51,7 +51,11 @@ public class EmailService {
     // actually fails with a real error instead of the frontend reporting "code sent" either way.
     public void sendPasswordResetEmail(String toEmail, String fullName, String resetCode) {
         if (toEmail == null || toEmail.isBlank()) {
-            throw new IllegalStateException("No email address on file for this student.");
+            // The account's own state, not a server precondition — IllegalArgumentException,
+            // not IllegalStateException, so GlobalExceptionHandler answers 400 rather than 500.
+            // Found during the Phase 9 exception-handling audit: this was 500ing a client
+            // problem (no email on file) as if the server were broken.
+            throw new IllegalArgumentException("No email address on file for this student.");
         }
 
         SimpleMailMessage message = new SimpleMailMessage();

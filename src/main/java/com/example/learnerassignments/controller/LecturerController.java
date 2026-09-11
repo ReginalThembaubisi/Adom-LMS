@@ -8,6 +8,7 @@ import com.example.learnerassignments.service.SubmissionSessionService;
 import com.example.learnerassignments.service.SubmissionService;
 import com.example.learnerassignments.service.CloudinaryService;
 import com.example.learnerassignments.service.EnrolmentService;
+import com.example.learnerassignments.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -48,12 +49,14 @@ public class LecturerController {
 
     private static final String UPLOAD_DIR = "uploads/";
 
+    // The null check this used to have was dead code: /api/lecturer/** is already gated by
+    // hasRole("LECTURER") at the security filter, which never lets a null Authentication
+    // through. Dropped for the same reason AssessorController and ModeratorController never
+    // had it — matching their pattern here too, having found this file was the one place that
+    // had drifted from it.
     private Lecturer getAuthenticatedLecturer(Authentication auth) {
-        if (auth == null) {
-            throw new RuntimeException("Unauthorized");
-        }
         return lecturerRepository.findByUsername(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Lecturer record not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated lecturer not found"));
     }
 
     @GetMapping("/modules")
@@ -116,7 +119,7 @@ public class LecturerController {
         
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         Module module = moduleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Module not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Module not found"));
 
         if (module.getCategory() == null || module.getCategory().getLecturer() == null || !module.getCategory().getLecturer().getId().equals(lecturer.getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -200,7 +203,7 @@ public class LecturerController {
         Lecturer lecturer = getAuthenticatedLecturer(auth);
 
         Module module = moduleRepository.findById(moduleId)
-                .orElseThrow(() -> new RuntimeException("Module not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Module not found"));
 
         if (module.getCategory() == null || module.getCategory().getLecturer() == null ||
             !module.getCategory().getLecturer().getId().equals(lecturer.getId())) {
@@ -273,7 +276,7 @@ public class LecturerController {
     public ResponseEntity<SessionResponse> closeSession(@PathVariable Long id, Authentication auth) {
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         SubmissionSession session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
         
         if (session.getAssignment() == null || session.getAssignment().getModule() == null ||
             session.getAssignment().getModule().getCategory() == null ||
@@ -290,7 +293,7 @@ public class LecturerController {
     public ResponseEntity<SessionResponse> openSession(@PathVariable Long id, Authentication auth) {
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         SubmissionSession session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
 
         if (session.getAssignment() == null || session.getAssignment().getModule() == null ||
             session.getAssignment().getModule().getCategory() == null ||
@@ -310,7 +313,7 @@ public class LecturerController {
         
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         SubmissionSession session = sessionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
 
         if (session.getAssignment() == null || session.getAssignment().getModule() == null ||
             session.getAssignment().getModule().getCategory() == null ||

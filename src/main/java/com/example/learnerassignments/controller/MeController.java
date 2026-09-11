@@ -23,6 +23,9 @@ import com.example.learnerassignments.service.NotificationService;
 import com.example.learnerassignments.service.NotificationStream;
 import com.example.learnerassignments.service.StoredFileService;
 import com.example.learnerassignments.service.SubmissionService;
+import com.example.learnerassignments.service.SignatureService;
+import com.example.learnerassignments.dto.SignatureDtos;
+import com.example.learnerassignments.model.SignableType;
 import com.example.learnerassignments.exception.InvalidFileException;
 import org.springframework.http.HttpHeaders;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,6 +66,7 @@ public class MeController {
     private final LearnerDocumentService documentService;
     private final LearnerTokenService tokenService;
     private final LecturerRepository lecturerRepository;
+    private final SignatureService signatureService;
 
     // --- Identity ---
 
@@ -292,6 +296,82 @@ public class MeController {
             }
         }
         return "document";
+    }
+
+    // --- Signatures ---
+    //
+    // A learner signs their own submission or document: declaration checkbox, drawn specimen,
+    // password re-entry. The signature event itself is the record of record; the certificate
+    // PDF (with its QR code) is generated afterwards on a background worker and may not be
+    // ready the instant this call returns — see SignatureService's class doc for why.
+
+    /** The exact wording the signing screen shows before the checkbox — never hardcoded client-side. */
+    @GetMapping("/signatures/declaration-text")
+    public ResponseEntity<Map<String, String>> declarationText(@RequestParam("signableType") String signableType) {
+        return ResponseEntity.ok(Map.of("text", signatureService.declarationTextFor(parseSignableType(signableType))));
+    }
+
+    @PostMapping("/signatures")
+    public ResponseEntity<SignatureDtos.SignatureResponse> sign(
+            @RequestBody SignatureDtos.SignRequest request, HttpServletRequest httpRequest) {
+        Learner learner = currentLearner.requireLearner();
+        SignableType type = parseSignableType(request.getSignableType());
+        String ip = clientIp(httpRequest);
+        String userAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
+
+        SignatureDtos.SignatureResponse response = switch (type) {
+            case SUBMISSION -> signatureService.signSubmission(learner, request.getSignableId(),
+                    request.getSpecimenImage(), request.getPassword(), ip, userAgent);
+            case LEARNER_DOCUMENT -> signatureService.signLearnerDocument(learner, request.getSignableId(),
+                    request.getSpecimenImage(), request.getPassword(), ip, userAgent);
+        };
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** Whether — and how — this learner has already signed a given row. 404 if not signed. */
+    @GetMapping("/signatures/active")
+    public ResponseEntity<SignatureDtos.SignatureResponse> activeSignature(
+            @RequestParam("signableType") String signableType, @RequestParam("signableId") Long signableId) {
+        LearnerPrincipal principal = currentLearner.require();
+        return ResponseEntity.ok(signatureService.activeFor(
+                parseSignableType(signableType), signableId, principal.learnerId()));
+    }
+
+    @GetMapping("/signatures/{signatureId}")
+    public ResponseEntity<SignatureDtos.SignatureResponse> getSignature(@PathVariable Long signatureId) {
+        LearnerPrincipal principal = currentLearner.require();
+        return ResponseEntity.ok(signatureService.requireOwn(signatureId, principal.learnerId()));
+    }
+
+    @GetMapping("/signatures/{signatureId}/certificate")
+    public ResponseEntity<byte[]> downloadCertificate(@PathVariable Long signatureId) {
+        LearnerPrincipal principal = currentLearner.require();
+        byte[] pdf = signatureService.readOwnCertificate(signatureId, principal.learnerId());
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"signature_certificate.pdf\"")
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
+                .body(pdf);
+    }
+
+    private SignableType parseSignableType(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new InvalidFileException("signableType is required.");
+        }
+        try {
+            return SignableType.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidFileException("Unknown signable type: " + raw);
+        }
+    }
+
+    /** Render's proxy sets X-Forwarded-For; the direct remote address is the fallback. */
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private PoeDocumentType parseType(String raw) {
