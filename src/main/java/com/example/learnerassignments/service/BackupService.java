@@ -30,7 +30,12 @@ public class BackupService {
             "admins", "learnerships", "lecturers", "moderators", "assessors",
             "learners", "categories", "modules", "module_files", "assignments",
             "submission_sessions", "submissions", "learner_modules", "learner_code_sequences",
-            "messages"
+            "messages",
+            // Durable flags a boot-time task can rely on having survived a restore — added for
+            // FeedbackPublicationBackfill's completion marker, which must not come back missing
+            // after a restore and be mistaken for a fresh install. registration-status lives in
+            // the same table and gets the same protection as a side effect.
+            "system_settings"
     );
 
     @Scheduled(cron = "0 0 3 * * *") // Daily at 03:00 server time
