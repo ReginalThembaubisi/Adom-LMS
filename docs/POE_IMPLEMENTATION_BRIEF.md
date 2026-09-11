@@ -696,6 +696,38 @@ which is the honest record that marking happened and the learner could see it, s
 `published_at` with the date it was marked rather than the date of the backfill. Internal
 reports are never published.
 
+**Found during Phase 8's verification, fixed here: the backfill ran on every boot, not once.**
+Its condition — graded, not yet published, not internal — was written to describe historical
+rows from before this phase existed, but it describes a submission graded five minutes ago
+through the real marking screen exactly as well: `gradeSubmission()` sets `graded_at` and
+`DRAFT` together on every grading action, forever, by design. A data-shaped condition that
+never stops matching ran on every boot, and on a free-tier instance that spins down when idle,
+"every boot" can mean hours after a facilitator marked something and deliberately left it held,
+with no deploy in between. Phase 5's whole point — release is a decision, not a default — was
+silently undone by its own backfill.
+
+A date cutoff has the same ambiguity by another route: it has to be right forever, on every
+environment this runs in, and a row graded one second after the cutoff looks identical to one
+graded one second before it. The fix instead is a completion marker — a row in
+`system_settings` (key `POE_FEEDBACK_PUBLICATION_BACKFILL_DONE`) written once the first real run
+finishes, in the same transaction as the publishes it made. Every later boot finds the marker
+and does nothing at all: it does not ask "is this row old enough", it asks "has this task
+already run", which is a fact about the task rather than a guess about any one row.
+
+The marker is only as durable as the table it lives in, so `system_settings` was added to
+`BackupService`'s table list — it was not there before, meaning even the unrelated
+registration-status flag was previously one restore away from silently resetting. Verified with
+a real `pg_dump`/`pg_restore` cycle: grade a submission through the real endpoint, leave it
+DRAFT, restart (marker present, nothing touched), dump the database, drop it, restore it, start
+again — still DRAFT, marker still present, `already ran (marker present)` in the log both times.
+
+Residual risk, stated rather than hidden: a restore from a backup taken *before* this table was
+added to `BackupService`, or from anywhere outside this app's own backup/restore path, would
+still come back with no marker and be indistinguishable from a fresh install. There is no way to
+recover the original distinction after the fact once fresh, legitimately-held drafts exist
+alongside old, genuinely-historical ones — which is exactly the ambiguity this fix exists to
+close going forward, not retroactively.
+
 ---
 
 ### Phase 6 — Notifications and live push — **COMPLETE**

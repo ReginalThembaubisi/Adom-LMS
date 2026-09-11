@@ -6,6 +6,7 @@ import com.example.learnerassignments.dto.StudentSubmissionHistoryDto;
 import com.example.learnerassignments.model.*;
 import com.example.learnerassignments.model.Module;
 import com.example.learnerassignments.repository.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,18 @@ class FeedbackPublicationTest {
     @Autowired SubmissionSessionRepository sessionRepository;
     @Autowired SubmissionRepository submissionRepository;
     @Autowired NotificationRepository notificationRepository;
+    @Autowired SystemSettingRepository systemSettingRepository;
+
+    // FeedbackPublicationBackfill is also a CommandLineRunner: it already ran once, for real,
+    // when this test class's shared Spring context first started up, and that run's marker is
+    // a real committed row, not something any one test's @Transactional rollback touches. Every
+    // test here that calls publicationBackfill.run() needs to start from "never ran", the same
+    // state a fresh production boot is in, so the marker is cleared before each test and the
+    // real one is restored automatically when the test's transaction rolls back.
+    @BeforeEach
+    void resetBackfillMarker() {
+        systemSettingRepository.deleteById(FeedbackPublicationBackfill.COMPLETION_MARKER_KEY);
+    }
 
     @Test
     @DisplayName("Draft marking is invisible to the learner — outcome, marks and comment together")
@@ -226,6 +239,50 @@ class FeedbackPublicationTest {
         publicationBackfill.run();
 
         assertThat(submissionRepository.findById(w.submissionId).orElseThrow().getPublishedAt()).isNull();
+        assertThat(learnerService.getReleasedFeedback(w.learnerCode)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("The first run writes a completion marker that survives within the same run")
+    void firstRunWritesCompletionMarker() {
+        World w = seed();
+        Submission s = submissionRepository.findById(w.submissionId).orElseThrow();
+        s.setGradedAt(LocalDateTime.now().minusDays(3));
+        s.setFeedbackStatus(FeedbackStatus.DRAFT);
+        s.setFeedbackVisibility(FeedbackVisibility.LEARNER);
+        submissionRepository.save(s);
+
+        assertThat(systemSettingRepository.existsById(FeedbackPublicationBackfill.COMPLETION_MARKER_KEY)).isFalse();
+
+        publicationBackfill.run();
+
+        assertThat(systemSettingRepository.existsById(FeedbackPublicationBackfill.COMPLETION_MARKER_KEY)).isTrue();
+        // The legitimate historical case still gets backfilled on this, the one run that matters.
+        assertThat(learnerService.getReleasedFeedback(w.learnerCode)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("A second run does not publish work graded after the backfill already ran — the bug this closes")
+    void secondRunDoesNotPublishFreshDraftWork() {
+        World w = seed();
+        // First run: nothing to backfill yet, but it plants the completion marker -- the same
+        // as the very first boot after this phase ships.
+        publicationBackfill.run();
+        assertThat(systemSettingRepository.existsById(FeedbackPublicationBackfill.COMPLETION_MARKER_KEY)).isTrue();
+
+        // A facilitator marks something for real, through the real grading path, and
+        // deliberately leaves it held -- exactly what a free-tier spin-down and reboot can
+        // land on top of in production, with no deploy in between.
+        grade(w.submissionId, "FACILITATOR", "Held back on purpose", 80);
+        assertThat(submissionRepository.findById(w.submissionId).orElseThrow().getFeedbackStatus())
+                .isEqualTo(FeedbackStatus.DRAFT);
+
+        publicationBackfill.run();
+
+        // The old, data-shaped condition -- graded, not yet published, not internal -- matches
+        // this row exactly. The marker is what has to stop it.
+        assertThat(submissionRepository.findById(w.submissionId).orElseThrow().getFeedbackStatus())
+                .isEqualTo(FeedbackStatus.DRAFT);
         assertThat(learnerService.getReleasedFeedback(w.learnerCode)).isEmpty();
     }
 
