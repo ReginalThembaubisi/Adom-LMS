@@ -40,4 +40,23 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    /**
+     * The Phase 9 signature-certificate stamper.
+     *
+     * A small pool, not one-at-a-time like the export worker: stamping is a single PDF page
+     * plus a QR code, not a whole learnership's files held in memory at once, so several can
+     * run together on this instance without the same pressure. A queue still exists so a burst
+     * of signings waits rather than getting rejected.
+     */
+    @Bean(name = "signatureTaskExecutor")
+    public Executor signatureTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("signature-stamp-");
+        executor.initialize();
+        return executor;
+    }
 }

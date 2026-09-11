@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLearner } from '../context/LearnerContext';
 import SubmissionViewer from '../components/SubmissionViewer';
 import MessagesPanel from '../components/MessagesPanel';
+import SignatureModal from '../components/SignatureModal';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel, getStatusDotClasses, getStatusContainerClasses } from '../utils/colors';
 import {
@@ -160,6 +161,10 @@ const StudentPortal = () => {
     const [documentsLoading, setDocumentsLoading] = useState(false);
     const [uploadingType, setUploadingType] = useState(null);
     const [documentAlert, setDocumentAlert] = useState({ type: '', message: '' });
+
+    // Phase 9: signatures on accepted documents. Keyed by document id.
+    const [signatureStatus, setSignatureStatus] = useState({});
+    const [signingDocument, setSigningDocument] = useState(null);
 
     // File upload state
     const [attachedFile, setAttachedFile] = useState(null);
@@ -428,12 +433,43 @@ const StudentPortal = () => {
         try {
             const res = await authFetch('/api/me/documents');
             if (!checkStudentResponse(res)) return;
-            if (res.ok) setDocuments(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                setDocuments(data);
+                const acceptedIds = (data.slots || [])
+                    .map(s => s.current)
+                    .filter(d => d && d.status === 'ACCEPTED')
+                    .map(d => d.id);
+                acceptedIds.forEach(fetchSignatureStatus);
+            }
         } catch {
             setDocumentAlert({ type: 'error', message: 'Could not load your documents.' });
         } finally {
             setDocumentsLoading(false);
         }
+    };
+
+    // Phase 9: whether this learner has already signed one of their own accepted documents.
+    // A 404 just means "not signed yet" — not an error worth surfacing.
+    const fetchSignatureStatus = async (documentId) => {
+        setSignatureStatus(prev => ({ ...prev, [documentId]: { loading: true } }));
+        try {
+            const res = await authFetch(`/api/me/signatures/active?signableType=LEARNER_DOCUMENT&signableId=${documentId}`);
+            if (res.ok) {
+                const signature = await res.json();
+                setSignatureStatus(prev => ({ ...prev, [documentId]: { loading: false, signature } }));
+            } else {
+                setSignatureStatus(prev => ({ ...prev, [documentId]: { loading: false, signature: null } }));
+            }
+        } catch {
+            setSignatureStatus(prev => ({ ...prev, [documentId]: { loading: false, signature: null } }));
+        }
+    };
+
+    const handleSigned = (documentId, signature) => {
+        setSigningDocument(null);
+        setSignatureStatus(prev => ({ ...prev, [documentId]: { loading: false, signature } }));
+        setDocumentAlert({ type: 'success', message: 'Signed. Your certificate is being prepared.' });
     };
 
     const handleDocumentUpload = async (documentType, file) => {
@@ -1190,6 +1226,30 @@ const StudentPortal = () => {
                                         </div>
                                     )}
 
+                                    {/* A signed document is a declaration attached to one accepted version.
+                                        Only offered once staff have accepted it — signing a copy that might
+                                        still be rejected would attest to nothing. */}
+                                    {status === 'ACCEPTED' && current && (
+                                        signatureStatus[current.id]?.signature ? (
+                                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
+                                                style={{ background: '#ECFDF3' }}>
+                                                <span className="text-[11px] font-semibold" style={{ color: '#027A48' }}>
+                                                    Signed {new Date(signatureStatus[current.id].signature.signedAt).toLocaleDateString()}
+                                                </span>
+                                                <span className="text-[10px] text-[#5A6072] truncate">
+                                                    Code: {signatureStatus[current.id].signature.verificationCode.slice(0, 10)}…
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => setSigningDocument(current)}
+                                                disabled={signatureStatus[current.id]?.loading}
+                                                className="block w-full text-center py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
+                                                style={{ background: '#EEF0FF', color: '#4A3AFF' }}>
+                                                Sign this document
+                                            </button>
+                                        )
+                                    )}
+
                                     {/* The reviewer's own words, so the learner knows what to fix rather
                                         than guessing at why it came back. */}
                                     {status === 'REJECTED' && current?.reviewNote && (
@@ -1420,6 +1480,16 @@ const StudentPortal = () => {
                 <SubmissionViewer
                     submission={viewingSubmission}
                     onClose={() => setViewingSubmission(null)}
+                />
+            )}
+
+            {signingDocument && (
+                <SignatureModal
+                    signableType="LEARNER_DOCUMENT"
+                    signableId={signingDocument.id}
+                    documentLabel={signingDocument.documentLabel}
+                    onClose={() => setSigningDocument(null)}
+                    onSigned={(signature) => handleSigned(signingDocument.id, signature)}
                 />
             )}
         </div>

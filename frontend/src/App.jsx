@@ -16,6 +16,7 @@ const ModeratorDashboard = lazy(() => import('./pages/ModeratorDashboard'));
 const AssessorLogin = lazy(() => import('./pages/AssessorLogin'));
 const AssessorDashboard = lazy(() => import('./pages/AssessorDashboard'));
 const AnnotatorTest = lazy(() => import('./pages/AnnotatorTest'));
+const VerifySignature = lazy(() => import('./pages/VerifySignature'));
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="/assessor-login" element={<AssessorLogin />} />
             <Route path="/assessor-dashboard" element={<AssessorDashboard />} />
             <Route path="/annotator-test" element={<AnnotatorTest />} />
+            <Route path="/verify/:code" element={<VerifySignature />} />
           </Routes>
         </Suspense>
       </Router>

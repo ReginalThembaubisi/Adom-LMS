@@ -14,6 +14,35 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Every exception type this application deliberately throws with a message meant for a client
+ * to read gets an explicit handler here, at the status that describes what actually happened.
+ * The one thing that must never happen again is what this class has already done three times:
+ * catch something specific inside the generic {@link #handleGenericException} fallback and
+ * answer 500 for a condition that was never a server fault.
+ *
+ * <ul>
+ *   <li>{@code DataIntegrityViolationException} answered "can't delete, still referenced" for
+ *       a duplicate-key violation on an insert — misleading a facilitator recovering from a
+ *       database restore into thinking they were deleting something.</li>
+ *   <li>{@code AccessDeniedException} (Phase 8) fell through to this class's own catch-all and
+ *       came back 500 instead of 403 — Spring MVC resolves {@code @ExceptionHandler}s before an
+ *       exception can ever reach the security filter chain that would otherwise have turned it
+ *       into a 403 on its own, so having a catch-all here at all pre-empts that translation.</li>
+ *   <li>{@code LecturerController} threw bare, untyped {@code RuntimeException} for "not
+ *       authenticated" and "not found" — the one controller in the codebase that never adopted
+ *       {@link ResourceNotFoundException}, so seven call sites answered 500 for what elsewhere
+ *       in this app is a routine 404 (Phase 9 exception-handling audit).</li>
+ * </ul>
+ *
+ * <p>The pattern behind all three: a specific, well-understood failure reached this class with
+ * no handler of its own, so the generic path decided its status — and the generic path is where
+ * "unexpected" quietly comes to mean "500", whatever the exception actually was. The audit that
+ * found the third of these went looking for others rather than adding a fourth named handler
+ * and calling it done: {@link IllegalStateException} is now handled explicitly too, and the
+ * true catch-all no longer echoes an arbitrary exception's message to the client at all — see
+ * both below for why.
+ */
 @RestControllerAdvice
 @lombok.extern.slf4j.Slf4j
 public class GlobalExceptionHandler {
@@ -116,6 +145,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * A precondition on the server's own state, not on what the caller sent —
+     * {@code IllegalArgumentException}'s companion, one status class up. Every throw site of
+     * this type in the codebase was audited when this handler was added (Cloudinary or file
+     * storage unconfigured, SHA-256 unavailable): each is a hand-written, deliberately safe
+     * sentence describing a real server condition, so its message is safe to show as written.
+     * That audit is also why this type gets its own handler instead of falling through to
+     * {@link #handleGenericException}: the fallback below no longer trusts any exception's
+     * message by default, precisely so a future throw site doesn't have to be remembered and
+     * re-audited by hand the next time someone reads this class.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Internal Server Error");
+        body.put("message", ex.getMessage() != null ? ex.getMessage() : "The server could not complete that request.");
+        log.error("Server precondition failed", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    /**
      * Database constraint violations, told apart rather than lumped together.
      *
      * This used to answer every violation with "This item can't be deleted because other
@@ -214,6 +265,17 @@ public class GlobalExceptionHandler {
      * wrong HTTP method, an unsupported content type — all client mistakes — came back as
      * "Internal Server Error". That is wrong twice over. The caller cannot tell they sent a bad
      * request, and nobody watching error rates can tell a real fault from someone's typo.
+     *
+     * <p><strong>Past this point, nothing is a type this codebase deliberately throws with a
+     * client-facing message in mind.</strong> Every one of those has its own handler above, each
+     * one added because something specific landed here first and came back as an unhelpful (or
+     * actively misleading) 500. This handler used to echo {@code ex.getMessage()} regardless of
+     * exception type — safe for the handful of hand-audited throw sites that motivated it, but
+     * an open door for the next unaudited one: a raw {@code NullPointerException}, an unwrapped
+     * driver exception, a library surprise, any of which can carry an internal detail nobody
+     * meant to expose. Rather than adding a fourth named handler for whatever Phase 9 needed and
+     * leaving that door open, the door is shut: this path never shows the caller the exception's
+     * own message, on any exception type, ever. The server log gets the real one.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
@@ -221,6 +283,9 @@ public class GlobalExceptionHandler {
         body.put("timestamp", LocalDateTime.now());
 
         if (ex instanceof org.springframework.web.ErrorResponse errorResponse) {
+            // Spring's own typed exceptions (bad parameters, wrong method, unsupported media
+            // type) are safe to echo — their messages are framework-authored, not application
+            // data, and never carry anything this app itself considers sensitive.
             HttpStatus status = HttpStatus.valueOf(errorResponse.getStatusCode().value());
             body.put("status", status.value());
             body.put("error", status.getReasonPhrase());
@@ -228,13 +293,14 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(status).body(body);
         }
 
-        // A genuine, unexpected failure. Logged here because nothing else was logging it —
-        // which is why this handler quietly answering 500 went unnoticed for so long.
+        // A genuine, unexpected failure — the one case this class cannot name in advance.
+        // Logged in full here because nothing else will; the client gets a fixed, safe message
+        // regardless of what this exception's own message says.
         log.error("Unhandled exception", ex);
 
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", "Internal Server Error");
-        body.put("message", ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred.");
+        body.put("message", "An unexpected error occurred.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

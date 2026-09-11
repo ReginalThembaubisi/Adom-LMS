@@ -133,4 +133,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
      * submissions as {@code LearnerDocumentRepository} does against personal documents.
      */
     List<Submission> findByLearner_IdOrderBySubmittedAtAsc(Long learnerId);
+
+    /**
+     * Every submission this learner has made to one session, newest first — every resubmission
+     * included. Phase 9 uses this to find the submissions a fresh one supersedes, so any
+     * signature already placed on the earlier work can be revoked.
+     */
+    List<Submission> findByLearner_IdAndSession_IdOrderBySubmittedAtDesc(Long learnerId, Long sessionId);
 }
