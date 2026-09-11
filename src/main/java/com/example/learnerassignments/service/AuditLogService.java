@@ -20,15 +20,25 @@ public class AuditLogService {
     // the destructive action it is recording.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(Authentication auth, String action, String entityType, Long entityId, String details) {
-        try {
-            String role = auth != null && !auth.getAuthorities().isEmpty()
-                    ? auth.getAuthorities().iterator().next().getAuthority()
-                    : "UNKNOWN";
-            String username = auth != null ? auth.getName() : "UNKNOWN";
+        String role = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority()
+                : "UNKNOWN";
+        String username = auth != null ? auth.getName() : "UNKNOWN";
+        log(role, username, action, entityType, entityId, details);
+    }
 
+    /**
+     * As {@link #log(Authentication, String, String, Long, String)}, for a caller with no
+     * request-bound {@code Authentication} to read — the PoE export worker (Phase 8) runs on
+     * an {@code @Async} thread with no request on it, the same reason {@code ScopeService}
+     * takes an identity as a parameter rather than reading the security context.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void log(String actorRole, String actorUsername, String action, String entityType, Long entityId, String details) {
+        try {
             AuditLog entry = AuditLog.builder()
-                    .actorRole(role)
-                    .actorUsername(username)
+                    .actorRole(actorRole == null ? "UNKNOWN" : actorRole)
+                    .actorUsername(actorUsername == null ? "UNKNOWN" : actorUsername)
                     .action(action)
                     .entityType(entityType)
                     .entityId(entityId)

@@ -829,7 +829,7 @@ the right default, and the learner still shows as "not fully in scope" rather th
 
 ---
 
-### Phase 8 — Export
+### Phase 8 — Export — **COMPLETE**
 
 **This must be asynchronous.** A 40-learner cohort is roughly 600 file fetches from Cloudinary; it will time out in a request thread.
 
@@ -887,6 +887,80 @@ Acceptance criteria:
 - An assessor's export contains only their assigned learners.
 - Section 5 of learner A's zip contains no file belonging to learner B.
 - `INTERNAL` moderator reports appear in the zip.
+
+Decisions taken while building it, and two places this needed to depart from the brief as
+written:
+
+- **"Signature status" and `SIGNATURES.csv` assume Phase 9 exists. It doesn't yet.**
+  `signature_events` is not built. `00_INDEX.pdf` prints "Not signed" against every row with a
+  line explaining why, and `SIGNATURES.csv` carries the header format SETA expects with a
+  comment and no data rows. The alternative — inventing signature data, or silently dropping
+  the file — was worse either way: a fabricated signature is the one thing this export must
+  never contain, and a missing file breaks the format an auditor is told to expect.
+- **"Email a signed, short-expiry link" is not what ships.** This system has an established
+  rule that a learner's stored files are never handed out as a direct URL, signed or not —
+  every read goes through this server, which fetches and re-serves the bytes. An export bundle
+  is a whole learnership's personal documents in one zip; it is that same rule under more
+  pressure, not less. The completion notice instead says the export is ready and to sign in and
+  download it from the Exports panel — no link, ever. Admin has no email column in this system
+  at all, so an admin-requested export is status-only regardless; assessors and moderators do
+  get an email, worded the same way.
+- **The required set moved from the enum to a table (Phase 7's decision) is reused here.**
+  `PoeDocumentType` still names sections 1, 2 and 6; which of them a learnership actually
+  requires does not change what an export *contains* — a document that was supplied still
+  exports even if the learnership no longer requires it, and nothing here reads
+  `poe_document_requirements` at all. Completeness and export answer different questions on
+  purpose: one is "is this ready", the other is "hand over what exists".
+- **Every version of every document and submission is exported, not only the current one.**
+  `LearnerDocument`'s own class doc says why current-only exists — "what a rejected-then-
+  resubmitted document needs in order to show its own history" — and an export is exactly the
+  audit trail that needs that history, more than the portal ever does.
+- **One bad file does not fail the job.** A 600-file learnership export that aborted on the
+  first unreadable row would report failure for 599 learners whose evidence was fine. Every
+  file fetch is wrapped; a failure is skipped, counted, and logged, and the job still completes.
+  Only a failure in the zip stream itself is allowed to fail the whole job, because at that
+  point nothing further can be written regardless.
+- **The zip is streamed to a temp file on disk, never held whole in memory**, and the upload to
+  Cloudinary is handed the `File` directly rather than read into a `byte[]` first — the same
+  512MB-instance discipline as everywhere else in this brief. The export worker's thread pool
+  is capped at one job at a time for the same reason: two whole-learnership exports running
+  together is the more realistic way this instance runs out of memory than any one export
+  alone.
+- **"Moderation sample" resolves through `ScopeService.accessibleLearnerIds`, not a second
+  copy of the scoping rule.** An assessor or moderator's export is always their own reach,
+  self-only even when the request tries to name someone else's id — so "an assessor's export
+  contains only their assigned learners" holds by construction, off the same code already
+  proven for their ordinary reads, rather than a rule that could quietly drift from it.
+- **Cohort, whole-learnership and single-section exports are admin only.** These are the
+  qualification-wide, SETA-facing scopes; a single learner and a moderation sample are open to
+  the three roles who can request an export at all.
+- **A section export means one category (Fundamental/Core/Elective), not one PoE folder
+  number.** The brief names it "single section" without saying which; a category is what this
+  codebase already calls a section elsewhere, and it is the one grouping an admin would
+  plausibly want to re-run in isolation after fixing something in just that folder. It narrows
+  what a learnership export contains to that category's modules only, and skips sections 1, 2
+  and 6 entirely — a section re-run is not a substitute for the personal document folders.
+- **Two learners with the same full name get distinct folders.** `{learner.fullName}/` as
+  written collides the moment two learners share a name, which is not a rare event in a cohort
+  drawn from a small set of common surnames. Folders are named
+  `{learner.fullName} ({learnerCode})/` instead.
+- **A caught bug worth naming: `@Async` calling `@Transactional` on the same object, from
+  inside the same class, silently drops the transaction.** Self-invocation bypasses the Spring
+  proxy that makes either annotation do anything, and it only surfaces once something runs
+  through a real thread pool — every test in this codebase calls a service's synchronous half
+  directly for exactly that reason, and this phase is the first to actually need the asynchronous
+  one. Fixed with a `@Lazy` self-injected reference so the internal call still goes through the
+  proxy. Caught, and the fix confirmed, only by running the whole thing in a container rather
+  than trusting MockMvc.
+- **A second bug the same run caught: an admin-only scope requested by a non-admin came back
+  500, not 403.** `AccessDeniedException` is Spring Security's textbook signal for "not
+  authorised", and the textbook answer is that the security filter chain turns it into a 403 —
+  which is true only when nothing upstream already caught it. This codebase's
+  `GlobalExceptionHandler` has a catch-all `@ExceptionHandler(Exception.class)`, and Spring MVC
+  resolves that handler before the exception can ever reach the filter chain. Fixed with an
+  explicit handler for `AccessDeniedException` returning 403. A unit test asserting the service
+  throws the right exception type could not see this gap; only a request through the whole
+  stack could.
 
 ---
 

@@ -28,6 +28,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    /**
+     * A permission gate that is not a record-existence check — the PoE export's admin-only
+     * scopes (Phase 8) are the first caller.
+     *
+     * Without this, {@code AccessDeniedException} fell through to the catch-all below and came
+     * back as a 500, discovered against a running container rather than a unit test: MVC's
+     * {@code @ExceptionHandler} resolution handles the exception before it can ever reach
+     * Spring Security's {@code ExceptionTranslationFilter}, so the textbook "throw it and the
+     * filter chain turns it into a 403" behaviour never applied inside a
+     * {@code @RestControllerAdvice} that already has a catch-all registered.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Forbidden");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     // A learner endpoint reached without a usable session. Distinct from the filter-chain
     // 401 because the request did pass the authorization rules — the token expired or was
     // revoked between the security check and the controller.

@@ -126,4 +126,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
            """)
     List<Object[]> findLearnerSessionMarkingPairs(
             @org.springframework.data.repository.query.Param("learnerIds") java.util.Collection<Long> learnerIds);
+
+    /**
+     * Every submission this learner has ever made, oldest first — every resubmission included.
+     * Used by the PoE export (Phase 8), which files the same audit-trail reasoning against
+     * submissions as {@code LearnerDocumentRepository} does against personal documents.
+     */
+    List<Submission> findByLearner_IdOrderBySubmittedAtAsc(Long learnerId);
 }

@@ -12,6 +12,9 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
 
     List<Module> findByCategoryLearnershipId(Long learnershipId);
 
+    /** Every module in one category — the PoE export's SECTION scope narrows to these. */
+    List<Module> findByCategoryId(Long categoryId);
+
     /**
      * Modules any of these learners is enrolled on.
      *
