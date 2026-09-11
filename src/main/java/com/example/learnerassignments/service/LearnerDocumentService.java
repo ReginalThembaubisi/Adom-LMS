@@ -7,6 +7,7 @@ import com.example.learnerassignments.model.LearnerDocument;
 import com.example.learnerassignments.model.PoeDocumentType;
 import com.example.learnerassignments.model.NotificationType;
 import com.example.learnerassignments.model.ReviewStatus;
+import com.example.learnerassignments.model.SignableType;
 import com.example.learnerassignments.repository.LearnerDocumentRepository;
 import com.example.learnerassignments.repository.LearnerRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class LearnerDocumentService {
     private final CloudinaryService cloudinaryService;
     private final StoredFileService storedFileService;
     private final NotificationService notificationService;
+    private final SignatureService signatureService;
 
     /** Documents are personal, so they never go in the publicly served uploads directory. */
     @Value("${file.submission-dir:private-uploads}")
@@ -93,6 +95,12 @@ public class LearnerDocumentService {
                 .uploadedAt(LocalDateTime.now())
                 .uploadedByRole(uploadedByRole)
                 .build());
+
+        // A signature on a superseded version attested to bytes that are no longer the
+        // learner's current work — withdraw it rather than leave it standing unqualified
+        // against a document that has since been replaced. See SignatureService's class doc.
+        superseded.forEach(previous -> signatureService.revokeActiveSignature(
+                SignableType.LEARNER_DOCUMENT, previous.getId(), "Superseded by version " + nextVersion + "."));
 
         log.info("Learner document stored: learner {} supplied {} version {} ({} superseded).",
                 learner.getLearnerCode(), documentType, nextVersion, superseded.size());

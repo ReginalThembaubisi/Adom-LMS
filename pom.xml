@@ -81,13 +81,26 @@
 			<version>1.39.0</version>
 		</dependency>
 
-		<!-- PDFBox, for the PoE export's 00_INDEX.pdf (Phase 8). Writing a plain content
-		     stream is enough for a listing document; nothing here needs the form-filling or
-		     signature modules that pull in extra weight. -->
+		<!-- PDFBox, for the PoE export's 00_INDEX.pdf (Phase 8) and the Phase 9 signature
+		     certificate page. Writing a plain content stream is enough for both; neither needs
+		     the form-filling or cryptographic-signature modules that pull in extra weight. -->
 		<dependency>
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>
 			<version>3.0.3</version>
+		</dependency>
+
+		<!-- ZXing, for the QR code on a Phase 9 signature certificate that links to the public
+		     verification page. core does the encoding; javase renders it to a BufferedImage. -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.3</version>
 		</dependency>
 
 		<dependency>

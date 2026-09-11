@@ -60,6 +60,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
 
+                        // The Phase 9 public signature-verification page. Deliberately open to
+                        // anyone with a code — that is the whole point of a verification page —
+                        // and SignatureService.verify() is the sole gate on what it returns:
+                        // document type, signer role, date, hash match, nothing else.
+                        .requestMatchers(HttpMethod.GET, "/api/verify/**").permitAll()
+
                         .requestMatchers(
                                 "/",
                                 "/*.html",

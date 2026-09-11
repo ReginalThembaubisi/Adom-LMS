@@ -35,6 +35,7 @@ public class SubmissionService {
     private final CloudinaryService cloudinaryService;
     private final EnrolmentService enrolmentService;
     private final SubmissionGradingHistoryRepository gradingHistoryRepository;
+    private final SignatureService signatureService;
 
     // Deliberately NOT the "uploads" directory: that one is mapped as a public static
     // resource handler for facilitator guides and assignment briefs. Learner submissions
@@ -87,7 +88,12 @@ public class SubmissionService {
                 // generated here.
                 filePathString = cloudinaryService.uploadLearnerFile(file);
             } catch (IOException e) {
-                throw new RuntimeException("Could not upload file to Cloudinary. Please try again!", e);
+                // IllegalStateException, not a bare RuntimeException: this codebase's own
+                // convention for "the server could not complete a valid request", which
+                // GlobalExceptionHandler answers 500 with this exact message rather than the
+                // generic one — found and fixed during the Phase 9 exception-handling audit,
+                // the same audit that also fixed LecturerController's raw RuntimeExceptions.
+                throw new IllegalStateException("Could not upload file to Cloudinary. Please try again!", e);
             }
         } else {
             String storedFilename = String.format("%s_%d_%s", learnerCode, sessionId, originalFilename);
@@ -102,7 +108,7 @@ public class SubmissionService {
                 }
                 filePathString = targetLocation.toString();
             } catch (IOException e) {
-                throw new RuntimeException("Could not store file " + storedFilename + ". Please try again!", e);
+                throw new IllegalStateException("Could not store file " + storedFilename + ". Please try again!", e);
             }
         }
 
@@ -129,6 +135,19 @@ public class SubmissionService {
                 .build();
 
         Submission savedSubmission = submissionRepository.save(submission);
+
+        // A resubmission to the same session supersedes any earlier attempt at it. A signature
+        // already placed on that earlier submission attested to work that is no longer this
+        // learner's current answer to this session, so it is withdrawn rather than left
+        // standing against superseded work — the same reasoning LearnerDocumentService applies
+        // to a new document version. Each Submission row is immutable once created (a
+        // resubmission is always a new row, never an edit to this one), so "earlier" here means
+        // every other submission this learner has on this session, not a version of this one.
+        submissionRepository.findByLearner_IdAndSession_IdOrderBySubmittedAtDesc(learner.getId(), session.getId())
+                .stream()
+                .filter(s -> !s.getId().equals(savedSubmission.getId()))
+                .forEach(previous -> signatureService.revokeActiveSignature(
+                        SignableType.SUBMISSION, previous.getId(), "Superseded by a resubmission."));
 
         // Accepting the work is the last honest moment to record that they were on the module.
         // The roster is fixed at module creation now, but if that is ever missed again a
