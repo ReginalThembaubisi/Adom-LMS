@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PoeCompleteness from '../components/PoeCompleteness';
 import PoeExports from '../components/PoeExports';
+import LegacyImport from '../components/LegacyImport';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -667,7 +668,8 @@ const AdminDashboard = () => {
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
                                 { id: 'students', label: 'Student Directory', icon: '👤' },
                                 { id: 'completeness', label: 'Portfolio Completeness', icon: '✅' },
-                                { id: 'export', label: 'SETA Export', icon: '📦' }
+                                { id: 'export', label: 'SETA Export', icon: '📦' },
+                                { id: 'legacy-import', label: 'Legacy Folder Import', icon: '🗂️' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -704,6 +706,18 @@ const AdminDashboard = () => {
                                 token={token}
                                 learnerships={learnerships}
                                 categories={categories}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => showMsg('success', message)}
+                            />
+                        )}
+
+                        {activeTab === 'legacy-import' && (
+                            <LegacyImport
+                                token={token}
                                 onAuthFailure={() => {
                                     sessionStorage.removeItem('admin_auth');
                                     navigate('/admin-login');

@@ -1162,6 +1162,64 @@ Acceptance criteria:
 - A folder for a learner not in the database is reported, not created.
 - Cancelling the preview writes nothing.
 
+**Built. Decisions made shipping this, where they narrow or differ from the sketch above:**
+
+- **Scope is personal documents only — PoE sections 1, 2 and 6.** The acceptance criterion
+  "produces the same file set the export would emit" is read against that scope, not against
+  the whole export: this importer never creates a `Submission` or a `ModuleFile`, only
+  `LearnerDocument` rows, going through `LearnerDocumentService.upload` exactly the way a
+  learner's own browser upload does. Module-based content — facilitator guides, submissions,
+  feedback (sections 3-5), and the Fundamentals/Cores/Electives category folders those files
+  sit under — is *recognised*, specifically so it is never misfiled into section 6 as if it
+  were an unrecognised loose file, but it is reported as out of this importer's scope rather
+  than imported. Reconstructing which module a historical submission belongs to, and whether it
+  was on time, graded, or superseded, is a materially different and larger problem than sorting
+  four kinds of personal document by filename keyword, and the brief's own instructions for this
+  phase (map filenames to `PoeDocumentType` by keyword; unmatched files land in section 6) only
+  ever describe the personal-document case to begin with.
+- **A zip is classified as "one learner's own folder" or "a parent of many" by inspecting its
+  top level**, not by an admin toggle alone (though the admin can still say so directly via
+  `learnerId`, which always wins). If any top-level entry normalises to a recognised section or
+  category folder name, or is a loose file sitting at the zip root, the whole zip is treated as
+  one learner's folder — a parent-of-many zip always has an actual directory per learner, never
+  a bare file at the top. When that shape is detected without `learnerId` given, the preview
+  call is rejected outright (400) rather than guessing which learner it might be; this is the
+  same "never auto-pick" discipline the brief asks for folder-name matching, applied to the one
+  other place this importer could otherwise guess.
+- **Fuzzy matching is exact-or-unique-subset, never a similarity score.** "AMANDA MNDAWE" against
+  "Amanda Randy Mndawe" matches because every word in the folder name is a word in the learner's
+  name (or vice versa) — not because they are 80% alike by some string-distance metric, which
+  would eventually match two different people's names by coincidence with no way for an admin to
+  know it had happened. The moment more than one learner fits, or none do, the row is
+  `UNMATCHED` and waits for a human; two learners sharing a name is exactly the case a real
+  cohort produces, not a rare edge case.
+- **Filename keyword matching is token-based, not a raw substring check.** Classifying "ID" by
+  `contains("ID")` would misfire on a file like `Validated_certificate.pdf` (which contains
+  "id" at position 3) — precisely the kind of silent misfile this whole phase exists to prevent.
+  Filenames are split on non-alphanumeric characters into whole tokens first, and only a whole
+  token like `ID`, `IDCOPY` or `IDENTITY` counts.
+- **The uploaded zip is stored to private disk for the life of the preview, keyed by batch id,
+  and deleted the moment the batch leaves `PREVIEWED`** — on confirm (nothing left to import
+  twice from) and on cancel (nothing left to keep). This is what lets a preview survive an app
+  restart on this free-tier instance while an admin reviews it, the same reasoning `ExportJob`
+  already relies on for a finished export bundle. Found while verifying this against a real
+  PostgreSQL container: the validation path that rejects a mis-shaped zip (single-learner shape
+  with no `learnerId`) threw before the temp file was cleaned up, and `@Transactional`'s
+  automatic rollback of the batch row does nothing for a file already written to disk — a leak
+  on every rejected upload. Fixed by cleaning up the stored zip on that path too, and confirmed
+  fixed by triggering the same rejection against the running container and checking the
+  directory was empty afterwards.
+- **Confirm and cancel are both idempotent-refusing, not idempotent.** Calling either a second
+  time on the same batch is a 400, not a silent no-op — a repeated confirm silently doing
+  nothing would read to an admin as "it imported again", and a repeated cancel doing nothing
+  hides that the batch was already gone. A cancelled batch's bookkeeping rows (which learner,
+  which file, what would have been imported) are kept, marked `CANCELLED`; only the zip bytes
+  and the potential `LearnerDocument` writes are the things "cancel writes nothing" promises
+  never to have happened, and verifying that promise — not just that the row said `CANCELLED` —
+  was the actual point of testing this path, both in the JUnit suite and against a running
+  container: after cancelling, the database was queried directly for a `learner_documents` row
+  count, not merely the API's own report of what happened.
+
 ---
 
 ## 7. Out of scope
