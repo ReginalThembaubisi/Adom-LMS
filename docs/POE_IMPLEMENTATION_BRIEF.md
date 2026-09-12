@@ -874,9 +874,9 @@ UI ever built for either — the review had to be done by hand-editing the datab
 add a separate screen, the drill-down this dashboard already opens per learner (the one showing
 `documentItems`/`submissionItems`) is where an admin naturally lands to see what is missing, so
 that is where the review actions went: each required document's checklist row now shows the
-file itself (fetched and opened the same authenticated way every other staff file view in this
-app works, never a direct link) with Accept and Reject buttons, where a document exists to act
-on. A `MISSING` or `EXEMPT` row has nothing to open, so it renders exactly as it did before. The
+file itself (fetched with this component's own admin credential and opened from an object URL,
+never a direct link) with Accept and Reject buttons, where a document exists to act on. A
+`MISSING` or `EXEMPT` row has nothing to open, so it renders exactly as it did before. The
 existing checklist endpoint (`GET /api/admin/poe/completeness/learners/{id}`) already names
 which document type each row is (`ChecklistItem.key`, e.g. `"CV"`) in exactly the same string
 `LearnerDocument.documentType` uses, so the two responses join client-side with no backend
@@ -887,6 +887,21 @@ Rejecting without a note was already refused server-side (`LearnerDocumentServic
 screen also disables its own "Confirm rejection" button until a note is typed, so the refusal is
 felt as a UI constraint rather than a failed request, but the server-side refusal is what
 actually matters and was not touched.
+
+**Bug found in production, fixed same day: "Open" 403'd for a real admin.** The first version
+of `openDocumentFile` used `utils/staffAuth.js`'s `fetchStaffBlobUrl`, a shared helper written
+for `SubmissionMarker`/`SubmissionViewer` that guesses which staff role is signed in by checking
+`sessionStorage` keys in a fixed order (`lecturer_auth`, `moderator_auth`, `assessor_auth`,
+`admin_auth`) and using the first one it finds. That guess is only safe when a browser session
+has ever held exactly one staff credential; the moment it has held more than one — which an
+admin testing multiple role logins in the same browser will do without thinking about it — the
+helper hands an admin-only request a real but non-admin credential. That authenticates fine and
+then fails authorization, which is a 403, not a 401 — it reads as a permissions bug, not a
+wrong-credential one, and every other call in this same component (the checklist, the document
+list, every accept/reject) kept working throughout, because they all use this component's own
+`authHeaders()` built from its own `token` prop rather than going through that shared helper.
+Fixed by doing the same: `openDocumentFile` now fetches with `authHeaders()` directly, the exact
+credential already proven correct by everything else on this screen.
 
 ---
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchStaffBlobUrl } from '../utils/staffAuth';
 
 /**
  * Portfolio completeness.
@@ -140,9 +139,20 @@ const PoeCompleteness = ({ token, onAuthFailure, onError }) => {
         load();
     };
 
+    // Deliberately not utils/staffAuth.js's fetchStaffBlobUrl: that helper guesses which staff
+    // role is signed in by checking sessionStorage keys in a fixed order (lecturer, moderator,
+    // assessor, admin) and returning the first one it finds, which is the wrong credential the
+    // moment more than one role has ever been signed into the same browser session. That
+    // authenticates as a real but non-admin user against an admin-only endpoint — a 403, not a
+    // 401, so it looks like a permissions bug rather than a wrong-credential one. This screen
+    // already has its own admin credential in `token`, proven by every other call in this
+    // component; there is no reason to go looking for a different one just to fetch a file.
     const openDocumentFile = async (doc) => {
         try {
-            const { objectUrl } = await fetchStaffBlobUrl(`/api/admin/documents/${doc.id}/view`);
+            const res = await fetch(`/api/admin/documents/${doc.id}/view`, { headers: authHeaders() });
+            if (res.status === 401) { onAuthFailure?.(); return; }
+            if (!res.ok) throw new Error(`Could not load document (${res.status})`);
+            const objectUrl = URL.createObjectURL(await res.blob());
             window.open(objectUrl, '_blank');
         } catch (err) {
             onError?.(err.message || 'Could not open that document.');
