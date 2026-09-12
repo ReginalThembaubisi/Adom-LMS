@@ -47,6 +47,8 @@ public class AdminController {
     private final DeliveryHealthCheck deliveryHealthCheck;
     private final PasswordEncoder passwordEncoder;
     private final com.example.learnerassignments.service.PoeRequirementService poeRequirementService;
+    private final ModuleFileRepository moduleFileRepository;
+    private final com.example.learnerassignments.service.StoredFileService storedFileService;
 
     @PostMapping("/lecturers")
     public ResponseEntity<AdminLecturerResponse> createLecturer(@Valid @RequestBody CreateLecturerRequest request) {
@@ -904,6 +906,31 @@ public class AdminController {
                         "inline; filename=\"" + document.getOriginalFilename() + "\"")
                 .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
                 .body(learnerDocumentService.load(document));
+    }
+
+    // --- Module files, for the portfolio browser (Phase 11) ---
+    //
+    // A facilitator guide has never had an admin-facing view endpoint: learners get one
+    // (GET /api/me/module-files/{id}/download, enrolment-checked) but nothing here does, because
+    // nothing admin-facing needed to open one until the portfolio browser. Same fetch-and-re-serve
+    // discipline as every other file endpoint — never a direct storage link — gated by
+    // SecurityConfig's blanket /api/admin/** -> ADMIN rule rather than any check of its own, since
+    // an admin may open any module's guide.
+
+    @GetMapping("/module-files/{fileId}/view")
+    public ResponseEntity<?> viewModuleFile(@PathVariable Long fileId) {
+        var file = moduleFileRepository.findById(fileId)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException(
+                        "Module file not found with id: " + fileId));
+        String filename = file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()
+                ? file.getTitle() : file.getOriginalFilename();
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        learnerDocumentService.resolveContentType(filename)))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + filename.replace("\"", "") + "\"")
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "private, max-age=0, no-store")
+                .body(storedFileService.open(file.getFilePath(), "facilitator guide"));
     }
 
     private LearnerDocumentDtos.DocumentResponse toLearnerDocumentResponse(

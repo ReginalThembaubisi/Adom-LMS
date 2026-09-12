@@ -4,7 +4,9 @@ import com.example.learnerassignments.dto.PoeCompletenessDtos.CompletenessDashbo
 import com.example.learnerassignments.dto.PoeCompletenessDtos.LearnerChecklist;
 import com.example.learnerassignments.dto.PoeCompletenessDtos.LearnershipRequirements;
 import com.example.learnerassignments.dto.PoeCompletenessDtos.UpdateRequirementRequest;
+import com.example.learnerassignments.dto.PoePortfolioDtos.LearnerPortfolioTree;
 import com.example.learnerassignments.service.PoeCompletenessService;
+import com.example.learnerassignments.service.PoePortfolioBrowserService;
 import com.example.learnerassignments.service.PoeRequirementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,7 @@ public class PoeDashboardController {
 
     private final PoeCompletenessService completenessService;
     private final PoeRequirementService requirementService;
+    private final PoePortfolioBrowserService portfolioBrowserService;
 
     @GetMapping("/completeness")
     public ResponseEntity<CompletenessDashboard> completeness(
@@ -38,6 +41,16 @@ public class PoeDashboardController {
     public ResponseEntity<LearnerChecklist> learnerChecklist(@PathVariable Long learnerId) {
         LearnerChecklist checklist = completenessService.checklistFor(learnerId);
         return checklist == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(checklist);
+    }
+
+    /**
+     * The full PoE folder structure for one learner, resolved exactly as an export would build
+     * it — see {@code PoeExportService.resolvePortfolio} and {@code PoePortfolioBrowserService}'s
+     * class doc for why this can never disagree with a zip of the same learner.
+     */
+    @GetMapping("/portfolio/learners/{learnerId}")
+    public ResponseEntity<LearnerPortfolioTree> portfolio(@PathVariable Long learnerId) {
+        return ResponseEntity.ok(portfolioBrowserService.browse(learnerId));
     }
 
     @GetMapping("/learnerships/{learnershipId}/requirements")

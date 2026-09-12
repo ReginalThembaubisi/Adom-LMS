@@ -57,7 +57,7 @@ const LEARNER_STATE_LABELS = {
     COMPLETE: 'Complete'
 };
 
-const PoeCompleteness = ({ token, onAuthFailure, onError }) => {
+const PoeCompleteness = ({ token, onAuthFailure, onError, onBrowsePortfolio }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [learnershipId, setLearnershipId] = useState('');
@@ -525,13 +525,27 @@ const PoeCompleteness = ({ token, onAuthFailure, onError }) => {
                                     {openLearner.cohort ? ` · ${openLearner.cohort}` : ''}
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => { setOpenLearner(null); setChecklist(null); }}
-                                className="text-slate-400 hover:text-slate-700 font-bold"
-                            >
-                                ✕
-                            </button>
+                            <div className="flex items-center gap-3">
+                                {onBrowsePortfolio && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onBrowsePortfolio({
+                                            id: openLearner.learnerId,
+                                            label: `${openLearner.fullName} (${openLearner.learnerCode})`
+                                        })}
+                                        className="text-[10px] font-semibold text-blue-600 hover:underline whitespace-nowrap"
+                                    >
+                                        Browse portfolio
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => { setOpenLearner(null); setChecklist(null); }}
+                                    className="text-slate-400 hover:text-slate-700 font-bold"
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         </div>
                         {!checklist ? (
                             <p className="text-xs text-slate-500">Loading checklist…</p>
