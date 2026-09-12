@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PoeCompleteness from '../components/PoeCompleteness';
 import PoeExports from '../components/PoeExports';
 import LegacyImport from '../components/LegacyImport';
+import PoePortfolioBrowser from '../components/PoePortfolioBrowser';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -37,6 +38,10 @@ const AdminDashboard = () => {
     const [editingLearner, setEditingLearner] = useState(null);
     const [staffRole, setStaffRole] = useState('LECTURER');
     const [activeTab, setActiveTab] = useState('overview');
+    // { id, label } of the learner currently open in the portfolio browser modal, or null.
+    // Reachable from both the Student Directory row action and PoeCompleteness's own
+    // drill-down, which is why this lives up here rather than inside either screen.
+    const [browsingLearner, setBrowsingLearner] = useState(null);
     const fetchedTabsRef = useRef(new Set());
 
     // Learnership form
@@ -698,6 +703,7 @@ const AdminDashboard = () => {
                                     navigate('/admin-login');
                                 }}
                                 onError={(message) => showMsg('error', message)}
+                                onBrowsePortfolio={(learner) => setBrowsingLearner(learner)}
                             />
                         )}
 
@@ -1308,6 +1314,15 @@ const AdminDashboard = () => {
                                             <td className="p-3 text-slate-600 font-medium">{l.learnershipName || 'Unassigned'}</td>
                                             <td className="p-3 text-right space-x-2 whitespace-nowrap">
                                                 <button
+                                                    onClick={() => setBrowsingLearner({
+                                                        id: l.id,
+                                                        label: `${l.fullName} (${l.learnerCode})`
+                                                    })}
+                                                    className="bg-violet-50 text-violet-600 border border-violet-200/50 hover:bg-violet-100 hover:text-violet-700 font-semibold px-2.5 py-1 rounded-lg transition-all"
+                                                >
+                                                    Portfolio
+                                                </button>
+                                                <button
                                                     onClick={() => setEditingLearner({
                                                         id: l.id,
                                                         fullName: l.fullName,
@@ -1347,6 +1362,19 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
+            {browsingLearner && (
+                <PoePortfolioBrowser
+                    token={token}
+                    learnerId={browsingLearner.id}
+                    learnerLabel={browsingLearner.label}
+                    onClose={() => setBrowsingLearner(null)}
+                    onAuthFailure={() => {
+                        sessionStorage.removeItem('admin_auth');
+                        navigate('/admin-login');
+                    }}
+                    onError={(message) => showMsg('error', message)}
+                />
+            )}
 
             {editingLecturer && (
                 <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">

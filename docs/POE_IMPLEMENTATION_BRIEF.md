@@ -1305,6 +1305,48 @@ Acceptance criteria:
   container: after cancelling, the database was queried directly for a `learner_documents` row
   count, not merely the API's own report of what happened.
 
+### Phase 11 — Admin portfolio browser — **COMPLETE**
+
+An admin could see a completeness checklist and download a zip export, but had no way to browse
+a learner's portfolio on screen — the only way to see what a submission or a facilitator guide
+actually was, short of downloading the whole bundle, was to open it from the completeness
+drill-down's own document list (Phase 3), which only ever covered documents, not guides,
+submissions or feedback.
+
+- **The zip and the screen share one resolution, not two.** `PoeExportService.writeLearnerFolder`
+  used to inline the logic that decides what belongs where — which guide version is pinned to a
+  submission, which submission belongs to which module, what a session's Nth resubmission is
+  called. That logic was extracted into `PoeExportService.resolvePortfolio(learner,
+  sectionOnlyCategoryId)`, an in-memory, side-effect-free resolution (`LearnerPortfolio` /
+  `ModulePortfolioFolder` / `SubmissionOnModule`), and `writeLearnerFolder` was rewritten to
+  consume it instead of computing it itself. `PoePortfolioBrowserService` calls the exact same
+  method to build the on-screen tree. Two call sites, one answer to "what does this learner have
+  and where does it go" — the failure mode this avoids is the screen and the zip quietly drifting
+  apart because someone changed one query and not the other.
+- **All six sections always render, even empty**, each with a file count, and sections 3/4/5
+  always show their Fundamentals/Cores/Electives subfolders too — even a category with nothing
+  in it for this learner — so the shape of the qualification is visible regardless of what this
+  particular learner has done. A module whose category cannot be mapped to one of those three
+  still gets its own folder (mirroring `categoryFolderFor`'s "Uncategorised" fallback) rather than
+  being dropped or silently merged, so the browser can never show less than the zip would.
+- **"Open" is always fetch-and-blob through an existing authenticated endpoint, never a direct
+  link.** Documents and submissions already had one each (`GET /api/admin/documents/{id}/view`,
+  `GET /api/submissions/{id}/view`, the latter also serving the marked copy via `?marked=true`);
+  a facilitator guide never had an admin-facing equivalent (only a learner-scoped, enrolment-checked
+  one), so `GET /api/admin/module-files/{id}/view` was added, gated by `SecurityConfig`'s existing
+  blanket `/api/admin/**` → `ADMIN` rule. Rendered feedback is not a stored file — it is text
+  `renderFeedback` synthesises at read time — so it ships inline as text rather than behind a link.
+- **New endpoint:** `GET /api/admin/poe/portfolio/learners/{learnerId}`, alongside the completeness
+  endpoints it is reached from. Reachable from the Student Directory (a "Portfolio" button per row)
+  and from the completeness checklist's own drill-down ("Browse portfolio").
+- **Verified two ways.** `PoePortfolioBrowserServiceTest` builds a rich fixture (documents,
+  pinned guide version, a resubmission with feedback and a marked copy) and asserts the tree's
+  canonical filenames are *exactly* the set of filenames a real export zip produces for the same
+  learner — run against both H2 and a real PostgreSQL 16 container. It was then checked by hand
+  against a running PostgreSQL container too: seeded a learner with a pinned older guide version,
+  called the portfolio endpoint, triggered a real export, and confirmed the zip's folder structure
+  and filenames matched the browser's tree line for line, including the pinned (not current) guide.
+
 ---
 
 ## 7. Out of scope

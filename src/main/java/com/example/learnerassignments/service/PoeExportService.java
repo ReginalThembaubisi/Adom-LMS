@@ -98,7 +98,10 @@ public class PoeExportService {
     @Value("${file.submission-dir:private-uploads}")
     private String privateDir;
 
-    private static final Map<Integer, String> SECTION_FOLDERS = Map.of(
+    // Package-private (not private): PoePortfolioBrowserService reads these same maps so an
+    // admin browsing a learner on screen sees the identical section/category names the zip
+    // would use — one map, never two that could drift apart.
+    static final Map<Integer, String> SECTION_FOLDERS = Map.of(
             1, "1. PERSONAL DETAILS",
             2, "2. QUALIFICATION DETAILS",
             3, "3. ASSESSMENT GUIDELINES",
@@ -107,7 +110,7 @@ public class PoeExportService {
             6, "6. ADDITIONAL EVIDENCE"
     );
 
-    private static final Map<String, String> CATEGORY_FOLDERS = Map.of(
+    static final Map<String, String> CATEGORY_FOLDERS = Map.of(
             "FUNDAMENTAL", "Fundamentals",
             "CORE", "Cores",
             "ELECTIVE", "Electives"
@@ -405,50 +408,34 @@ public class PoeExportService {
     private void writeLearnerFolder(ZipOutputStream zos, Learner learner, Long sectionOnlyCategoryId,
                                      List<IndexEntry> indexEntries, Counters counters) throws IOException {
         String folder = sanitizeSegment(learner.getFullName() + " (" + learner.getLearnerCode() + ")") + "/";
+        LearnerPortfolio portfolio = resolvePortfolio(learner, sectionOnlyCategoryId);
 
-        if (sectionOnlyCategoryId == null) {
-            for (LearnerDocument doc : documentRepository.findByLearner_IdOrderByDocumentTypeAscVersionAsc(learner.getId())) {
-                if (doc.getDocumentType() == null) {
-                    continue;
-                }
-                String sectionFolder = SECTION_FOLDERS.getOrDefault(doc.getDocumentType().getPoeSection(), SECTION_FOLDERS.get(6));
-                String entryName = folder + sectionFolder + "/" + canonicalDocumentFilename(learner, doc);
-                writeStoredFile(zos, entryName, doc.getFilePath(), "document", counters);
-                indexEntries.add(new IndexEntry(learner, sectionFolder,
-                        doc.getDocumentType().getLabel() + " v" + doc.getVersion(), doc.getUploadedAt()));
+        for (LearnerDocument doc : portfolio.personalDocuments()) {
+            if (doc.getDocumentType() == null) {
+                continue;
             }
+            String sectionFolder = SECTION_FOLDERS.getOrDefault(doc.getDocumentType().getPoeSection(), SECTION_FOLDERS.get(6));
+            String entryName = folder + sectionFolder + "/" + canonicalDocumentFilename(learner, doc);
+            writeStoredFile(zos, entryName, doc.getFilePath(), "document", counters);
+            indexEntries.add(new IndexEntry(learner, sectionFolder,
+                    doc.getDocumentType().getLabel() + " v" + doc.getVersion(), doc.getUploadedAt()));
         }
 
-        List<Module> modules = moduleRepository.findByLearnerIdIn(List.of(learner.getId()));
-        if (sectionOnlyCategoryId != null) {
-            modules = modules.stream()
-                    .filter(m -> m.getCategory() != null && sectionOnlyCategoryId.equals(m.getCategory().getId()))
-                    .toList();
-        }
-        List<Submission> submissions = submissionRepository.findByLearner_IdOrderBySubmittedAtAsc(learner.getId());
+        for (ModulePortfolioFolder mf : portfolio.moduleFolders()) {
+            Module module = mf.module();
+            String moduleBase = folder + "%s/" + mf.categoryFolder() + "/" + sanitizeSegment(module.getModuleName()) + "/";
 
-        for (Module module : modules) {
-            String categoryFolder = categoryFolderFor(module);
-            String moduleBase = folder + "%s/" + categoryFolder + "/" + sanitizeSegment(module.getModuleName()) + "/";
-
-            List<Submission> onThisModule = submissions.stream()
-                    .filter(s -> onModule(s, module))
-                    .sorted(Comparator.comparing(Submission::getSubmittedAt))
-                    .toList();
-
-            ModuleFile guide = resolveGuide(module, onThisModule);
-            if (guide != null) {
-                String entryName = sectionPath(moduleBase, 3) + canonicalGuideFilename(module, guide);
-                writeStoredFile(zos, entryName, guide.getFilePath(), "facilitator guide", counters);
+            if (mf.guide() != null) {
+                String entryName = sectionPath(moduleBase, 3) + canonicalGuideFilename(module, mf.guide());
+                writeStoredFile(zos, entryName, mf.guide().getFilePath(), "facilitator guide", counters);
                 indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(3),
-                        module.getModuleName() + " guide v" + guide.getVersion(), guide.getCreatedAt()));
+                        module.getModuleName() + " guide v" + mf.guide().getVersion(), mf.guide().getCreatedAt()));
             }
 
-            Map<Long, Integer> ordinalBySession = new HashMap<>();
-            for (Submission submission : onThisModule) {
-                Long sessionId = submission.getSession().getId();
-                int ordinal = ordinalBySession.merge(sessionId, 1, Integer::sum);
-                String sessionName = submission.getSession().getSessionName();
+            for (SubmissionOnModule som : mf.submissions()) {
+                Submission submission = som.submission();
+                String sessionName = som.sessionName();
+                int ordinal = som.ordinal();
 
                 String activityEntry = sectionPath(moduleBase, 4) + canonicalSubmissionFilename(learner, sessionName, ordinal, submission);
                 writeStoredFile(zos, activityEntry, submission.getFilePath(), "submission", counters);
@@ -480,7 +467,71 @@ public class PoeExportService {
         }
     }
 
-    private boolean onModule(Submission submission, Module module) {
+    /**
+     * Everything belonging to one learner, resolved exactly as the zip resolves it, with no I/O
+     * or zip-writing side effects.
+     *
+     * <p>This is the one place "what belongs where" is decided — which guide version is pinned,
+     * which submission belongs to which module, what a session's Nth resubmission is called.
+     * {@link #writeLearnerFolder} and {@code PoePortfolioBrowserService} both call this and
+     * nothing else to answer that question, so the on-screen portfolio browser and the zip an
+     * admin downloads can never disagree about what is in a learner's portfolio — they are
+     * reading the same resolution, not two queries that happen to agree today.
+     *
+     * <p>{@code sectionOnlyCategoryId} narrows modules to one category, exactly as a SECTION-scope
+     * export does; personal documents (sections 1/2/6 — they do not belong to a category) are
+     * omitted in that case, matching {@code writeLearnerFolder}'s previous behaviour.
+     */
+    @Transactional(readOnly = true)
+    LearnerPortfolio resolvePortfolio(Learner learner, Long sectionOnlyCategoryId) {
+        List<LearnerDocument> personalDocuments = sectionOnlyCategoryId == null
+                ? documentRepository.findByLearner_IdOrderByDocumentTypeAscVersionAsc(learner.getId())
+                : List.of();
+
+        List<Module> modules = moduleRepository.findByLearnerIdIn(List.of(learner.getId()));
+        if (sectionOnlyCategoryId != null) {
+            modules = modules.stream()
+                    .filter(m -> m.getCategory() != null && sectionOnlyCategoryId.equals(m.getCategory().getId()))
+                    .toList();
+        }
+        List<Submission> submissions = submissionRepository.findByLearner_IdOrderBySubmittedAtAsc(learner.getId());
+
+        List<ModulePortfolioFolder> moduleFolders = new ArrayList<>();
+        for (Module module : modules) {
+            List<Submission> onThisModule = submissions.stream()
+                    .filter(s -> onModule(s, module))
+                    .sorted(Comparator.comparing(Submission::getSubmittedAt))
+                    .toList();
+
+            ModuleFile guide = resolveGuide(module, onThisModule);
+
+            Map<Long, Integer> ordinalBySession = new HashMap<>();
+            List<SubmissionOnModule> submissionsWithOrdinals = new ArrayList<>();
+            for (Submission submission : onThisModule) {
+                Long sessionId = submission.getSession().getId();
+                int ordinal = ordinalBySession.merge(sessionId, 1, Integer::sum);
+                submissionsWithOrdinals.add(new SubmissionOnModule(
+                        submission, submission.getSession().getSessionName(), ordinal));
+            }
+
+            moduleFolders.add(new ModulePortfolioFolder(module, categoryFolderFor(module), guide, submissionsWithOrdinals));
+        }
+
+        return new LearnerPortfolio(learner, personalDocuments, moduleFolders);
+    }
+
+    /** One learner's fully resolved portfolio — see {@link #resolvePortfolio}. */
+    record LearnerPortfolio(Learner learner, List<LearnerDocument> personalDocuments,
+                             List<ModulePortfolioFolder> moduleFolders) { }
+
+    /** One module's section 3/4/5 content for one learner: its pinned guide and its submissions. */
+    record ModulePortfolioFolder(Module module, String categoryFolder, ModuleFile guide,
+                                  List<SubmissionOnModule> submissions) { }
+
+    /** A submission together with the session name and per-session ordinal it renders under. */
+    record SubmissionOnModule(Submission submission, String sessionName, int ordinal) { }
+
+    boolean onModule(Submission submission, Module module) {
         return submission.getSession() != null
                 && submission.getSession().getAssignment() != null
                 && submission.getSession().getAssignment().getModule() != null
@@ -502,7 +553,7 @@ public class PoeExportService {
      * learner actually worked from the moment something starts recording it, instead of this
      * export needing a second change later.
      */
-    private ModuleFile resolveGuide(Module module, List<Submission> submissionsOnThisModule) {
+    ModuleFile resolveGuide(Module module, List<Submission> submissionsOnThisModule) {
         List<ModuleFile> files = moduleFileRepository.findByModuleId(module.getId());
         Long pinnedId = submissionsOnThisModule.stream()
                 .map(Submission::getGuideVersionId)
@@ -537,7 +588,7 @@ public class PoeExportService {
      * banner at the very top of the text, and the release state on this entry's line in
      * {@code 00_INDEX.pdf}.
      */
-    private String renderFeedback(Submission submission) {
+    String renderFeedback(Submission submission) {
         StringBuilder sb = new StringBuilder();
         if (submission.getFeedbackStatus() != FeedbackStatus.PUBLISHED) {
             sb.append("*** DRAFT — this marking has not been released to the learner. ")
@@ -738,32 +789,32 @@ public class PoeExportService {
 
     // ================================================================== canonical filenames
 
-    private String canonicalDocumentFilename(Learner learner, LearnerDocument doc) {
+    String canonicalDocumentFilename(Learner learner, LearnerDocument doc) {
         String docToken = doc.getDocumentType().getLabel().replace(" ", "-");
         return String.format("%s_%s_%s_%s_v%d%s",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
                 docToken, doc.getVersion(), extensionOf(doc.getOriginalFilename()));
     }
 
-    private String canonicalGuideFilename(Module module, ModuleFile file) {
+    String canonicalGuideFilename(Module module, ModuleFile file) {
         String code = module.getModuleCode() == null ? "MODULE" : module.getModuleCode();
         return String.format("%s_%s_v%d%s", sanitizeSegment(code), sanitizeSegment(file.getTitle()),
                 file.getVersion(), extensionOf(file.getOriginalFilename()));
     }
 
-    private String canonicalSubmissionFilename(Learner learner, String sessionName, int ordinal, Submission submission) {
+    String canonicalSubmissionFilename(Learner learner, String sessionName, int ordinal, Submission submission) {
         return String.format("%s_%s_%s_%s_v%d%s",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
                 sanitizeSegment(sessionName), ordinal, extensionOf(submission.getOriginalFilename()));
     }
 
-    private String canonicalFeedbackFilename(Learner learner, String sessionName, int ordinal) {
+    String canonicalFeedbackFilename(Learner learner, String sessionName, int ordinal) {
         return String.format("%s_%s_%s_%s_Feedback_v%d.txt",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
                 sanitizeSegment(sessionName), ordinal);
     }
 
-    private String canonicalMarkedCopyFilename(Learner learner, String sessionName, int ordinal) {
+    String canonicalMarkedCopyFilename(Learner learner, String sessionName, int ordinal) {
         // markedFilePath is a storage reference (a Cloudinary public_id or a disk path), not a
         // real filename, and this codebase's public_ids are deliberately extension-less — so
         // unlike the other canonical names, there is no real extension to preserve here.
@@ -798,7 +849,7 @@ public class PoeExportService {
         return sb.isEmpty() ? "X" : sb.toString();
     }
 
-    private String extensionOf(String filename) {
+    String extensionOf(String filename) {
         if (filename == null) {
             return "";
         }
@@ -806,7 +857,7 @@ public class PoeExportService {
         return dot >= 0 && dot < filename.length() - 1 ? filename.substring(dot) : "";
     }
 
-    private String sanitizeSegment(String s) {
+    String sanitizeSegment(String s) {
         if (s == null || s.isBlank()) {
             return "Unnamed";
         }
@@ -814,14 +865,14 @@ public class PoeExportService {
         return cleaned.isEmpty() ? "Unnamed" : cleaned;
     }
 
-    private String categoryFolder(String categoryType) {
+    String categoryFolder(String categoryType) {
         if (categoryType == null) {
             return "Other";
         }
         return CATEGORY_FOLDERS.getOrDefault(categoryType.toUpperCase(Locale.ROOT), categoryType);
     }
 
-    private String categoryFolderFor(Module module) {
+    String categoryFolderFor(Module module) {
         if (module.getCategory() == null || module.getCategory().getCategoryType() == null) {
             return "Uncategorised";
         }
