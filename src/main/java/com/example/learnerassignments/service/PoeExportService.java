@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
@@ -292,26 +293,51 @@ public class PoeExportService {
      * that spins down mid-job, leaving rows an admin's poll reported as "processing" forever,
      * with nothing ever telling them a retry was needed.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public int reconcileJobsInterruptedByRestart() {
         List<ExportJob> stuck = exportJobRepository.findByStatusIn(
                 List.of(ExportJobStatus.QUEUED, ExportJobStatus.RUNNING));
+        int fixed = 0;
         for (ExportJob job : stuck) {
-            ExportJobStatus previousStatus = job.getStatus();
-            job.setStatus(ExportJobStatus.FAILED);
-            job.setError("The application restarted before this export finished, and it cannot "
-                    + "still be running. Request the export again.");
-            job.setCompletedAt(LocalDateTime.now());
-            exportJobRepository.save(job);
-            auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_FAILED",
-                    "ExportJob", job.getId(),
-                    "Marked failed on boot: was " + previousStatus + " when the application last stopped.");
+            try {
+                self.failInterruptedJob(job.getId());
+                fixed++;
+            } catch (Exception e) {
+                // One bad row must not stop the rest from being reconciled, and must never be
+                // allowed to propagate out of the CommandLineRunner that calls this — an
+                // uncaught exception there fails the whole application boot, which is strictly
+                // worse than the one job this was trying to fix staying QUEUED a little longer.
+                // failInterruptedJob runs in its own transaction for exactly this reason: on
+                // Postgres a failing statement poisons the rest of whatever transaction it ran
+                // in, so without REQUIRES_NEW one bad row here would take every other stuck job
+                // down with it too, the same trap NotificationService.notifyLearner documents.
+                log.error("PoE export recovery: could not mark job {} failed on boot; it stays "
+                        + "QUEUED/RUNNING and will be retried next boot.", job.getId(), e);
+            }
         }
-        if (!stuck.isEmpty()) {
+        if (fixed > 0) {
             log.warn("PoE export recovery: {} job(s) left QUEUED/RUNNING from before this boot "
-                    + "have been marked FAILED.", stuck.size());
+                    + "have been marked FAILED.", fixed);
         }
-        return stuck.size();
+        return fixed;
+    }
+
+    /** One job's own transaction — see {@link #reconcileJobsInterruptedByRestart}'s doc for why. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void failInterruptedJob(Long jobId) {
+        ExportJob job = exportJobRepository.findById(jobId).orElse(null);
+        if (job == null || (job.getStatus() != ExportJobStatus.QUEUED && job.getStatus() != ExportJobStatus.RUNNING)) {
+            return;
+        }
+        ExportJobStatus previousStatus = job.getStatus();
+        job.setStatus(ExportJobStatus.FAILED);
+        job.setError("The application restarted before this export finished, and it cannot "
+                + "still be running. Request the export again.");
+        job.setCompletedAt(LocalDateTime.now());
+        exportJobRepository.saveAndFlush(job);
+        auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_FAILED",
+                "ExportJob", job.getId(),
+                "Marked failed on boot: was " + previousStatus + " when the application last stopped.");
     }
 
     /**
@@ -331,31 +357,60 @@ public class PoeExportService {
      * exactly as it was, since nothing about that storage is affected by this application
      * restarting.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public int expireCompletedJobsWithMissingFiles() {
         List<ExportJob> completed = exportJobRepository.findByStatusIn(List.of(ExportJobStatus.COMPLETED));
         int expired = 0;
         for (ExportJob job : completed) {
             String resultId = job.getResultPublicId();
-            if (resultId == null || resultId.isBlank()
-                    || storedFileService.classify(resultId) != StoredFileService.Shape.LOCAL_PATH
-                    || Files.exists(Paths.get(resultId))) {
+            boolean missing;
+            try {
+                missing = resultId != null && !resultId.isBlank()
+                        && storedFileService.classify(resultId) == StoredFileService.Shape.LOCAL_PATH
+                        && !Files.exists(Paths.get(resultId));
+            } catch (Exception e) {
+                // An unreadable path (or anything else Paths.get/Files.exists can throw on a
+                // value this application did not itself write) is a reason to skip this row,
+                // not a reason to stop checking the rest.
+                log.error("PoE export recovery: could not check job {}'s file; leaving it as-is.",
+                        job.getId(), e);
                 continue;
             }
-            job.setStatus(ExportJobStatus.EXPIRED);
-            job.setError("This export completed, but its file did not survive an application "
-                    + "restart on this deployment's ephemeral disk. Request the export again.");
-            exportJobRepository.save(job);
-            auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_EXPIRED",
-                    "ExportJob", job.getId(),
-                    "Marked expired on boot: the stored file was no longer on disk.");
-            expired++;
+            if (!missing) {
+                continue;
+            }
+            try {
+                self.expireJobWithMissingFile(job.getId());
+                expired++;
+            } catch (Exception e) {
+                // Same isolation, same reason, as reconcileJobsInterruptedByRestart above: one
+                // bad row must never be able to crash the boot this runs on, or poison the
+                // transaction the other rows in this loop are checked under.
+                log.error("PoE export recovery: could not mark job {} expired on boot; it stays "
+                        + "COMPLETED and will be re-checked next boot.", job.getId(), e);
+            }
         }
         if (expired > 0) {
             log.warn("PoE export recovery: {} completed job(s) had a file that did not survive "
                     + "a restart and have been marked EXPIRED.", expired);
         }
         return expired;
+    }
+
+    /** One job's own transaction — see {@link #expireCompletedJobsWithMissingFiles}'s doc for why. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void expireJobWithMissingFile(Long jobId) {
+        ExportJob job = exportJobRepository.findById(jobId).orElse(null);
+        if (job == null || job.getStatus() != ExportJobStatus.COMPLETED) {
+            return;
+        }
+        job.setStatus(ExportJobStatus.EXPIRED);
+        job.setError("This export completed, but its file did not survive an application "
+                + "restart on this deployment's ephemeral disk. Request the export again.");
+        exportJobRepository.saveAndFlush(job);
+        auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_EXPIRED",
+                "ExportJob", job.getId(),
+                "Marked expired on boot: the stored file was no longer on disk.");
     }
 
     // ================================================================== the worker

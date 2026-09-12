@@ -1194,6 +1194,55 @@ nothing in the job row explaining why a "completed" export has nothing behind it
   the application, and confirmed the job came back `EXPIRED` — not `COMPLETED` — via both the
   database and `GET /api/poe/export`, with `downloadAvailable` false.
 
+**Shipped a production outage with the fix above: adding `ExportJobStatus.EXPIRED` took the whole
+site down.** The exact bug this brief already documents for `NotificationType` (Phase 6) — Hibernate's
+`ddl-auto=update` bakes a Postgres `CHECK` constraint onto an `@Enumerated(EnumType.STRING)` column
+from whichever enum values exist at table-creation time, and never widens it later — hit `export_jobs.status`
+too, and this time nothing caught it. `ExportJobRecoveryRunner` is a `CommandLineRunner`; an uncaught
+exception from one fails the entire application boot, not just the one call. The first COMPLETED job
+in production whose file was gone made `expireCompletedJobsWithMissingFiles` try to write `EXPIRED`
+into a column still constrained to `('QUEUED','RUNNING','COMPLETED','FAILED')`, and with no catch
+anywhere between that write and `main()`, the whole site went down — confirmed on Render as the
+service itself showing `Failed service`, every route 503ing.
+
+Reproduced exactly, then fixed:
+- Recreated the production shape locally in a real PostgreSQL container: booted once to let
+  Hibernate create `export_jobs` fresh (constraint naturally includes `EXPIRED`), then manually
+  narrowed `export_jobs_status_check` back to the four pre-existing values, inserted a COMPLETED
+  job pointing at a file that does not exist, and rebooted — reproduced the identical
+  `ConstraintViolationException` propagating out through `SpringApplication.callRunners`, process
+  exit code 1.
+- **Both reconciliation methods now isolate one row's failure from the rest of the batch**, the
+  same `REQUIRES_NEW` self-injection discipline `NotificationService.notifyLearner` already uses
+  and for the identical reason: on Postgres a failing statement poisons the rest of whatever
+  transaction it ran in, so without its own transaction one bad row would take every other
+  reconciled row down with it too. `reconcileJobsInterruptedByRestart` and
+  `expireCompletedJobsWithMissingFiles` now read the candidate rows in a read-only transaction and
+  delegate each one's actual update to `failInterruptedJob`/`expireJobWithMissingFile`
+  (`REQUIRES_NEW`), catching and logging per row rather than letting a single failure abort the
+  whole reconciliation.
+- **`ExportJobRecoveryRunner` now also catches around each top-level call**, as a second,
+  independent line of defense: whatever a future change to either method gets wrong, a boot-time
+  reconciliation must never be able to cost more than the one row it was trying to fix — "the
+  entire application does not start" is strictly worse than "one row stays unreconciled until the
+  next boot," and nothing should ever again be able to turn the former into the latter's failure
+  mode.
+- Re-ran the exact same reproduction against the fixed jar, constraint still narrowed, poisoned
+  row still in place: the application now starts successfully (`Started
+  LearnerAssignmentsApplication in 7.3 seconds`), logs the constraint violation for that one job,
+  and every other route serves normally (`GET /api/admin/overview` → 200). The poisoned row is
+  left exactly as `COMPLETED` — degraded (that one job's true state stays unknown until the
+  constraint is fixed) rather than catastrophic.
+- **Production remediation, not yet applied (no production database access from here):** the
+  same fix Phase 6 already documents for `notifications`. Confirm the exact constraint name —
+  almost certainly `export_jobs_status_check`, Postgres's default naming for a Hibernate-generated
+  `CHECK` on that column — then:
+  ```sql
+  ALTER TABLE export_jobs DROP CONSTRAINT export_jobs_status_check;
+  ```
+  Hibernate does not recreate a dropped constraint on `ddl-auto=update`, so this is safe to run
+  once and forget, exactly as documented for `notifications_type_check`.
+
 ---
 
 ### Phase 9 — Digital signatures
