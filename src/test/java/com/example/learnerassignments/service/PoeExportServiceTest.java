@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
@@ -505,6 +506,74 @@ class PoeExportServiceTest {
         assertThat(failed.getStatus()).isEqualTo(ExportJobStatus.FAILED);
         assertThat(failed.getError()).contains("resolving who is in scope");
         assertThat(countTempFilesForJob(job.getId())).isZero();
+    }
+
+    @Test
+    @DisplayName("A storage failure surfaces its real reason, not just the stage name")
+    void storageFailureSurfacesTheRealReason() throws Exception {
+        Learnership learnership = learnership("StorageFail");
+        learner(learnership, "A", LocalDateTime.now());
+
+        // A plain file sitting where the "exports" directory needs a parent forces
+        // Files.createDirectories to fail with a real, specific IOException naming that exact
+        // path -- reproducing "the zip built fine, storing it failed" without needing a real
+        // misconfigured Cloudinary account to trigger it.
+        Path blocker = Files.createTempFile("poe-export-storage-block-", "");
+        String originalPrivateDir = (String) ReflectionTestUtils.getField(exportService, "privateDir");
+        ReflectionTestUtils.setField(exportService, "privateDir", blocker.toString());
+        try {
+            ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+            assertThat(job.getStatus()).isEqualTo(ExportJobStatus.FAILED);
+            assertThat(job.getError()).contains("storing the finished export");
+            // The real reason -- naming the exact path that blocked it -- is included, not
+            // swallowed into a generic message. This is what changed.
+            assertThat(job.getError()).contains(blocker.getFileName().toString());
+            assertThat(job.getError()).doesNotContain("http://", "https://");
+        } finally {
+            ReflectionTestUtils.setField(exportService, "privateDir", originalPrivateDir);
+            Files.deleteIfExists(blocker);
+        }
+    }
+
+    @Test
+    @DisplayName("Jobs left QUEUED or RUNNING at boot are marked FAILED; finished jobs are untouched")
+    void reconcileMarksInterruptedJobsFailed() {
+        Learnership learnership = learnership("Reconcile");
+        learner(learnership, "A", LocalDateTime.now());
+
+        ExportJob queued = exportService.createJob(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        ExportJob completed = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        // Simulates a worker that started but whose process died before finishing -- exactly
+        // what an instance spinning down mid-export leaves behind.
+        ExportJob running = exportService.createJob(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        running.setStatus(ExportJobStatus.RUNNING);
+        running.setStartedAt(LocalDateTime.now());
+        exportJobRepository.save(running);
+
+        int reconciled = exportService.reconcileJobsInterruptedByRestart();
+
+        assertThat(reconciled).isEqualTo(2);
+        assertThat(exportJobRepository.findById(queued.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.FAILED);
+        assertThat(exportJobRepository.findById(running.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.FAILED);
+        assertThat(exportJobRepository.findById(running.getId()).orElseThrow().getError())
+                .contains("restarted");
+        // Already finished before the "restart" -- must be left exactly as it was.
+        assertThat(exportJobRepository.findById(completed.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("Reconciling with nothing stuck touches nothing")
+    void reconcileIsANoOpWhenNothingIsStuck() {
+        Learnership learnership = learnership("ReconcileClean");
+        learner(learnership, "A", LocalDateTime.now());
+        runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(exportService.reconcileJobsInterruptedByRestart()).isZero();
     }
 
     private String readIndexText(String zipPath) throws Exception {

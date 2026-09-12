@@ -71,7 +71,6 @@ public class PoeExportService {
     private final LearnerDocumentRepository documentRepository;
     private final SubmissionRepository submissionRepository;
     private final StoredFileService storedFileService;
-    private final CloudinaryService cloudinaryService;
     private final AuditLogService auditLogService;
     private final EmailService emailService;
     private final AdminRepository adminRepository;
@@ -277,6 +276,44 @@ public class PoeExportService {
                 .build();
     }
 
+    // ================================================================== boot-time recovery
+
+    /**
+     * Marks every job left QUEUED or RUNNING as FAILED. Called once per boot by
+     * {@link ExportJobRecoveryRunner} — see that class's doc for why.
+     *
+     * <p>Both states mean "a worker is or will be working on this": QUEUED between
+     * {@link #createJob} returning and {@link #runExportAsync} being picked up, RUNNING while
+     * that worker fetches and zips. Neither can survive the process restarting — dispatch is a
+     * plain {@code @Async} method call, not a durable queue, so a QUEUED job's dispatch simply
+     * never happens if the process that would have made it restarts first, and a RUNNING job's
+     * worker thread is just gone. A job found in either state at startup is proof the process
+     * that was going to finish it no longer exists; found in production on a free-tier instance
+     * that spins down mid-job, leaving rows an admin's poll reported as "processing" forever,
+     * with nothing ever telling them a retry was needed.
+     */
+    @Transactional
+    public int reconcileJobsInterruptedByRestart() {
+        List<ExportJob> stuck = exportJobRepository.findByStatusIn(
+                List.of(ExportJobStatus.QUEUED, ExportJobStatus.RUNNING));
+        for (ExportJob job : stuck) {
+            ExportJobStatus previousStatus = job.getStatus();
+            job.setStatus(ExportJobStatus.FAILED);
+            job.setError("The application restarted before this export finished, and it cannot "
+                    + "still be running. Request the export again.");
+            job.setCompletedAt(LocalDateTime.now());
+            exportJobRepository.save(job);
+            auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_FAILED",
+                    "ExportJob", job.getId(),
+                    "Marked failed on boot: was " + previousStatus + " when the application last stopped.");
+        }
+        if (!stuck.isEmpty()) {
+            log.warn("PoE export recovery: {} job(s) left QUEUED/RUNNING from before this boot "
+                    + "have been marked FAILED.", stuck.size());
+        }
+        return stuck.size();
+    }
+
     // ================================================================== the worker
 
     /**
@@ -337,15 +374,10 @@ public class PoeExportService {
 
             stage = "storing the finished export";
             String resultId = store(tempZip, jobId);
-            // The local-disk fallback moves the temp file to its resting place, so there is
-            // nothing left at tempZip to clean up. The Cloudinary path uploads *from* the file
-            // without consuming it, so tempZip still exists on disk afterwards and must stay
-            // non-null here — the finally block below is what deletes it. Getting this branch
-            // backwards would leak one temp file per successful export, on the one instance
-            // where a slow disk leak matters most.
-            if (!cloudinaryService.isConfigured()) {
-                tempZip = null;
-            }
+            // store() always moves the temp file to its resting place — see its own doc for why
+            // this bundle never goes to Cloudinary — so there is nothing left at tempZip for the
+            // finally block below to clean up.
+            tempZip = null;
 
             job.setStatus(ExportJobStatus.COMPLETED);
             job.setLearnerCount(learners.size());
@@ -385,17 +417,38 @@ public class PoeExportService {
     }
 
     /**
-     * Uploads the finished zip as an authenticated raw resource when Cloudinary is configured,
-     * or moves it into the same private, non-statically-served directory the learner document
-     * vault falls back to otherwise. Either way the result is read back through
-     * {@link StoredFileService} exactly like any other stored file — the download endpoint
-     * needs no export-specific storage logic.
+     * Moves the finished zip into the same private, non-statically-served directory the learner
+     * document vault falls back to when Cloudinary is not configured — unconditionally, even
+     * when Cloudinary is configured for everything else this application stores. Read back
+     * through {@link StoredFileService} exactly like any other local-disk file, so the download
+     * endpoint needs no export-specific storage logic.
+     *
+     * <p>This used to upload to Cloudinary like any other stored file, the same as
+     * {@link CloudinaryService#uploadLearnerFile(java.io.File, String)} is still used for. Two
+     * things about a whole-cohort export make that the wrong call specifically for this one file
+     * type, both of which surfaced in production as a job that built its zip correctly and then
+     * failed only while storing it:
+     * <ul>
+     *   <li><strong>Size.</strong> An individual learner document is a few megabytes; a
+     *       learnership-wide zip can run into the hundreds, and the plan this account is on
+     *       enforces a file-size ceiling that a cohort export can exceed while a single document
+     *       never does.</li>
+     *   <li><strong>The upload type itself.</strong> This account has a documented history of
+     *       {@code type: "authenticated"} uploads failing outright — precisely the upload type
+     *       {@code uploadLearnerFile} always requests, for the reasons recorded on that
+     *       method.</li>
+     * </ul>
+     *
+     * <p>Storing straight to local disk sidesteps both: no size ceiling this application does
+     * not itself impose, no upload type to fail on, and no network round trip an admin has to
+     * wait through twice — once to store it, once to download it — for a file nobody but that
+     * admin will ever fetch. The trade-off is the same one every other local-disk fallback in
+     * this codebase already accepts: on an ephemeral instance the file does not survive a
+     * restart. An export is meant to be downloaded within minutes of completing, not archived
+     * here; a job row surviving a restart the underlying file does not is what
+     * {@code ExportJobRecoveryRunner} exists to reconcile.
      */
     private String store(Path tempZip, Long jobId) throws IOException {
-        String filename = "poe_export_" + jobId + ".zip";
-        if (cloudinaryService.isConfigured()) {
-            return cloudinaryService.uploadLearnerFile(tempZip.toFile(), filename);
-        }
         Path dir = Paths.get(privateDir, "exports").toAbsolutePath().normalize();
         Files.createDirectories(dir);
         Path dest = dir.resolve("export_" + jobId + "_" + System.currentTimeMillis() + ".zip");
@@ -1011,23 +1064,39 @@ public class PoeExportService {
     }
 
     /**
-     * Never built from a raw exception message — the same discipline as everywhere else a
-     * signed URL could conceivably surface in an underlying I/O error, and this column is
-     * rendered straight back to an admin dashboard. It does say which stage failed, though:
-     * "storing the finished export" and "building the export bundle" are different problems an
-     * admin acts on differently, and a message that cannot tell them apart makes a retry a
-     * guess rather than a decision.
+     * Says which stage failed <em>and</em> why, where "why" can be said safely.
+     *
+     * <p>Used to report only the stage — "the export failed while storing the finished export"
+     * — which is exactly what left a real production failure undiagnosable: the zip built fine,
+     * storing it failed, and the column an admin could actually see never said whether that was
+     * a transient network blip worth retrying or a file over some provider's plan-imposed limit
+     * that would fail identically every time. The underlying exception's own message is what
+     * tells those two apart, so it is included here — sanitized first, on the same discipline as
+     * {@link NotificationService#stripLinks}: an error message is not a place a signed URL
+     * should ever be able to surface, however unlikely that is from a plain upload or disk
+     * failure, and the result is still rendered straight back to an admin dashboard. Capped to
+     * fit the column with room for the stage prefix.
      */
     private String safeErrorMessage(String stage, Exception e) {
-        if (e instanceof IllegalStateException && e.getMessage() != null
-                && e.getMessage().contains("Cloudinary is not configured")) {
-            return "Storage is not configured on this deployment (failed while " + stage + ").";
+        StringBuilder message = new StringBuilder("The export failed while ").append(stage);
+        String detail = sanitizedDetail(e.getMessage());
+        if (detail != null) {
+            message.append(": ").append(detail);
         }
         if (e instanceof IOException) {
-            return "A storage error occurred while " + stage
-                    + ". This can mean the instance is low on disk space. See the server log for detail.";
+            message.append(" (this can mean the instance is low on disk space)");
         }
-        return "The export failed while " + stage + ". See the server log for detail.";
+        message.append(". See the server log for full detail.");
+        return message.length() > 500 ? message.substring(0, 497) + "..." : message.toString();
+    }
+
+    /** Strips anything link-shaped and caps length; null in, null out. */
+    private String sanitizedDetail(String rawMessage) {
+        if (rawMessage == null || rawMessage.isBlank()) {
+            return null;
+        }
+        String cleaned = rawMessage.replaceAll("(?i)\\b(?:https?://|www\\.)\\S+", "[link removed]").trim();
+        return cleaned.length() > 300 ? cleaned.substring(0, 300) + "..." : cleaned;
     }
 
     private String writeJson(Map<String, Object> map) {
