@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -553,6 +554,12 @@ class PoeExportServiceTest {
         running.setStartedAt(LocalDateTime.now());
         exportJobRepository.save(running);
 
+        // reconcileJobsInterruptedByRestart fixes each job in its own REQUIRES_NEW transaction
+        // -- deliberately, so one bad row can never poison the rest (see its own doc) -- which
+        // means it needs these fixture rows actually committed, not just visible within this
+        // test's own still-open transaction, to find them at all.
+        commitFixture();
+
         int reconciled = exportService.reconcileJobsInterruptedByRestart();
 
         assertThat(reconciled).isEqualTo(2);
@@ -588,6 +595,10 @@ class PoeExportServiceTest {
         // Simulates exactly what an ephemeral disk does across a restart: the row says
         // COMPLETED, but the file it points to is simply gone.
         Files.deleteIfExists(Path.of(job.getResultPublicId()));
+
+        // Same reason as reconcileMarksInterruptedJobsFailed above: the REQUIRES_NEW update
+        // needs this row actually committed to find it.
+        commitFixture();
 
         int expired = exportService.expireCompletedJobsWithMissingFiles();
 
@@ -662,6 +673,22 @@ class PoeExportServiceTest {
         ExportJob job = exportService.createJob(principal, req);
         exportService.runExport(job.getId());
         return exportJobRepository.findById(job.getId()).orElseThrow();
+    }
+
+    /**
+     * Commits everything this test has written so far, instead of leaving it visible only within
+     * the test's own transaction. Needed before calling anything that fixes a row in its own
+     * {@code REQUIRES_NEW} transaction (a separate connection, on Postgres): a transaction that
+     * has not committed is invisible to any other transaction, this test's own included, so a
+     * fixture row created here would otherwise not exist as far as that {@code REQUIRES_NEW} call
+     * is concerned -- not "found and skipped", just not found. The class-level
+     * {@code @Transactional} rollback this test would otherwise get no longer applies once this
+     * runs, since there is nothing left open to roll back; unlike the rest of this suite, a test
+     * that calls this leaves its rows in the database once the JVM exits.
+     */
+    private void commitFixture() {
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
     }
 
     private String readEntryContaining(String zipPath, String substring) throws Exception {
