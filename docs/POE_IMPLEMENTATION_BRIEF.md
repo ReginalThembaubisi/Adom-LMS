@@ -580,6 +580,17 @@ Acceptance criteria:
 - Learner A cannot read learner B's document by id — expect 404.
 - Rejected document shows the reviewer note in the portal.
 
+**A gap closed later, not during this phase's own build:** the two admin endpoints above
+(`GET /api/admin/learners/{id}/documents` and the accept/reject endpoint) shipped with Phase 3,
+but no admin screen ever called them — the task list's React line only ever covered the
+learner-facing "My documents" page. For a long stretch after Phase 3 "shipped", an admin had no
+way to accept or reject a learner's document at all except by hand-editing the database. Found
+and fixed alongside the Portfolio Completeness dashboard (Phase 7): the per-learner drill-down
+that dashboard already opens is where an admin naturally lands to see what a learner is
+missing, so the review screen was built into that same drill-down rather than as a new one —
+each required document's checklist row is enriched, where a document exists, with the file
+itself and accept/reject actions. See Phase 7's own note below.
+
 ---
 
 ### Phase 4 — Cloudinary authenticated delivery — **COMPLETE**
@@ -856,6 +867,26 @@ Decisions taken while building it:
 Known limitation: a session with no closing date is reported "not yet due" rather than missing.
 The column is NOT NULL so this cannot arise today; if it ever does, the non-accusatory reading is
 the right default, and the learner still shows as "not fully in scope" rather than complete.
+
+**Added later: the per-learner drill-down is also the Phase 3 document review screen.** Phase
+3 shipped `GET /api/admin/learners/{id}/documents` and an accept/reject endpoint with no admin
+UI ever built for either — the review had to be done by hand-editing the database. Rather than
+add a separate screen, the drill-down this dashboard already opens per learner (the one showing
+`documentItems`/`submissionItems`) is where an admin naturally lands to see what is missing, so
+that is where the review actions went: each required document's checklist row now shows the
+file itself (fetched and opened the same authenticated way every other staff file view in this
+app works, never a direct link) with Accept and Reject buttons, where a document exists to act
+on. A `MISSING` or `EXEMPT` row has nothing to open, so it renders exactly as it did before. The
+existing checklist endpoint (`GET /api/admin/poe/completeness/learners/{id}`) already names
+which document type each row is (`ChecklistItem.key`, e.g. `"CV"`) in exactly the same string
+`LearnerDocument.documentType` uses, so the two responses join client-side with no backend
+change at all — the drill-down fetches both in parallel and matches them by that key. `OTHER`
+evidence is never a required type, so it never appears as a checklist row; it is listed and
+reviewable underneath the four, the same way the learner's own "My documents" page lists it.
+Rejecting without a note was already refused server-side (`LearnerDocumentService.review`); the
+screen also disables its own "Confirm rejection" button until a note is typed, so the refusal is
+felt as a UI constraint rather than a failed request, but the server-side refusal is what
+actually matters and was not touched.
 
 ---
 
