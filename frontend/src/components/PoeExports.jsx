@@ -13,7 +13,11 @@ const STATUS_STYLES = {
     QUEUED: 'bg-slate-100 text-slate-700',
     RUNNING: 'bg-amber-100 text-amber-800',
     COMPLETED: 'bg-emerald-100 text-emerald-800',
-    FAILED: 'bg-rose-100 text-rose-800'
+    FAILED: 'bg-rose-100 text-rose-800',
+    // Completed once, but the file didn't survive a restart on this deployment's ephemeral
+    // disk -- distinct from FAILED so the table doesn't say "it never worked" about a job that
+    // built a zip correctly and simply wasn't downloaded in time.
+    EXPIRED: 'bg-rose-100 text-rose-800'
 };
 
 const SCOPE_LABELS = {
@@ -281,7 +285,7 @@ const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, o
                                             <span className={`px-2 py-1 rounded-lg font-bold whitespace-nowrap inline-block ${STATUS_STYLES[job.status] || ''}`}>
                                                 {job.status}
                                             </span>
-                                            {job.status === 'FAILED' && job.error && (
+                                            {(job.status === 'FAILED' || job.status === 'EXPIRED') && job.error && (
                                                 <span className="block text-[10px] text-rose-600 mt-1">{job.error}</span>
                                             )}
                                         </td>

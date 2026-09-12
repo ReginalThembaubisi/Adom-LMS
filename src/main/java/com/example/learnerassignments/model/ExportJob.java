@@ -82,11 +82,13 @@ public class ExportJob {
     private LocalDateTime completedAt;
 
     /**
-     * A safe-to-show description of a failure. Never built from a raw exception message: a
-     * signed Cloudinary URL can appear in an underlying HTTP client error, and a credential
-     * that leaks into a column an admin dashboard renders back to a browser is exactly the
-     * leak {@link com.example.learnerassignments.service.StoredFileService} was written to
-     * avoid everywhere else.
+     * A safe-to-show description of a failure, including which stage it happened in and, where
+     * it can be said safely, the underlying reason — sanitized first (anything link-shaped is
+     * stripped, the same discipline as everywhere else a signed URL could conceivably surface in
+     * an underlying I/O error) rather than omitted outright: a column an admin dashboard renders
+     * back to a browser must never carry a credential, but "the export failed while storing the
+     * finished export" with no further detail once made a real failure undiagnosable from this
+     * column alone. See {@link com.example.learnerassignments.service.PoeExportService#safeErrorMessage}.
      */
     @Column(length = 500)
     private String error;

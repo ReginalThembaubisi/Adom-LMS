@@ -1114,6 +1114,86 @@ of being auto-published on the next boot with no facilitator action. This needs 
 its own decision about how to make the backfill one-shot rather than perpetual; it is not fixed
 in Phase 8's PR.
 
+**Found in production, after Phase 8 shipped: two more ways a job could get stuck, both fixed
+together.**
+
+- **A job that built its zip correctly could still fail only while storing it, with the real
+  reason invisible.** The zip export uploaded its result to Cloudinary exactly like any other
+  stored file, and this account has a documented history of `type: "authenticated"` uploads
+  failing outright — the exact upload type that call always requests — as well as a free plan's
+  file-size ceiling, which an individual learner document never approaches but a whole-cohort
+  zip can. `safeErrorMessage` reported only the stage name ("the export failed while storing the
+  finished export"), on the theory that a raw exception message might leak a signed URL. That
+  theory made every such failure equally uninformative regardless of cause, which is what left
+  the real one undiagnosable from the job row alone. Fixed two ways:
+  - **The export bundle no longer goes to Cloudinary at all.** `PoeExportService.store()` now
+    always writes the finished zip to the same private, non-statically-served local directory the
+    Cloudinary-not-configured path already used — sidestepping the size ceiling and the upload
+    type both at once, and dropping the network round trip for a file nobody but the requesting
+    admin will ever fetch. The trade-off is the one every other local-disk fallback in this
+    codebase already accepts: the file does not survive a restart on an ephemeral instance. An
+    export is meant to be downloaded within minutes of completing, not archived — see the next
+    fix for the job row surviving a restart the file itself does not.
+  - **`safeErrorMessage` now includes the real reason, sanitized.** The underlying exception's
+    message is included after the stage name, with anything link-shaped stripped first (the same
+    discipline as `NotificationService.stripLinks`) and the whole message capped to fit the
+    column. A plain upload or disk-I/O failure was never actually going to carry a credential;
+    the old blanket refusal to say anything just cost every future diagnosis the one piece of
+    information that tells a transient blip apart from a doomed-to-repeat failure.
+- **Two other jobs sat QUEUED forever and were never picked up.** QUEUED (between `createJob`
+  returning and the async worker being dispatched) and RUNNING (mid-fetch-and-zip) both mean "a
+  worker is or will be working on this" — and neither state is durable. Dispatch is a plain
+  `@Async` method call, not a queue backed by anything that survives the process; on a free-tier
+  instance that spins down mid-job, the row is left exactly as it was, and nothing ever polls it
+  differently from "about to start." A job in either state at the moment the application boots is
+  proof the process that was going to finish it no longer exists — there is no other way to reach
+  that state after a clean restart. Fixed with `PoeExportService.reconcileJobsInterruptedByRestart()`,
+  run once per boot by the new `ExportJobRecoveryRunner`: every QUEUED or RUNNING job is marked
+  FAILED with an explanatory error, so a poll that used to hang forever now tells the requester to
+  ask again. COMPLETED and already-FAILED jobs are left untouched.
+- **Verified against a real PostgreSQL container**, per this brief's own standing convention for
+  storage-shaped bugs: reproduced a job stuck QUEUED and one stuck RUNNING directly against the
+  database, restarted the application, and confirmed both came back FAILED with the restart
+  explanation while a genuinely COMPLETED job in the same table was untouched.
+
+**Found immediately after shipping the above: storing the zip locally moved the failure window,
+it didn't close it.** This deployment has no persistent disk at all, and the free instance spins
+down when idle — a restart can land just as easily *after* a job finishes as *during* one. A
+COMPLETED row whose file has since vanished is worse than a FAILED one: `downloadAvailable` still
+reads `true`, the record still claims success, and the admin who clicks it gets a bare 404 with
+nothing in the job row explaining why a "completed" export has nothing behind it.
+
+- **`PoeExportService.expireCompletedJobsWithMissingFiles()`**, run by the same
+  `ExportJobRecoveryRunner` alongside the QUEUED/RUNNING reconciliation, checks every COMPLETED
+  job's file at boot and marks it `EXPIRED` (a new status, distinct from `FAILED` — it built
+  correctly, it just did not survive) when the file is gone. Checked only for a local-disk
+  result — a job that completed before this fix, or on a deployment where Cloudinary is
+  configured and still receiving exports, has a Cloudinary public_id in `resultPublicId`, and
+  nothing about that storage is affected by this application restarting, so those rows are left
+  exactly as they were.
+- **Weighing whether to store the zip at all, versus building it on request and streaming it
+  straight back:** the async job exists specifically because a whole-cohort export can run long
+  enough to exceed a request timeout — the same reason a synchronous "build and stream in one
+  request" endpoint was rejected the first time this was designed (Phase 8). That reasoning still
+  holds, and cuts the other way too: a request held open for the minutes a large export can take
+  is fragile to exactly the things a browser tab or a mobile network does on its own (navigating
+  away, sleeping, dropping the connection), with no way to resume — where the current poll-and-
+  download model tolerates all of that, because the job keeps building server-side regardless of
+  what the requester's connection does. Critically, switching to synchronous streaming would not
+  actually remove the ephemeral-disk problem this brief is fixing: the failure mode is the gap
+  between a file existing and a request managing to read it, and that gap exists whether the file
+  is built just-in-time or ahead of time — an instance that spins down mid-stream loses the
+  download exactly as it loses a stored file today. The chosen fix keeps the async job (build to
+  a temp file, same as today) and treats its result explicitly as *live for as long as this
+  process instance is*, with `expireCompletedJobsWithMissingFiles` as the mechanism that makes
+  the boundary of "alive" legible instead of a silent 404. Revisit only if cohort exports get
+  small enough, or infrastructure changes enough (a real persistent volume, or an
+  always-on instance), that the timeout risk this design exists to avoid stops applying.
+- **Verified against a real PostgreSQL container**: completed a real export via the live API,
+  deleted its file from disk directly (simulating the file not surviving a restart), restarted
+  the application, and confirmed the job came back `EXPIRED` — not `COMPLETED` — via both the
+  database and `GET /api/poe/export`, with `downloadAvailable` false.
+
 ---
 
 ### Phase 9 — Digital signatures

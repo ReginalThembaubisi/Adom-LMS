@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
@@ -57,6 +58,7 @@ class PoeExportServiceTest {
     @Autowired ModeratorRepository moderatorRepository;
     @Autowired AssessorAssignmentRepository assessorAssignmentRepository;
     @Autowired ModeratorAssignmentRepository moderatorAssignmentRepository;
+    @Autowired CloudinaryService cloudinaryService;
 
     private static final StaffPrincipal ADMIN = StaffPrincipal.admin(1L, "admin");
 
@@ -505,6 +507,130 @@ class PoeExportServiceTest {
         assertThat(failed.getStatus()).isEqualTo(ExportJobStatus.FAILED);
         assertThat(failed.getError()).contains("resolving who is in scope");
         assertThat(countTempFilesForJob(job.getId())).isZero();
+    }
+
+    @Test
+    @DisplayName("A storage failure surfaces its real reason, not just the stage name")
+    void storageFailureSurfacesTheRealReason() throws Exception {
+        Learnership learnership = learnership("StorageFail");
+        learner(learnership, "A", LocalDateTime.now());
+
+        // A plain file sitting where the "exports" directory needs a parent forces
+        // Files.createDirectories to fail with a real, specific IOException naming that exact
+        // path -- reproducing "the zip built fine, storing it failed" without needing a real
+        // misconfigured Cloudinary account to trigger it.
+        Path blocker = Files.createTempFile("poe-export-storage-block-", "");
+        String originalPrivateDir = (String) ReflectionTestUtils.getField(exportService, "privateDir");
+        ReflectionTestUtils.setField(exportService, "privateDir", blocker.toString());
+        try {
+            ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+            assertThat(job.getStatus()).isEqualTo(ExportJobStatus.FAILED);
+            assertThat(job.getError()).contains("storing the finished export");
+            // The real reason -- naming the exact path that blocked it -- is included, not
+            // swallowed into a generic message. This is what changed.
+            assertThat(job.getError()).contains(blocker.getFileName().toString());
+            assertThat(job.getError()).doesNotContain("http://", "https://");
+        } finally {
+            ReflectionTestUtils.setField(exportService, "privateDir", originalPrivateDir);
+            Files.deleteIfExists(blocker);
+        }
+    }
+
+    @Test
+    @DisplayName("Jobs left QUEUED or RUNNING at boot are marked FAILED; finished jobs are untouched")
+    void reconcileMarksInterruptedJobsFailed() {
+        Learnership learnership = learnership("Reconcile");
+        learner(learnership, "A", LocalDateTime.now());
+
+        ExportJob queued = exportService.createJob(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        ExportJob completed = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        // Simulates a worker that started but whose process died before finishing -- exactly
+        // what an instance spinning down mid-export leaves behind.
+        ExportJob running = exportService.createJob(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        running.setStatus(ExportJobStatus.RUNNING);
+        running.setStartedAt(LocalDateTime.now());
+        exportJobRepository.save(running);
+
+        int reconciled = exportService.reconcileJobsInterruptedByRestart();
+
+        assertThat(reconciled).isEqualTo(2);
+        assertThat(exportJobRepository.findById(queued.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.FAILED);
+        assertThat(exportJobRepository.findById(running.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.FAILED);
+        assertThat(exportJobRepository.findById(running.getId()).orElseThrow().getError())
+                .contains("restarted");
+        // Already finished before the "restart" -- must be left exactly as it was.
+        assertThat(exportJobRepository.findById(completed.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("Reconciling with nothing stuck touches nothing")
+    void reconcileIsANoOpWhenNothingIsStuck() {
+        Learnership learnership = learnership("ReconcileClean");
+        learner(learnership, "A", LocalDateTime.now());
+        runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(exportService.reconcileJobsInterruptedByRestart()).isZero();
+    }
+
+    @Test
+    @DisplayName("A completed job whose file didn't survive a restart is marked EXPIRED")
+    void expiresCompletedJobsWhoseFileIsGone() throws Exception {
+        Learnership learnership = learnership("ExpireMissing");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+
+        // Simulates exactly what an ephemeral disk does across a restart: the row says
+        // COMPLETED, but the file it points to is simply gone.
+        Files.deleteIfExists(Path.of(job.getResultPublicId()));
+
+        int expired = exportService.expireCompletedJobsWithMissingFiles();
+
+        assertThat(expired).isEqualTo(1);
+        ExportJob reloaded = exportJobRepository.findById(job.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(ExportJobStatus.EXPIRED);
+        assertThat(reloaded.getError()).contains("restart");
+        assertThat(exportService.toResponse(reloaded).isDownloadAvailable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("A completed job whose file still exists is left untouched")
+    void leavesCompletedJobsWithTheirFileStillPresentAlone() {
+        Learnership learnership = learnership("ExpirePresent");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(exportService.expireCompletedJobsWithMissingFiles()).isZero();
+        assertThat(exportJobRepository.findById(job.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("A completed job whose result is a Cloudinary public_id is never expired for a missing local file")
+    void neverExpiresACloudinaryStoredResult() {
+        Learnership learnership = learnership("ExpireCloudinary");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        // Rewrite the row as if it had completed on a deployment where exports still went to
+        // Cloudinary, before this fix stopped that -- classify() only recognises the prefix as
+        // a public_id when Cloudinary is configured, so isConfigured() has to actually say true.
+        job.setResultPublicId(com.example.learnerassignments.service.CloudinaryService.SECURE_PREFIX + "old_export");
+        exportJobRepository.save(job);
+        Object realCloudinaryClient = ReflectionTestUtils.getField(cloudinaryService, "cloudinary");
+        ReflectionTestUtils.setField(cloudinaryService, "cloudinary", new com.cloudinary.Cloudinary());
+        try {
+            assertThat(exportService.expireCompletedJobsWithMissingFiles()).isZero();
+        } finally {
+            ReflectionTestUtils.setField(cloudinaryService, "cloudinary", realCloudinaryClient);
+        }
+        assertThat(exportJobRepository.findById(job.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
     }
 
     private String readIndexText(String zipPath) throws Exception {
