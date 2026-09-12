@@ -787,6 +787,45 @@ Decisions taken while building it:
   a whole cohort at once. It reads enrolment from the join table — which is why populating that
   table mattered; before it was fixed, a new guide would have reached nobody.
 
+**Found in production, root-caused and fixed after the admin document review screen shipped:**
+rejecting a document came back "the database rejected that change because it would leave the
+data inconsistent. Nothing was saved" — the reviewer's own decision was lost, not just the
+notification. Reproduced against a real PostgreSQL container by recreating the exact table
+shape production almost certainly has: Hibernate's `ddl-auto=update` generates a native `CHECK`
+constraint for an `@Enumerated(EnumType.STRING)` column from whichever enum values exist *at the
+moment the table is first created*, and never widens that constraint when the enum gains new
+values later — it only ever adds missing tables and columns. `notifications` was very likely
+created at Phase 5's deploy, when `NotificationType` had only `FEEDBACK_RELEASED`; Phase 6 added
+`DOCUMENT_REJECTED` and `GUIDE_PUBLISHED` to the enum and the code that writes them, but nothing
+in a later `ddl-auto=update` boot would ever go back and add those two values to a `CHECK`
+constraint that already exists. The result: a `DOCUMENT_REJECTED` (and probably a
+`GUIDE_PUBLISHED`) notification has likely never been insertable in production at all, and every
+attempt failed inside the same transaction as the write it rode along with — for document
+review, that means the reviewer's decision itself, not merely the notification.
+
+Confirmed by recreating this exact shape locally (a `notifications_type_check` constraint
+narrowed to `('FEEDBACK_RELEASED')`) and replaying the failing request: same error, same lost
+decision. Fixed at the code level, not by trying to patch the constraint from application code
+(which can't run arbitrary DDL against a table it doesn't own the migration for): `notifyLearner`
+now runs in its own transaction (`REQUIRES_NEW`), and every caller that cannot afford to lose its
+own work over a notification problem — `LearnerDocumentService.review`,
+`FeedbackReleaseService.release`, and `notifyModuleLearners`'s own fan-out loop — catches and
+logs a failure from it rather than letting it propagate. This makes the fix permanent regardless
+of what the constraint says, including for any *future* `NotificationType` value that hits the
+same trap. `GlobalExceptionHandler`'s `DataIntegrityViolationException` handler was also silently
+swallowing the real exception with no log line at all; it now logs the full detail, which is what
+made this diagnosable in the first place.
+
+**Still open, and not something application code can fix:** the live `notifications` table's
+`CHECK` constraint itself. Until someone with production database access runs
+`ALTER TABLE notifications DROP CONSTRAINT notifications_type_check;` (Hibernate does not
+require the constraint to exist and will not object to it being gone), a document rejection or a
+guide publication will keep failing to write its notification row — the review or the publish
+will now always still succeed, but the learner will not get a badge or a live push for either
+until that constraint is corrected. This is worth confirming directly: query `notifications` for
+any `DOCUMENT_REJECTED` or `GUIDE_PUBLISHED` rows at all; if there are none, every rejection and
+every guide publication to date has silently failed to notify anyone.
+
 ---
 
 ### Phase 7 — Completeness dashboard — **COMPLETE**

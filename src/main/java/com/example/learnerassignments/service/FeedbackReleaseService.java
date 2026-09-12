@@ -85,10 +85,21 @@ public class FeedbackReleaseService {
         for (Learner learner : learners) {
             // Through NotificationService rather than the repository, so this row gets the same
             // treatment as every other: no link, and the open portal is nudged to look.
-            notificationService.notifyLearner(learner, NotificationType.FEEDBACK_RELEASED,
-                    "SESSION", session.getId(),
-                    // Names this learner's own session and nobody else.
-                    "Your marking for " + sessionName + " is ready. Open the portal to see it.");
+            //
+            // Caught per learner: notifyLearner runs in its own transaction, but the release
+            // above — every submission just marked PUBLISHED — is this method's own, still-open
+            // transaction. Letting one learner's notification failure propagate would fail this
+            // whole call and roll back every release that already happened, over a problem that
+            // has nothing to do with whether the marking should be visible.
+            try {
+                notificationService.notifyLearner(learner, NotificationType.FEEDBACK_RELEASED,
+                        "SESSION", session.getId(),
+                        // Names this learner's own session and nobody else.
+                        "Your marking for " + sessionName + " is ready. Open the portal to see it.");
+            } catch (Exception e) {
+                log.error("Feedback for session {} was released but learner {} could not be notified: {}",
+                        session.getId(), learner.getId(), e.getMessage(), e);
+            }
         }
 
         log.info("Feedback released for session {} ({}): published {}, already published {}, "
