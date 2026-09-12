@@ -35,6 +35,13 @@ const CATEGORY_LABELS = {
 };
 
 const POLL_MS = 5000;
+const MAX_POLL_MS = 60000;
+// After this many polls in a row come back failed, stop retrying on a timer and wait for the
+// admin to ask again. A poll that keeps failing (a 429, a dropped connection, anything) used to
+// retry every five seconds forever with nothing ever telling the tab to stop — the shape of bug
+// that turns one bad response into a permanent background request storm, and leaves the table
+// showing a job's last-known status indefinitely with no sign that status is stale.
+const MAX_CONSECUTIVE_FAILURES = 4;
 
 const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, onInfo }) => {
     const [jobs, setJobs] = useState([]);
@@ -45,39 +52,90 @@ const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, o
     const [cohortOptions, setCohortOptions] = useState([]);
     const [categoryId, setCategoryId] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const pollRef = useRef(null);
+    // True once polling has given up after repeated failures -- the table may be showing a
+    // stale status until the admin explicitly asks to try again.
+    const [pollingPaused, setPollingPaused] = useState(false);
+    const pollTimeoutRef = useRef(null);
+    const consecutiveFailuresRef = useRef(0);
 
     const authHeaders = useCallback(() => ({ Authorization: `Basic ${token}` }), [token]);
 
-    const loadJobs = useCallback(async () => {
+    const clearScheduledPoll = () => {
+        if (pollTimeoutRef.current) {
+            clearTimeout(pollTimeoutRef.current);
+            pollTimeoutRef.current = null;
+        }
+    };
+
+    // Returns the freshly fetched jobs on success, or null on failure -- callers decide what to
+    // do next from that, rather than from React state, which would still be showing last time's
+    // (possibly stale) value at the moment this resolves.
+    const fetchJobs = useCallback(async ({ silent } = {}) => {
         try {
             const res = await fetch('/api/poe/export', { headers: authHeaders() });
-            if (res.status === 401) { onAuthFailure?.(); return; }
-            if (!res.ok) { onError?.('Could not load the export list.'); return; }
-            setJobs(await res.json());
+            if (res.status === 401) { onAuthFailure?.(); return null; }
+            if (!res.ok) {
+                if (!silent) {
+                    const retryAfter = res.headers.get('Retry-After');
+                    onError?.(res.status === 429
+                        ? `The server is asking us to slow down (429)${retryAfter ? `; retrying in ${retryAfter}s` : ''}.`
+                        : `Could not load the export list (${res.status}).`);
+                }
+                return null;
+            }
+            const data = await res.json();
+            setJobs(data);
+            return data;
         } catch (e) {
-            onError?.('Could not load the export list.');
+            if (!silent) onError?.('Could not load the export list.');
+            return null;
         } finally {
             setLoading(false);
         }
     }, [authHeaders, onAuthFailure, onError]);
 
-    useEffect(() => { loadJobs(); }, [loadJobs]);
+    // The self-scheduling poll loop: fetch, then decide whether and when to fetch again from
+    // what just happened, rather than a fixed setInterval that keeps ticking regardless of
+    // whether the last several calls succeeded. Backs off on failure, resets on success, and
+    // stops entirely once nothing is left in flight or too many calls in a row have failed.
+    const pollOnce = useCallback(async () => {
+        const silent = consecutiveFailuresRef.current > 0;
+        const data = await fetchJobs({ silent });
 
-    // Poll only while something is actually in flight — an export that finished ten minutes
-    // ago has no reason to keep this tab making requests every five seconds.
-    useEffect(() => {
-        const hasActive = jobs.some(j => j.status === 'QUEUED' || j.status === 'RUNNING');
-        if (hasActive && !pollRef.current) {
-            pollRef.current = setInterval(loadJobs, POLL_MS);
-        } else if (!hasActive && pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
+        if (data === null) {
+            consecutiveFailuresRef.current += 1;
+            if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+                setPollingPaused(true);
+                onError?.('Export status updates stopped refreshing after repeated errors. '
+                    + 'Click "Refresh now" to try again.');
+                return;
+            }
+            const backoff = Math.min(POLL_MS * 2 ** consecutiveFailuresRef.current, MAX_POLL_MS);
+            pollTimeoutRef.current = setTimeout(pollOnce, backoff);
+            return;
         }
-        return () => {
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-        };
-    }, [jobs, loadJobs]);
+
+        consecutiveFailuresRef.current = 0;
+        const hasActive = data.some(j => j.status === 'QUEUED' || j.status === 'RUNNING');
+        if (hasActive) {
+            pollTimeoutRef.current = setTimeout(pollOnce, POLL_MS);
+        }
+    }, [fetchJobs, onError]);
+
+    const refreshNow = useCallback(() => {
+        clearScheduledPoll();
+        consecutiveFailuresRef.current = 0;
+        setPollingPaused(false);
+        pollOnce();
+    }, [pollOnce]);
+
+    useEffect(() => {
+        pollOnce();
+        return clearScheduledPoll;
+        // Runs once on mount; pollOnce re-schedules itself for as long as polling should
+        // continue, so this effect does not need jobs or pollOnce itself as dependencies.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // The cohort list belongs to whichever learnership is selected.
     useEffect(() => {
@@ -122,7 +180,7 @@ const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, o
             if (res.ok) {
                 const job = await res.json();
                 onInfo?.(`Export queued for ${job.scopeLabel} — ${job.learnerCount} learner(s) in scope.`);
-                loadJobs();
+                refreshNow();
             } else {
                 const err = await res.json().catch(() => ({}));
                 onError?.(err.message || err.error || 'Could not start that export.');
@@ -254,7 +312,23 @@ const PoeExports = ({ token, learnerships, categories, onAuthFailure, onError, o
             </div>
 
             <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Exports</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-slate-900">Exports</h3>
+                    {pollingPaused && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-rose-600">
+                                Status updates stopped after repeated errors
+                            </span>
+                            <button
+                                type="button"
+                                onClick={refreshNow}
+                                className="text-[10px] font-semibold text-blue-600 hover:underline"
+                            >
+                                Refresh now
+                            </button>
+                        </div>
+                    )}
+                </div>
                 {loading ? (
                     <p className="text-xs text-slate-500 py-4">Loading…</p>
                 ) : jobs.length === 0 ? (
