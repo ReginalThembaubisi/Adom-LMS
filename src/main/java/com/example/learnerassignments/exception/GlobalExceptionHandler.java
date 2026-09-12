@@ -180,6 +180,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         String detail = rootCauseText(ex);
+        // Never echoed to the client — this can contain a column or constraint name that means
+        // nothing to whoever hit it, and occasionally the values that violated it. It has to
+        // land somewhere, though: this handler used to answer a safe generic message and log
+        // nothing at all, which meant the *only* record of what actually broke was gone the
+        // moment the response went out. Found while investigating a report that rejecting a
+        // document "saved nothing" — the real cause (a notification write sharing the review's
+        // transaction) was invisible until this line existed to catch the next occurrence.
+        log.error("Data integrity violation: {}", detail, ex);
 
         String message;
         if (isDuplicateViolation(ex, detail)) {

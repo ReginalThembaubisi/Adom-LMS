@@ -152,16 +152,29 @@ public class LearnerDocumentService {
 
         // Only a rejection is worth telling them about: an acceptance needs nothing from them,
         // and a badge that lights up for things requiring no action stops being read.
+        //
+        // The reviewer's decision above is the thing this call exists to record; telling the
+        // learner about it is secondary and must never be able to undo it. notifyLearner runs
+        // in its own transaction for exactly this reason, but that only protects this method's
+        // own writes from a failure inside it — it does not stop that failure being *thrown*,
+        // which would otherwise still fail this whole call and report the review itself as
+        // unsaved. Caught and logged here so a notification problem is diagnosable without ever
+        // being the reason a reviewer's decision is lost.
         if (status == ReviewStatus.REJECTED) {
-            notificationService.notifyLearner(
-                    document.getLearner(),
-                    NotificationType.DOCUMENT_REJECTED,
-                    "DOCUMENT", document.getId(),
-                    // The reviewer's own words. Being told a document was rejected without the
-                    // reason means guessing, re-uploading the same thing, and being rejected
-                    // again.
-                    "Your " + document.getDocumentType().getLabel() + " needs to be uploaded again: "
-                            + document.getReviewNote());
+            try {
+                notificationService.notifyLearner(
+                        document.getLearner(),
+                        NotificationType.DOCUMENT_REJECTED,
+                        "DOCUMENT", document.getId(),
+                        // The reviewer's own words. Being told a document was rejected without
+                        // the reason means guessing, re-uploading the same thing, and being
+                        // rejected again.
+                        "Your " + document.getDocumentType().getLabel() + " needs to be uploaded again: "
+                                + document.getReviewNote());
+            } catch (Exception e) {
+                log.error("Document {} was rejected but the learner could not be notified: {}",
+                        document.getId(), e.getMessage(), e);
+            }
         }
         return document;
     }
