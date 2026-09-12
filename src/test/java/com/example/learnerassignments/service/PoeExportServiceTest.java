@@ -58,6 +58,7 @@ class PoeExportServiceTest {
     @Autowired ModeratorRepository moderatorRepository;
     @Autowired AssessorAssignmentRepository assessorAssignmentRepository;
     @Autowired ModeratorAssignmentRepository moderatorAssignmentRepository;
+    @Autowired CloudinaryService cloudinaryService;
 
     private static final StaffPrincipal ADMIN = StaffPrincipal.admin(1L, "admin");
 
@@ -574,6 +575,62 @@ class PoeExportServiceTest {
         runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
 
         assertThat(exportService.reconcileJobsInterruptedByRestart()).isZero();
+    }
+
+    @Test
+    @DisplayName("A completed job whose file didn't survive a restart is marked EXPIRED")
+    void expiresCompletedJobsWhoseFileIsGone() throws Exception {
+        Learnership learnership = learnership("ExpireMissing");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+
+        // Simulates exactly what an ephemeral disk does across a restart: the row says
+        // COMPLETED, but the file it points to is simply gone.
+        Files.deleteIfExists(Path.of(job.getResultPublicId()));
+
+        int expired = exportService.expireCompletedJobsWithMissingFiles();
+
+        assertThat(expired).isEqualTo(1);
+        ExportJob reloaded = exportJobRepository.findById(job.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(ExportJobStatus.EXPIRED);
+        assertThat(reloaded.getError()).contains("restart");
+        assertThat(exportService.toResponse(reloaded).isDownloadAvailable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("A completed job whose file still exists is left untouched")
+    void leavesCompletedJobsWithTheirFileStillPresentAlone() {
+        Learnership learnership = learnership("ExpirePresent");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(exportService.expireCompletedJobsWithMissingFiles()).isZero();
+        assertThat(exportJobRepository.findById(job.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("A completed job whose result is a Cloudinary public_id is never expired for a missing local file")
+    void neverExpiresACloudinaryStoredResult() {
+        Learnership learnership = learnership("ExpireCloudinary");
+        learner(learnership, "A", LocalDateTime.now());
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        // Rewrite the row as if it had completed on a deployment where exports still went to
+        // Cloudinary, before this fix stopped that -- classify() only recognises the prefix as
+        // a public_id when Cloudinary is configured, so isConfigured() has to actually say true.
+        job.setResultPublicId(com.example.learnerassignments.service.CloudinaryService.SECURE_PREFIX + "old_export");
+        exportJobRepository.save(job);
+        Object realCloudinaryClient = ReflectionTestUtils.getField(cloudinaryService, "cloudinary");
+        ReflectionTestUtils.setField(cloudinaryService, "cloudinary", new com.cloudinary.Cloudinary());
+        try {
+            assertThat(exportService.expireCompletedJobsWithMissingFiles()).isZero();
+        } finally {
+            ReflectionTestUtils.setField(cloudinaryService, "cloudinary", realCloudinaryClient);
+        }
+        assertThat(exportJobRepository.findById(job.getId()).orElseThrow().getStatus())
+                .isEqualTo(ExportJobStatus.COMPLETED);
     }
 
     private String readIndexText(String zipPath) throws Exception {

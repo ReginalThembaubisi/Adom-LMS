@@ -6,16 +6,21 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Runs {@link PoeExportService#reconcileJobsInterruptedByRestart()} once per boot.
+ * Runs {@link PoeExportService}'s two boot-time export reconciliations once per boot.
  *
- * A PoE export job is either QUEUED (created, not yet dispatched) or RUNNING (a worker is
- * fetching files and building the zip) right up until it finishes — and nothing about either
- * state is durable across a restart. Found in production on a free-tier instance that spun down
- * mid-export: two jobs sat QUEUED forever, indistinguishable from "about to start" to anything
- * polling them, because nothing ever told the row its worker was gone. This runs after every
- * boot specifically to close that gap, on the same footing as {@link LegacySubmissionFileMigration}
- * and the other startup reconcilers in this package — idempotent (a job already FAILED or
- * COMPLETED is untouched) and cheap enough to run every time rather than once.
+ * A PoE export job is either QUEUED (created, not yet dispatched), RUNNING (a worker is
+ * fetching files and building the zip), or — once finished — COMPLETED with a file sitting on
+ * this deployment's disk. None of that survives a restart: there is no persistent disk on this
+ * plan, and the free instance spins down when idle, so a restart can land mid-job or well after
+ * one finished. Found in production both ways: two jobs sat QUEUED forever, indistinguishable
+ * from "about to start" to anything polling them; and a COMPLETED job can just as easily have
+ * its file vanish before anyone gets to download it, which is worse than a clean failure — the
+ * row still claims success right up until the download 404s.
+ *
+ * <p>{@link PoeExportService#reconcileJobsInterruptedByRestart()} handles the first case,
+ * {@link PoeExportService#expireCompletedJobsWithMissingFiles()} the second. Both run on the
+ * same footing as {@link LegacySubmissionFileMigration} and the other startup reconcilers in
+ * this package — idempotent and cheap enough to run every time rather than once.
  */
 @Component
 @Order(70)
@@ -27,5 +32,6 @@ public class ExportJobRecoveryRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
         exportService.reconcileJobsInterruptedByRestart();
+        exportService.expireCompletedJobsWithMissingFiles();
     }
 }

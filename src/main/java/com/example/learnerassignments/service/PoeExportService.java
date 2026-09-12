@@ -314,6 +314,50 @@ public class PoeExportService {
         return stuck.size();
     }
 
+    /**
+     * Marks a COMPLETED job EXPIRED when the file it points to is no longer on disk. Called
+     * once per boot by {@link ExportJobRecoveryRunner}, alongside
+     * {@link #reconcileJobsInterruptedByRestart}.
+     *
+     * <p>This deployment's disk is ephemeral: there is no persistent volume, and the free
+     * instance spins down when idle, so a restart — the same event
+     * {@link #reconcileJobsInterruptedByRestart} reacts to — can just as easily happen after a
+     * job finishes as during one. A COMPLETED row whose file is gone is worse than a FAILED one:
+     * the record still claims success, {@code downloadAvailable} still reads {@code true}, and
+     * the admin who clicks it gets a 404 with no explanation of why a "completed" export has
+     * nothing behind it. Checked only for a local-disk result — {@link PoeExportService#store}
+     * is the one thing on this deployment that can lose a file this way; a job whose result is
+     * still a Cloudinary public_id (completed before exports stopped going there) is left
+     * exactly as it was, since nothing about that storage is affected by this application
+     * restarting.
+     */
+    @Transactional
+    public int expireCompletedJobsWithMissingFiles() {
+        List<ExportJob> completed = exportJobRepository.findByStatusIn(List.of(ExportJobStatus.COMPLETED));
+        int expired = 0;
+        for (ExportJob job : completed) {
+            String resultId = job.getResultPublicId();
+            if (resultId == null || resultId.isBlank()
+                    || storedFileService.classify(resultId) != StoredFileService.Shape.LOCAL_PATH
+                    || Files.exists(Paths.get(resultId))) {
+                continue;
+            }
+            job.setStatus(ExportJobStatus.EXPIRED);
+            job.setError("This export completed, but its file did not survive an application "
+                    + "restart on this deployment's ephemeral disk. Request the export again.");
+            exportJobRepository.save(job);
+            auditLogService.log(job.getRequestedByRole(), requesterUsername(job), "POE_EXPORT_EXPIRED",
+                    "ExportJob", job.getId(),
+                    "Marked expired on boot: the stored file was no longer on disk.");
+            expired++;
+        }
+        if (expired > 0) {
+            log.warn("PoE export recovery: {} completed job(s) had a file that did not survive "
+                    + "a restart and have been marked EXPIRED.", expired);
+        }
+        return expired;
+    }
+
     // ================================================================== the worker
 
     /**

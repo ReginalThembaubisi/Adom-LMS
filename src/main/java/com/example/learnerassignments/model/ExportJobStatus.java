@@ -9,5 +9,11 @@ public enum ExportJobStatus {
     /** The zip exists and can be downloaded. */
     COMPLETED,
     /** Something failed. {@code error} says what, without ever naming a file's storage detail. */
-    FAILED
+    FAILED,
+    /**
+     * Completed once, but the file no longer exists — this deployment's disk is ephemeral and
+     * does not survive an application restart. Detected at boot; {@code error} tells the
+     * requester to ask again rather than leaving them a download link that would 404.
+     */
+    EXPIRED
 }
