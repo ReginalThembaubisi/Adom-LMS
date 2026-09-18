@@ -35,11 +35,8 @@ public class ReminderScheduler {
     public void sendUpcomingDeadlinesReminders() {
         LocalDateTime now = LocalDateTime.now();
         
-        // Find all active sessions
-        List<SubmissionSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(s -> s.getStatus() == com.example.learnerassignments.model.SessionStatus.OPEN)
-                .filter(s -> s.getEndTime() != null)
-                .toList();
+        // Use the indexed DB query instead of fetching and filtering all sessions in Java
+        List<SubmissionSession> activeSessions = sessionRepository.findActiveSessions(now);
 
         for (SubmissionSession session : activeSessions) {
             LocalDateTime endTime = session.getEndTime();
