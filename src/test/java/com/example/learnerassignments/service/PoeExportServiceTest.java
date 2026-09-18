@@ -476,6 +476,84 @@ class PoeExportServiceTest {
         assertThat(feedbackText).contains("Released to learner: Yes");
     }
 
+    // ------------------------------------------------------------------ marked copies
+
+    @Test
+    @DisplayName("A submission marked with vector annotations gets a flattened marked copy, with the marks actually drawn")
+    void annotatedSubmissionGetsAFlattenedMarkedCopy() throws Exception {
+        Learnership learnership = learnership("Annotated");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        SubmissionSession session = session(module, "Annotated Task", LocalDateTime.now().minusDays(1));
+        Submission submission = submit(learner, session, LocalDateTime.now(), "See marks.", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submission.setFilePath(writeRealPdf(1));
+        submission.setAnnotationsJson(
+                "{\"1\":[{\"tool\":\"tick\",\"color\":\"#ff0000\",\"x\":300,\"y\":300,\"size\":40,\"s\":1.5}]}");
+        submissionRepository.save(submission);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+
+        byte[] markedBytes = readEntryBytesContaining(job.getResultPublicId(), "_Marked_v1.pdf");
+        try (org.apache.pdfbox.pdmodel.PDDocument marked = org.apache.pdfbox.Loader.loadPDF(markedBytes)) {
+            assertThat(marked.getNumberOfPages()).isEqualTo(1);
+            assertThat(pageHasNonWhitePixel(marked, 0)).as("the tick stroke actually rendered onto the page").isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("annotationsJson takes precedence over a legacy markedFilePath when a submission somehow has both")
+    void annotationsJsonTakesPrecedenceOverLegacyMarkedFilePath() throws Exception {
+        Learnership learnership = learnership("BothMarked");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        SubmissionSession session = session(module, "Both Task", LocalDateTime.now().minusDays(1));
+        Submission submission = submit(learner, session, LocalDateTime.now(), "See marks.", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submission.setFilePath(writeRealPdf(1));
+        submission.setMarkedFilePath(writeTempFile("this is the legacy rasterized marked copy, plain text stand-in"));
+        submission.setAnnotationsJson(
+                "{\"1\":[{\"tool\":\"tick\",\"color\":\"#ff0000\",\"x\":300,\"y\":300,\"size\":40,\"s\":1.5}]}");
+        submissionRepository.save(submission);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        byte[] markedBytes = readEntryBytesContaining(job.getResultPublicId(), "_Marked_v1.pdf");
+        // The legacy path is a plain-text fixture standing in for a real file (see writeTempFile);
+        // a real PDF here proves the flattened path won, not the legacy one.
+        try (org.apache.pdfbox.pdmodel.PDDocument marked = org.apache.pdfbox.Loader.loadPDF(markedBytes)) {
+            assertThat(marked.getNumberOfPages()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @DisplayName("Unusable annotation data is skipped, not fatal -- the rest of the export still completes")
+    void unusableAnnotationsAreSkippedNotFatal() throws Exception {
+        Learnership learnership = learnership("BadAnnotations");
+        Learner broken = learnerNamed(learnership, "Broken Annotations", "A");
+        Module module = module(learnership, "CORE");
+        enrol(broken, module);
+        SubmissionSession session = session(module, "Broken Task", LocalDateTime.now().minusDays(1));
+        Submission submission = submit(broken, session, LocalDateTime.now(), "Feedback.", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submission.setAnnotationsJson("this is not valid JSON at all");
+        submissionRepository.save(submission);
+        // A second, ordinary learner in the same export, to prove one bad submission's marks
+        // don't sink anyone else's export -- the same guarantee writeStoredFile gives per file.
+        Learner ok = learnerNamed(learnership, "Fine Learner", "A");
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+        assertThat(job.getLearnerCount()).isEqualTo(2);
+        try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
+            assertThat(zip.stream().anyMatch(e -> e.getName().contains("4. ASSESSMENT ACTIVITIES")
+                    && e.getName().contains(broken.getLearnerCode())))
+                    .as("the broken submission's original file is still there").isTrue();
+            assertThat(zip.stream().anyMatch(e -> e.getName().contains("_Marked_"))).as("no marked copy could be built for it").isFalse();
+        }
+    }
+
     // ------------------------------------------------------------------ failure diagnostics & cleanup
 
     @Test
@@ -696,6 +774,44 @@ class PoeExportServiceTest {
             ZipEntry entry = zip.stream().filter(e -> e.getName().contains(substring)).findFirst().orElseThrow();
             return new String(zip.getInputStream(entry).readAllBytes());
         }
+    }
+
+    private byte[] readEntryBytesContaining(String zipPath, String substring) throws Exception {
+        try (ZipFile zip = new ZipFile(new File(zipPath))) {
+            ZipEntry entry = zip.stream().filter(e -> e.getName().contains(substring)).findFirst().orElseThrow();
+            return zip.getInputStream(entry).readAllBytes();
+        }
+    }
+
+    /**
+     * A genuine, loadable PDF with {@code numPages} blank Letter pages -- unlike
+     * {@link #writeTempFile}, which hands out plain text with a {@code .pdf} extension for tests
+     * that never need to actually open the file. Flattening annotations onto a submission
+     * requires a real PDF to draw into, so the annotation tests use this instead.
+     */
+    private String writeRealPdf(int numPages) throws Exception {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            for (int i = 0; i < numPages; i++) {
+                doc.addPage(new org.apache.pdfbox.pdmodel.PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.LETTER));
+            }
+            Path file = Files.createTempFile("poe-export-real-pdf-", ".pdf");
+            doc.save(file.toFile());
+            file.toFile().deleteOnExit();
+            return file.toAbsolutePath().toString();
+        }
+    }
+
+    /** Whether rendering the given page produces at least one pixel that isn't plain white. */
+    private boolean pageHasNonWhitePixel(org.apache.pdfbox.pdmodel.PDDocument doc, int pageIndex) throws Exception {
+        java.awt.image.BufferedImage image = new org.apache.pdfbox.rendering.PDFRenderer(doc).renderImage(pageIndex);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                if (image.getRGB(x, y) != -1) { // -1 == opaque white (0xFFFFFFFF)
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private Learnership learnership(String name) {
