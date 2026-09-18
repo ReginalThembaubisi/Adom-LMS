@@ -56,11 +56,17 @@ const SubmissionViewer = ({ submission, onClose }) => {
     // Word files have no in-browser renderer we can use without shipping the file offsite,
     // so they are saved and opened in Word instead. If inline preview turns out to matter,
     // the answer is a server-side PDF conversion, not a third-party viewer.
+    //
+    // The "marked_" prefix mirrors SubmissionController.viewSubmissionFile, which serves the
+    // marked variant under that same filename — so the download matches what the backend
+    // would call it, not just whatever the original was named.
     const saveDocument = () => {
         if (!documentUrl) return;
         const link = document.createElement('a');
         link.href = documentUrl;
-        link.download = submission.originalFilename || 'submission';
+        link.download = (hasMarkedCopy || hasAnnotations)
+            ? `marked_${submission.originalFilename || 'submission'}`
+            : (submission.originalFilename || 'submission');
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -127,6 +133,18 @@ const SubmissionViewer = ({ submission, onClose }) => {
                             ) : hasAnnotations ? (
                                 // Vector annotations path: render original PDF + replay strokes.
                                 // No re-download of a large rasterized file — strokes load as JSON.
+                                //
+                                // No Download button here deliberately: documentUrl is the
+                                // original, unmarked PDF (the fetch above only appends
+                                // ?marked=true when hasMarkedCopy is set, and that's false
+                                // whenever hasAnnotations is true). The marks only exist as
+                                // strokes replayed on top by PdfReplay, so downloading this
+                                // object URL would hand back a file that doesn't have them —
+                                // silently wrong, not just incomplete. Flattening the replay
+                                // into a real PDF client-side would mean forcing every page to
+                                // render (PdfReplay windows them for performance) and compositing
+                                // canvases through jsPDF, which is a project of its own, not a
+                                // small addition here.
                                 annotationsLoading ? (
                                     <p className="text-xs text-slate-500">Loading marked copy...</p>
                                 ) : (
@@ -140,13 +158,27 @@ const SubmissionViewer = ({ submission, onClose }) => {
                             ) : isPdf ? (
                                 // Legacy path (rasterized marked copy) or unmarked original PDF.
                                 // #toolbar=0 hides the browser's native PDF viewer chrome (which
-                                // otherwise adds its own print/save controls) — viewing stays
-                                // strictly in-app, no download affordance.
-                                <iframe
-                                    src={`${documentUrl}#toolbar=0`}
-                                    className="w-full h-full border-none"
-                                    title="PDF Document Preview"
-                                />
+                                // otherwise adds its own print/save controls); the Download
+                                // button below is the one deliberate way out, and — unlike the
+                                // hasAnnotations case above — documentUrl here really is the file
+                                // on screen (the marked raster when hasMarkedCopy, the original
+                                // otherwise), so saving it is never misleading.
+                                <>
+                                    <iframe
+                                        src={`${documentUrl}#toolbar=0`}
+                                        className="w-full h-full border-none"
+                                        title="PDF Document Preview"
+                                    />
+                                    <button
+                                        onClick={saveDocument}
+                                        className="absolute top-3 right-3 flex items-center gap-1.5 bg-[#4A3AFF] hover:bg-[#3d2fd6] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-lg"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Download
+                                    </button>
+                                </>
                             ) : isImage ? (
                                 <img
                                     src={documentUrl}
@@ -220,7 +252,7 @@ const SubmissionViewer = ({ submission, onClose }) => {
 
                         <div className="pt-6 border-t border-slate-800/80 text-center">
                             <span className="text-[10px] text-slate-500 uppercase tracking-widest">
-                                {isPdf || isImage ? 'View only' : 'Your copy'}
+                                {isImage || (isPdf && hasAnnotations) ? 'View only' : 'Your copy'}
                             </span>
                         </div>
                     </div>
