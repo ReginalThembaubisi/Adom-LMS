@@ -1534,6 +1534,23 @@ of unauthenticated learner routes means rewriting both.
 Deploy each phase before starting the next. If something goes wrong, debugging against a
 clean `main` beats debugging against one carrying half of the following phase.
 
+**Where this runs.** Render, service `adom-lms-portal`, Docker, **Free** instance, deploying
+from `main` with **Auto-Deploy on**. Two consequences that shape everything below:
+
+- **Merging is deploying.** There is no separate deploy step to schedule — the moment a pull
+  request lands on `main`, Render builds and ships it. So the announcement and the
+  low-traffic hour gate the *merge*, not a later action. Phase 0 learned this the hard way:
+  seven merges auto-deployed across an afternoon, signing every learner out with no notice,
+  and briefly serving two defects that later merges fixed. Either turn Auto-Deploy off and
+  use Manual Deploy for phases that need sequencing, or treat merge time as deploy time and
+  hold the PR until the announcement has gone out.
+- **The filesystem is ephemeral.** Free instances have no persistent disk and spin down when
+  idle, so `uploads/` and `private-uploads/` are empty on every wake. Anything written to
+  local disk is gone by the next cold start. This is why Cloudinary must stay configured in
+  production: without it, `SubmissionService` falls back to local disk and a learner's
+  submission survives only until the instance sleeps. The migration's own log reports this —
+  see step 3.
+
 **Deploy sequence, per phase:**
 
 1. **Announce first, not after** — and again an hour before, and once more when it is done.
@@ -1551,6 +1568,18 @@ clean `main` beats debugging against one carrying half of the following phase.
    run including when it moves nothing (`"Legacy submission file migration complete: scanned
    N ..."`), so the *absence* of that line means it did not run. Then spot-check that one
    moved file still opens in the portal.
+
+   On Render, read this line in the service's Logs tab, and save it off-platform — log
+   retention is limited and it is the reversal record. **Read the whole line, not just
+   whether it appeared.** On an ephemeral filesystem it doubles as a storage health check:
+
+   - `moved 0` is the expected, healthy result when Cloudinary is configured, because every
+     `file_path` is an `https://` URL and there is nothing local to move.
+   - **`N referenced a file missing from disk` with N above zero is not a migration problem.**
+     It means N submissions have database rows pointing at local files that no longer exist —
+     which on a Free instance is what happens to anything written to local disk once the
+     container sleeps. Those learners' work is gone, and it went before this migration
+     existed. Treat a non-zero count as a data-loss finding to investigate, not as noise.
 4. **Log in as a test learner.** Run `./scripts/verify-deploy.sh <base-url> <learner-code>
    <password>` against a test account — it asserts the access-control behaviour this phase
    exists to produce, including the cases that have already been wrong once (a learner
