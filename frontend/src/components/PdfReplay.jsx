@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { drawStroke } from '../utils/pdfAnnotations';
+import { drawStroke, RENDER_SCALE } from '../utils/pdfAnnotations';
 
 let _pdfjsLib = null;
 async function getPdfjs() {
@@ -13,7 +13,6 @@ async function getPdfjs() {
     return lib;
 }
 
-const RENDER_SCALE = 1.5;
 const WINDOW_BUFFER = 2;
 
 // Read-only counterpart to PdfAnnotator: renders the original PDF via pdf.js and

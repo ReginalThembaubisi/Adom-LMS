@@ -15,6 +15,13 @@
  * exactly as they were before, because there is no way to recover a scale that was never
  * recorded. Those stay approximate — re-mark them if the placement matters.
  */
+
+// The fixed scale PdfReplay renders at, and the one anything replaying or flattening those
+// same strokes must render at too — sharing this constant is what keeps a downloaded flattened
+// copy's marks lined up with what PdfReplay shows on screen, the same way scaleFactor() keeps
+// them lined up across a marker's own resizes.
+export const RENDER_SCALE = 1.5;
+
 export function scaleFactor(stroke, renderScale) {
     const captured = stroke && stroke.s;
     if (!captured || !renderScale || captured <= 0) return 1;

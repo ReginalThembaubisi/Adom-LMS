@@ -1,8 +1,25 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import { getStatusBadgeClasses, getStatusLabel } from '../utils/colors';
 import { useLearner } from '../context/LearnerContext';
+import { drawStroke, RENDER_SCALE } from '../utils/pdfAnnotations';
 const PdfReplay = lazy(() => import('./PdfReplay'));
+
+// Loads pdf.js on demand, same as PdfReplay's own loader (duplicated rather than imported so
+// that importing this component doesn't force PdfReplay's module — and its lazy chunk — to
+// load eagerly). The module itself is cached by the bundler regardless of how many places
+// dynamic-import it, so this costs a second small loader function, not a second pdf.js.
+let _pdfjsLib = null;
+async function getPdfjs() {
+    if (_pdfjsLib) return _pdfjsLib;
+    const [lib, workerUrl] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+    ]);
+    lib.GlobalWorkerOptions.workerSrc = workerUrl.default;
+    _pdfjsLib = lib;
+    return lib;
+}
 
 // Read-only counterpart to SubmissionMarker: lets a student view their own submitted
 // document alongside its assessment outcome and feedback. PDFs and images render in-app;
@@ -15,6 +32,11 @@ const SubmissionViewer = ({ submission, onClose }) => {
     const [documentUrl, setDocumentUrl] = useState(null);
     const [documentType, setDocumentType] = useState(null);
     const [loadError, setLoadError] = useState(false);
+    // null when idle, { current, total } while flattening pages, 'error' on failure.
+    const [flattenState, setFlattenState] = useState(null);
+    const flatteningRef = useRef(false);
+    const mountedRef = useRef(true);
+    useEffect(() => () => { mountedRef.current = false; }, []);
 
     const hasAnnotations = submission.hasAnnotations;
     const hasMarkedCopy = submission.hasMarkedCopy && !hasAnnotations;
@@ -70,6 +92,73 @@ const SubmissionViewer = ({ submission, onClose }) => {
         document.body.appendChild(link);
         link.click();
         link.remove();
+    };
+
+    /**
+     * Bakes the replayed strokes into a real, downloadable PDF for the hasAnnotations path,
+     * where there is no server-side rasterized copy — marks exist only as stroke JSON, replayed
+     * on top of the original by PdfReplay. saveDocument() can't be reused here: it downloads
+     * documentUrl as-is, and documentUrl is the unmarked original.
+     *
+     * Deliberately sequential and on the main thread, one page at a time, reusing a single
+     * canvas: this renders every page (PdfReplay only renders pages scrolled into view, which
+     * is not an option for a file that has to be complete), and a long submission can take
+     * several seconds — the progress state exists so the button doesn't just look stuck.
+     */
+    const downloadFlattenedPdf = async () => {
+        if (flatteningRef.current || !documentUrl) return;
+        flatteningRef.current = true;
+        setFlattenState({ current: 0, total: 0 });
+
+        try {
+            const [pdfjs, { jsPDF }] = await Promise.all([getPdfjs(), import('jspdf')]);
+            const doc = await pdfjs.getDocument({ url: documentUrl }).promise;
+            const numPages = doc.numPages;
+            if (!mountedRef.current) return;
+            setFlattenState({ current: 0, total: numPages });
+
+            // One canvas, reused and cleared (by reassigning width/height) every page, so peak
+            // memory is one page's raster rather than growing with the document's length.
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let out = null;
+
+            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                const page = await doc.getPage(pageNum);
+                const vp = page.getViewport({ scale: RENDER_SCALE });
+                canvas.width = vp.width;
+                canvas.height = vp.height;
+
+                await page.render({ canvasContext: ctx, viewport: vp }).promise;
+                (annotationStrokes?.[pageNum] || []).forEach(s => drawStroke(ctx, s, RENDER_SCALE));
+
+                // JPEG, not PNG: a scanned or text-heavy page compresses far smaller, which
+                // matters once dozens of pages are accumulating in the output document.
+                const pageImage = canvas.toDataURL('image/jpeg', 0.85);
+                const orientation = vp.width > vp.height ? 'l' : 'p';
+                if (!out) {
+                    out = new jsPDF({ unit: 'px', format: [vp.width, vp.height], orientation });
+                } else {
+                    out.addPage([vp.width, vp.height], orientation);
+                }
+                out.addImage(pageImage, 'JPEG', 0, 0, vp.width, vp.height);
+
+                if (!mountedRef.current) return;
+                setFlattenState({ current: pageNum, total: numPages });
+            }
+
+            const base = submission.originalFilename || 'submission';
+            const name = `marked_${base}`;
+            out.save(name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`);
+            if (mountedRef.current) setFlattenState(null);
+        } catch (e) {
+            if (mountedRef.current) {
+                setFlattenState('error');
+                setTimeout(() => { if (mountedRef.current) setFlattenState(null); }, 4000);
+            }
+        } finally {
+            flatteningRef.current = false;
+        }
     };
 
     // Fetch saved stroke data when the submission has vector annotations (new path).
@@ -132,28 +221,48 @@ const SubmissionViewer = ({ submission, onClose }) => {
                                 <p className="text-xs text-slate-500">Loading document...</p>
                             ) : hasAnnotations ? (
                                 // Vector annotations path: render original PDF + replay strokes.
-                                // No re-download of a large rasterized file — strokes load as JSON.
-                                //
-                                // No Download button here deliberately: documentUrl is the
-                                // original, unmarked PDF (the fetch above only appends
-                                // ?marked=true when hasMarkedCopy is set, and that's false
-                                // whenever hasAnnotations is true). The marks only exist as
-                                // strokes replayed on top by PdfReplay, so downloading this
-                                // object URL would hand back a file that doesn't have them —
-                                // silently wrong, not just incomplete. Flattening the replay
-                                // into a real PDF client-side would mean forcing every page to
-                                // render (PdfReplay windows them for performance) and compositing
-                                // canvases through jsPDF, which is a project of its own, not a
-                                // small addition here.
+                                // PdfReplay only renders pages scrolled into view, so downloading
+                                // *that* would be incomplete — the Download button here runs
+                                // downloadFlattenedPdf() instead, which renders every page (off
+                                // the visible PdfReplay instance entirely) and bakes the same
+                                // strokes into a standalone PDF. See its own comment for why
+                                // that's a real render pass, not free — hence the progress state.
                                 annotationsLoading ? (
                                     <p className="text-xs text-slate-500">Loading marked copy...</p>
                                 ) : (
-                                    <Suspense fallback={<p className="text-xs text-slate-500">Loading viewer...</p>}>
-                                        <PdfReplay
-                                            documentUrl={documentUrl}
-                                            strokes={annotationStrokes || {}}
-                                        />
-                                    </Suspense>
+                                    <>
+                                        <Suspense fallback={<p className="text-xs text-slate-500">Loading viewer...</p>}>
+                                            <PdfReplay
+                                                documentUrl={documentUrl}
+                                                strokes={annotationStrokes || {}}
+                                            />
+                                        </Suspense>
+                                        {flattenState === 'error' ? (
+                                            <span className="absolute top-3 right-3 bg-rose-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg">
+                                                Couldn't prepare download
+                                            </span>
+                                        ) : flattenState ? (
+                                            <span className="absolute top-3 right-3 flex items-center gap-1.5 bg-slate-800/90 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg">
+                                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                </svg>
+                                                {flattenState.total
+                                                    ? `Preparing ${flattenState.current}/${flattenState.total}…`
+                                                    : 'Preparing…'}
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={downloadFlattenedPdf}
+                                                className="absolute top-3 right-3 flex items-center gap-1.5 bg-[#4A3AFF] hover:bg-[#3d2fd6] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-lg"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                Download
+                                            </button>
+                                        )}
+                                    </>
                                 )
                             ) : isPdf ? (
                                 // Legacy path (rasterized marked copy) or unmarked original PDF.
@@ -252,7 +361,7 @@ const SubmissionViewer = ({ submission, onClose }) => {
 
                         <div className="pt-6 border-t border-slate-800/80 text-center">
                             <span className="text-[10px] text-slate-500 uppercase tracking-widest">
-                                {isImage || (isPdf && hasAnnotations) ? 'View only' : 'Your copy'}
+                                {isImage ? 'View only' : 'Your copy'}
                             </span>
                         </div>
                     </div>
