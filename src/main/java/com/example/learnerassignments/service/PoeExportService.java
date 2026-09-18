@@ -12,6 +12,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.awt.Color;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -115,6 +117,12 @@ public class PoeExportService {
             "CORE", "Cores",
             "ELECTIVE", "Electives"
     );
+
+    // The scale a stroke is drawn at when it recorded none of its own — see
+    // frontend/src/utils/pdfAnnotations.js's RENDER_SCALE and scaleFactor(), which this
+    // constant must keep matching. flattenAnnotationsOntoPdf() is that file's drawStroke()
+    // ported to PDFBox; see its own doc comment for how this value is used.
+    private static final double RENDER_SCALE = 1.5;
 
     // ================================================================== creation & validation
 
@@ -465,7 +473,7 @@ public class PoeExportService {
             try (ZipOutputStream zos = new ZipOutputStream(
                     new BufferedOutputStream(new FileOutputStream(tempZip.toFile())))) {
                 for (Learner learner : learners) {
-                    writeLearnerFolder(zos, learner, sectionOnlyCategoryId, indexEntries, counters);
+                    writeLearnerFolder(zos, jobId, learner, sectionOnlyCategoryId, indexEntries, counters);
                 }
                 writeIndexPdf(zos, job, learners, indexEntries, counters);
                 writeSignaturesCsv(zos);
@@ -557,7 +565,7 @@ public class PoeExportService {
 
     // ================================================================== zip content
 
-    private void writeLearnerFolder(ZipOutputStream zos, Learner learner, Long sectionOnlyCategoryId,
+    private void writeLearnerFolder(ZipOutputStream zos, Long jobId, Learner learner, Long sectionOnlyCategoryId,
                                      List<IndexEntry> indexEntries, Counters counters) throws IOException {
         String folder = sanitizeSegment(learner.getFullName() + " (" + learner.getLearnerCode() + ")") + "/";
         LearnerPortfolio portfolio = resolvePortfolio(learner, sectionOnlyCategoryId);
@@ -608,7 +616,20 @@ public class PoeExportService {
                     indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
                             sessionName + " feedback v" + ordinal, submission.getGradedAt(), releaseTag));
 
-                    if (submission.getMarkedFilePath() != null && !submission.getMarkedFilePath().isBlank()) {
+                    // annotationsJson (the vector-stroke path) takes precedence over
+                    // markedFilePath, the same precedence SubmissionMarker.jsx's own
+                    // hasMarkedCopy computation uses ("only fall back to the rasterized marked
+                    // copy for legacy submissions that have one but no annotationsJson") — one
+                    // rule, not two that could disagree about which marking is authoritative
+                    // for a submission that somehow carries both.
+                    if (submission.getAnnotationsJson() != null && !submission.getAnnotationsJson().isBlank()) {
+                        // No stored file to hand off here, unlike markedFilePath below: the
+                        // marked copy has to be built for this export, from the original
+                        // submission plus the stroke JSON. See flattenAnnotationsOntoPdf()'s
+                        // own doc comment.
+                        writeFlattenedAnnotatedCopy(zos, jobId, learner, sessionName, ordinal, submission,
+                                moduleBase, indexEntries, counters);
+                    } else if (submission.getMarkedFilePath() != null && !submission.getMarkedFilePath().isBlank()) {
                         String markedEntry = sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal);
                         writeStoredFile(zos, markedEntry, submission.getMarkedFilePath(), "marked copy", counters);
                         indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
@@ -762,8 +783,8 @@ public class PoeExportService {
                 ? "(no written feedback recorded)" : submission.getFeedback());
         sb.append('\n');
         if (submission.getAnnotationsJson() != null && !submission.getAnnotationsJson().isBlank()) {
-            sb.append("\nNote: this submission also carries in-app pen annotations, viewable in the portal's ")
-                    .append("marking screen. They are not rendered into this file.\n");
+            sb.append("\nNote: this submission's marks were made with in-app pen annotations. A flattened ")
+                    .append("copy showing them is included alongside this file in this bundle.\n");
         }
         return sb.toString();
     }
@@ -791,6 +812,245 @@ public class PoeExportService {
         zos.putNextEntry(new ZipEntry(entryName));
         zos.write(bytes);
         zos.closeEntry();
+    }
+
+    // ================================================================== flattened annotations
+
+    // Rendering a page-by-page flattened PDF is the most expensive thing this class does per
+    // submission — a plain file write is a stream copy, this is real per-page drawing — so a
+    // cohort-sized export doing it dozens or hundreds of times over gets its own progress line
+    // rather than going silent between the job's start and completion logs.
+    private static final int FLATTEN_PROGRESS_LOG_EVERY = 25;
+
+    /**
+     * Same defensive shape as {@link #writeStoredFile}: read, transform, write, and on any
+     * failure log it, count it as skipped, and move on rather than failing the export. There is
+     * no stored file to fall back to here — building the marked copy is the whole job — so a
+     * failure here means this submission's export simply has no marked copy this run, the same
+     * outcome a missing/unreadable {@code markedFilePath} produces on the legacy path above.
+     */
+    private void writeFlattenedAnnotatedCopy(ZipOutputStream zos, Long jobId, Learner learner, String sessionName,
+                                              int ordinal, Submission submission, String moduleBase,
+                                              List<IndexEntry> indexEntries, Counters counters) {
+        try {
+            byte[] original = storedFileService.readBytes(submission.getFilePath(), "submission");
+            byte[] flattened = flattenAnnotationsOntoPdf(original, submission.getAnnotationsJson());
+            if (flattened == null) {
+                counters.filesSkipped++;
+                return;
+            }
+            String markedEntry = sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal);
+            writeBytes(zos, markedEntry, flattened, counters);
+            indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
+                    sessionName + " marked copy v" + ordinal, submission.getGradedAt()));
+
+            counters.annotatedCopiesFlattened++;
+            if (counters.annotatedCopiesFlattened % FLATTEN_PROGRESS_LOG_EVERY == 0) {
+                log.info("PoE export {}: flattened {} annotated marked copies so far.",
+                        jobId, counters.annotatedCopiesFlattened);
+            }
+        } catch (Exception e) {
+            log.warn("Skipping a flattened marked copy in export {}: could not render annotations onto "
+                    + "the original PDF for submission {} ({}).", jobId, submission.getId(), e.getMessage());
+            counters.filesSkipped++;
+        }
+    }
+
+    /**
+     * Bakes annotation strokes onto the original submission PDF's own page content, producing a
+     * flattened marked-up copy for the vector-stroke marking path — the server-side counterpart
+     * of {@code SubmissionViewer.jsx}'s {@code downloadFlattenedPdf()}, built for an export job
+     * rather than a browser. See {@code frontend/src/utils/pdfAnnotations.js}'s {@code
+     * drawStroke}/{@code scaleFactor} for the tool geometry and scale-correction formula this
+     * replicates; {@link #drawStrokeOnPage} is that function ported to PDFBox.
+     *
+     * <p>Draws directly into each page's own vector content stream rather than rasterizing and
+     * re-embedding an image — a stroke's raw coordinate converts straight to PDF points by
+     * dividing by the scale it was captured at ({@link #RENDER_SCALE} for older strokes that
+     * recorded none, exactly as {@code scaleFactor()} falls back), with no need to reproduce
+     * whatever scale a particular client replayed it at on screen. That client-side render scale
+     * cancels out of the conversion algebraically: a stroke's canvas-pixel position at replay
+     * scale R is {@code raw * (R / captured)}, and a canvas pixel at scale R is {@code 1/R} PDF
+     * points, so the two R's cancel and the PDF-point position is simply {@code raw / captured}.
+     *
+     * <p>Known limitation: draws using the page's own MediaBox coordinate system and does not
+     * account for a nonzero {@code /Rotate} on the source PDF. Every PDF this codebase's own
+     * upload path produces has none, so this only matters for a hand-crafted file that sets one.
+     *
+     * @return the flattened PDF's bytes, or {@code null} when there is nothing to draw — no
+     *         strokes at all, or none that reference a page the document actually has
+     */
+    private byte[] flattenAnnotationsOntoPdf(byte[] originalPdfBytes, String annotationsJson) throws IOException {
+        Map<String, List<Map<String, Object>>> strokesByPage = parseStrokesByPage(annotationsJson);
+        if (strokesByPage.isEmpty()) {
+            return null;
+        }
+
+        try (PDDocument doc = Loader.loadPDF(originalPdfBytes)) {
+            boolean drewAnything = false;
+            for (Map.Entry<String, List<Map<String, Object>>> entry : strokesByPage.entrySet()) {
+                List<Map<String, Object>> strokes = entry.getValue();
+                if (strokes == null || strokes.isEmpty()) {
+                    continue;
+                }
+                int pageNum;
+                try {
+                    pageNum = Integer.parseInt(entry.getKey().trim());
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                // A page number the document doesn't have — the submission file was replaced
+                // after marking, say — is skipped for that page rather than failing the whole
+                // document. Same "one bad thing doesn't sink the rest" rule as the class's file
+                // handling, one level down.
+                if (pageNum < 1 || pageNum > doc.getNumberOfPages()) {
+                    continue;
+                }
+                PDPage page = doc.getPage(pageNum - 1);
+                float pageHeight = page.getMediaBox().getHeight();
+                // resetContext=true: append mode otherwise continues whatever graphics state the
+                // original content stream left active (a transform, a clip, a stray color), none
+                // of which this drawing wants inherited.
+                try (PDPageContentStream cs = new PDPageContentStream(
+                        doc, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
+                    for (Map<String, Object> stroke : strokes) {
+                        try {
+                            if (drawStrokeOnPage(cs, stroke, pageHeight)) {
+                                drewAnything = true;
+                            }
+                        } catch (Exception e) {
+                            log.debug("Skipping one malformed annotation stroke while flattening for export: {}",
+                                    e.getMessage());
+                        }
+                    }
+                }
+            }
+            if (!drewAnything) {
+                return null;
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            doc.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, List<Map<String, Object>>> parseStrokesByPage(String annotationsJson) {
+        try {
+            return objectMapper.readValue(annotationsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() { });
+        } catch (Exception e) {
+            log.warn("Could not decode annotations JSON while flattening a marked copy for export: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    /**
+     * One stroke, translated from {@code drawStroke()}: canvas pixels at whatever scale the
+     * stroke was captured at, converted to PDF points (see {@link #flattenAnnotationsOntoPdf}'s
+     * note on why the replay scale cancels out) with the Y axis flipped — PDF space has its
+     * origin at the bottom-left, canvas space at the top-left, so a canvas "+dy" (downward) is a
+     * PDF "-dy".
+     *
+     * @return true if something was actually drawn
+     */
+    private boolean drawStrokeOnPage(PDPageContentStream cs, Map<String, Object> stroke, float pageHeight) throws IOException {
+        String tool = stroke.get("tool") instanceof String s ? s : null;
+        double capturedScale = numOrZero(stroke.get("s"));
+        double effectiveScale = capturedScale > 0 ? capturedScale : RENDER_SCALE;
+
+        if ("tick".equals(tool) || "cross".equals(tool)) {
+            Color color = parseStrokeColor(stroke.get("color"));
+            if (color == null) {
+                return false;
+            }
+            float cx = (float) (numOrZero(stroke.get("x")) / effectiveScale);
+            float cy = pageHeight - (float) (numOrZero(stroke.get("y")) / effectiveScale);
+            float size = (float) (numOrZero(stroke.get("size")) / effectiveScale);
+            float lineWidth = Math.max((float) (2.5 / RENDER_SCALE), size * 0.16f);
+
+            cs.setStrokingColor(color);
+            cs.setLineWidth(lineWidth);
+            cs.setLineJoinStyle(1); // round
+            cs.setLineCapStyle(1);  // round
+
+            if ("tick".equals(tool)) {
+                cs.moveTo(cx - size * 0.5f, cy);
+                cs.lineTo(cx - size * 0.15f, cy - size * 0.4f);
+                cs.lineTo(cx + size * 0.55f, cy + size * 0.5f);
+            } else {
+                cs.moveTo(cx - size * 0.45f, cy + size * 0.45f);
+                cs.lineTo(cx + size * 0.45f, cy - size * 0.45f);
+                cs.moveTo(cx + size * 0.45f, cy + size * 0.45f);
+                cs.lineTo(cx - size * 0.45f, cy - size * 0.45f);
+            }
+            cs.stroke();
+            return true;
+        }
+
+        Object pointsObj = stroke.get("points");
+        if (!(pointsObj instanceof List<?> points) || points.size() < 2) {
+            return false;
+        }
+        Color color = parseStrokeColor(stroke.get("color"));
+        if (color == null) {
+            return false;
+        }
+        float lineWidth = (float) (numOrZero(stroke.get("thickness")) / effectiveScale);
+        if (lineWidth <= 0) {
+            return false;
+        }
+
+        cs.setStrokingColor(color);
+        cs.setLineWidth(lineWidth);
+        cs.setLineJoinStyle(1);
+        cs.setLineCapStyle(1);
+
+        boolean started = false;
+        for (Object pointObj : points) {
+            if (!(pointObj instanceof Map<?, ?> point)) {
+                continue;
+            }
+            float px = (float) (numOrZero(point.get("x")) / effectiveScale);
+            float py = pageHeight - (float) (numOrZero(point.get("y")) / effectiveScale);
+            if (!started) {
+                cs.moveTo(px, py);
+                started = true;
+            } else {
+                cs.lineTo(px, py);
+            }
+        }
+        if (!started) {
+            return false;
+        }
+        cs.stroke();
+        return true;
+    }
+
+    private double numOrZero(Object o) {
+        return o instanceof Number n ? n.doubleValue() : 0d;
+    }
+
+    /** Strokes carry color as a "#rrggbb" (or shorthand "#rgb") hex string, as drawStroke expects. */
+    private Color parseStrokeColor(Object colorObj) {
+        if (!(colorObj instanceof String hex) || hex.isBlank()) {
+            return null;
+        }
+        try {
+            String h = hex.trim();
+            if (h.startsWith("#")) {
+                h = h.substring(1);
+            }
+            if (h.length() == 3) {
+                h = "" + h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+            }
+            if (h.length() != 6) {
+                return null;
+            }
+            return new Color(Integer.parseInt(h, 16));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ================================================================== 00_INDEX.pdf
@@ -1217,6 +1477,7 @@ public class PoeExportService {
     private static class Counters {
         int filesWritten = 0;
         int filesSkipped = 0;
+        int annotatedCopiesFlattened = 0;
     }
 
     private record IndexEntry(Learner learner, String section, String label, LocalDateTime at, String tag) {
