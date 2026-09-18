@@ -39,9 +39,11 @@ const AdminDashboard = () => {
     const [staffRole, setStaffRole] = useState('LECTURER');
     const [activeTab, setActiveTab] = useState('overview');
     // { id, label } of the learner currently open in the portfolio browser modal, or null.
-    // Reachable from both the Student Directory row action and PoeCompleteness's own
-    // drill-down, which is why this lives up here rather than inside either screen.
+    // Reachable from the Student Directory row action, PoeCompleteness's own drill-down, and
+    // the Student Portfolios search tab, which is why this lives up here rather than inside
+    // any one of those screens.
     const [browsingLearner, setBrowsingLearner] = useState(null);
+    const [portfolioSearch, setPortfolioSearch] = useState('');
     const fetchedTabsRef = useRef(new Set());
 
     // Learnership form
@@ -83,6 +85,8 @@ const AdminDashboard = () => {
             fetchModerators();
             fetchAssessors();
         } else if (activeTab === 'students') {
+            fetchLearners();
+        } else if (activeTab === 'portfolios') {
             fetchLearners();
         } else if (activeTab === 'export') {
             fetchLearnerships();
@@ -672,6 +676,7 @@ const AdminDashboard = () => {
                                 { id: 'modules', label: 'Modules Directory', icon: '📚' },
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
                                 { id: 'students', label: 'Student Directory', icon: '👤' },
+                                { id: 'portfolios', label: 'Student Portfolios', icon: '📁' },
                                 { id: 'completeness', label: 'Portfolio Completeness', icon: '✅' },
                                 { id: 'export', label: 'SETA Export', icon: '📦' },
                                 { id: 'legacy-import', label: 'Legacy Folder Import', icon: '🗂️' }
@@ -1356,6 +1361,64 @@ const AdminDashboard = () => {
                         </table>
                     </div>
                 </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'portfolios' && (
+                            <div className="space-y-6">
+                                <div className="border-b border-slate-300 pb-3">
+                                    <h2 className="text-lg font-bold text-slate-900">Student Portfolios</h2>
+                                    <p className="text-xs text-slate-500">Search for a learner to open their full Portfolio of Evidence folder structure — the same view the SETA export is built from.</p>
+                                </div>
+                                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md/50 transition-all duration-200 p-6 space-y-4">
+                                    <div className="relative">
+                                        <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            value={portfolioSearch}
+                                            onChange={e => setPortfolioSearch(e.target.value)}
+                                            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-2xs"
+                                            placeholder="Search by name, student code, or email..."
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="divide-y divide-slate-100 max-h-[28rem] overflow-y-auto">
+                                        {learners.length === 0 ? (
+                                            <p className="text-xs text-slate-400 italic text-center py-6">No students registered yet.</p>
+                                        ) : (() => {
+                                            const q = portfolioSearch.trim().toLowerCase();
+                                            const results = learners
+                                                .filter(l => !q
+                                                    || l.fullName?.toLowerCase().includes(q)
+                                                    || l.learnerCode?.toLowerCase().includes(q)
+                                                    || l.email?.toLowerCase().includes(q))
+                                                .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+                                            if (results.length === 0) {
+                                                return <p className="text-xs text-slate-400 italic text-center py-6">No students match "{portfolioSearch}".</p>;
+                                            }
+                                            return results.map(l => (
+                                                <button
+                                                    key={l.id}
+                                                    type="button"
+                                                    onClick={() => setBrowsingLearner({ id: l.id, label: `${l.fullName} (${l.learnerCode})` })}
+                                                    className="w-full flex items-center justify-between gap-3 py-3 px-2 text-left hover:bg-violet-50/60 rounded-xl transition-colors group cursor-pointer"
+                                                >
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-900">{l.fullName}</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {l.learnerCode} · {l.learnershipName || 'Unassigned'}{l.cohort ? ` · ${l.cohort}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-violet-600 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                        Open Portfolio →
+                                                    </span>
+                                                </button>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
