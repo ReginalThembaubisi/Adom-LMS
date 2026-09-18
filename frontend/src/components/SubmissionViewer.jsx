@@ -136,12 +136,22 @@ const SubmissionViewer = ({ submission, onClose }) => {
                 // matters once dozens of pages are accumulating in the output document.
                 const pageImage = canvas.toDataURL('image/jpeg', 0.85);
                 const orientation = vp.width > vp.height ? 'l' : 'p';
+                // Page size in points (jsPDF's native, no-conversion unit), not canvas pixels:
+                // vp.width/height are the page's real point size already multiplied by
+                // RENDER_SCALE for a sharper raster, so dividing back out here is what keeps
+                // the exported page the same physical size as the original (e.g. a Letter
+                // page stays 8.5x11in). Using 'px' as the unit instead — even with jsPDF's
+                // px_scaling hotfix for its 96-vs-72-DPI conversion — still leaves the page
+                // RENDER_SCALE times too big, because RENDER_SCALE is a zoom factor in PDF
+                // point-space, not a 96dpi pixel density; the two aren't the same conversion.
+                const pageWidthPt = vp.width / RENDER_SCALE;
+                const pageHeightPt = vp.height / RENDER_SCALE;
                 if (!out) {
-                    out = new jsPDF({ unit: 'px', format: [vp.width, vp.height], orientation });
+                    out = new jsPDF({ unit: 'pt', format: [pageWidthPt, pageHeightPt], orientation });
                 } else {
-                    out.addPage([vp.width, vp.height], orientation);
+                    out.addPage([pageWidthPt, pageHeightPt], orientation);
                 }
-                out.addImage(pageImage, 'JPEG', 0, 0, vp.width, vp.height);
+                out.addImage(pageImage, 'JPEG', 0, 0, pageWidthPt, pageHeightPt);
 
                 if (!mountedRef.current) return;
                 setFlattenState({ current: pageNum, total: numPages });
