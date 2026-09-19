@@ -13,8 +13,11 @@ import React, { useState, useEffect, useCallback } from 'react';
  * be visible whether or not this learner has work in every part of it, exactly as the zip would
  * show it.
  *
- * Section 3 (Assessment Guidelines) is deliberately hidden here — see HIDDEN_SECTION_NUMBERS
- * below — even though the backend still sends it and the export ZIP still includes it.
+ * Sections 3 (Assessment Guidelines) and 4 (Assessment Activities) are deliberately hidden here
+ * — see HIDDEN_SECTION_NUMBERS below — even though the backend still sends them. The export ZIP
+ * now omits them too (see PoeExportService's own EXCLUDED_SECTION_NUMBERS), so admins only ever
+ * see and download a learner's personal documents and marked/graded outcome, never the shared
+ * module guide or the raw unmarked submission.
  *
  * "Open" never links straight to storage: every file is fetched with this screen's own auth
  * header and rendered from a blob URL, through whichever authenticated endpoint already serves
@@ -23,13 +26,21 @@ import React, { useState, useEffect, useCallback } from 'react';
  * feedback record has no review workflow of its own.
  */
 
-// Guides are module-level shared reference material — uploaded once by a lecturer under Modules,
-// identical for every learner in that module — not something a specific learner sent, submitted,
-// or has "on record" personally. A per-learner checklist of guide availability doesn't reflect
-// anything about that learner; it reflects whether the lecturer uploaded a guide at all, which
-// belongs in Modules Directory. Hidden display-side only: the export ZIP still needs Section 3
-// for SETA folder-structure compliance, a separate concern from this quick-browse view.
-const HIDDEN_SECTION_NUMBERS = new Set([3]);
+// 3 (Assessment Guidelines): module-level shared reference material — uploaded once by a
+// lecturer under Modules, identical for every learner in that module — not something a specific
+// learner sent, submitted, or has "on record" personally. A per-learner checklist of guide
+// availability doesn't reflect anything about that learner; it reflects whether the lecturer
+// uploaded a guide at all, which belongs in Modules Directory.
+// 4 (Assessment Activities): the raw, unmarked file the learner originally submitted. Once it's
+// been assessed, what an admin needs on record is the outcome (Section 5's marked/graded copy
+// and written feedback), not a second copy of the same submission sitting in the personal
+// portfolio unmarked.
+//
+// Hidden display-side only. This must be kept in sync with PoeExportService's own
+// EXCLUDED_SECTION_NUMBERS (Java can't share a JS constant across the language boundary) — both
+// now omit 3 and 4 from what an admin sees or downloads, everywhere else in the app (student
+// portal, marking screens, module uploads) is untouched.
+const HIDDEN_SECTION_NUMBERS = new Set([3, 4]);
 
 const KIND_LABELS = {
     DOCUMENT: 'Document',

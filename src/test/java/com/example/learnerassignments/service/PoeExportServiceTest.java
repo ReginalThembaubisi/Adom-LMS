@@ -236,7 +236,7 @@ class PoeExportServiceTest {
     // ------------------------------------------------------------------ the built zip
 
     @Test
-    @DisplayName("The zip contains a document, a guide, a submission, feedback, the index and the signatures manifest")
+    @DisplayName("The zip contains a document, feedback, the index and the signatures manifest -- but never the excluded guide/submission sections")
     void zipContainsEveryPoeSection() throws Exception {
         Learnership learnership = learnership("FullBuild");
         Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
@@ -252,11 +252,35 @@ class PoeExportServiceTest {
         try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
             List<String> names = zip.stream().map(ZipEntry::getName).toList();
             assertThat(names).anyMatch(n -> n.contains("1. PERSONAL DETAILS") && n.contains("CV"));
-            assertThat(names).anyMatch(n -> n.contains("3. ASSESSMENT GUIDELINES"));
-            assertThat(names).anyMatch(n -> n.contains("4. ASSESSMENT ACTIVITIES"));
             assertThat(names).anyMatch(n -> n.contains("5. FEEDBACK") && n.endsWith(".txt"));
             assertThat(names).contains("00_INDEX.pdf", "SIGNATURES.csv");
+            // See EXCLUDED_SECTION_NUMBERS -- the module has a guide and the learner has a
+            // submission, but neither section is ever written into the export.
+            assertThat(names).noneMatch(n -> n.contains("3. ASSESSMENT GUIDELINES"));
+            assertThat(names).noneMatch(n -> n.contains("4. ASSESSMENT ACTIVITIES"));
         }
+    }
+
+    @Test
+    @DisplayName("00_INDEX.pdf never references the excluded guide/submission sections either")
+    void indexNeverReferencesExcludedSections() throws Exception {
+        Learnership learnership = learnership("IndexExclusion");
+        Learner learner = learner(learnership, "A", LocalDateTime.now().minusDays(10));
+        Module module = module(learnership, "CORE");
+        enrol(learner, module);
+        moduleFile(module, "Facilitator Guide", 3, 1, true);
+        SubmissionSession session = session(module, "Task 1", LocalDateTime.now().minusDays(1));
+        submit(learner, session, LocalDateTime.now(), "Well done", "FACILITATOR", FeedbackVisibility.LEARNER);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+
+        // writeLearnerFolder never adds an IndexEntry for either excluded section, so the index
+        // -- built purely from those entries -- has nothing to say about them even though the
+        // underlying guide and submission both exist.
+        String indexText = readIndexText(job.getResultPublicId());
+        assertThat(indexText).doesNotContain("ASSESSMENT GUIDELINES");
+        assertThat(indexText).doesNotContain("ASSESSMENT ACTIVITIES");
+        assertThat(indexText).contains("5. FEEDBACK");
     }
 
     @Test
@@ -304,16 +328,20 @@ class PoeExportServiceTest {
         Module module = module(learnership, "CORE");
         enrol(learner, module);
         SubmissionSession session = session(module, "Twice", LocalDateTime.now().minusDays(1));
-        submit(learner, session, null, null, null, null);
-        submit(learner, session, null, null, null, null);
+        // Graded (unlike the null-gradedAt calls elsewhere in this suite): the per-session
+        // ordinal this test verifies (v1, v2) is only observable through section 5's feedback
+        // entries now that section 4 (the raw activity file it used to be checked through) is
+        // excluded from the export -- see EXCLUDED_SECTION_NUMBERS.
+        submit(learner, session, LocalDateTime.now(), "First mark", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submit(learner, session, LocalDateTime.now(), "Second mark", "FACILITATOR", FeedbackVisibility.LEARNER);
 
         ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
 
         try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
-            long activityEntries = zip.stream()
-                    .filter(e -> e.getName().contains("4. ASSESSMENT ACTIVITIES"))
+            long feedbackEntries = zip.stream()
+                    .filter(e -> e.getName().contains("5. FEEDBACK") && e.getName().endsWith(".txt"))
                     .count();
-            assertThat(activityEntries).isEqualTo(2);
+            assertThat(feedbackEntries).isEqualTo(2);
         }
     }
 
@@ -350,8 +378,14 @@ class PoeExportServiceTest {
         Module electiveModule = module(learnership, "ELECTIVE");
         enrol(learner, coreModule);
         enrol(learner, electiveModule);
-        moduleFile(coreModule, "Core Guide", 3, 1, true);
-        moduleFile(electiveModule, "Elective Guide", 3, 1, true);
+        // Guides are excluded from every export now (see EXCLUDED_SECTION_NUMBERS), so they can
+        // no longer serve as this test's signal for "which module's category made it in" --
+        // graded submissions on each module, checked via their still-included section 5
+        // feedback, take over that role instead.
+        SubmissionSession coreSession = session(coreModule, "Core Task", LocalDateTime.now().minusDays(1));
+        SubmissionSession electiveSession = session(electiveModule, "Elective Task", LocalDateTime.now().minusDays(1));
+        submit(learner, coreSession, LocalDateTime.now(), "Core feedback", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submit(learner, electiveSession, LocalDateTime.now(), "Elective feedback", "FACILITATOR", FeedbackVisibility.LEARNER);
 
         Category coreCategory = coreModule.getCategory();
         ExportJob job = runToCompletion(ADMIN, request("SECTION", learnership.getId(), null, coreCategory.getId()));
@@ -359,8 +393,8 @@ class PoeExportServiceTest {
         try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
             List<String> names = zip.stream().map(ZipEntry::getName).toList();
             assertThat(names).noneMatch(n -> n.contains("1. PERSONAL DETAILS"));
-            assertThat(names).anyMatch(n -> n.contains("Core Guide"));
-            assertThat(names).noneMatch(n -> n.contains("Elective Guide"));
+            assertThat(names).anyMatch(n -> n.contains("Core Task") && n.contains("5. FEEDBACK"));
+            assertThat(names).noneMatch(n -> n.contains("Elective Task"));
         }
     }
 
@@ -547,9 +581,12 @@ class PoeExportServiceTest {
         assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
         assertThat(job.getLearnerCount()).isEqualTo(2);
         try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
-            assertThat(zip.stream().anyMatch(e -> e.getName().contains("4. ASSESSMENT ACTIVITIES")
+            // Section 4 (the raw submission) is excluded from every export now -- see
+            // EXCLUDED_SECTION_NUMBERS -- so the broken submission's own success signal is its
+            // still-included section 5 feedback text, not a section 4 entry.
+            assertThat(zip.stream().anyMatch(e -> e.getName().contains("5. FEEDBACK") && e.getName().endsWith(".txt")
                     && e.getName().contains(broken.getLearnerCode())))
-                    .as("the broken submission's original file is still there").isTrue();
+                    .as("the broken submission's feedback text is still there").isTrue();
             assertThat(zip.stream().anyMatch(e -> e.getName().contains("_Marked_"))).as("no marked copy could be built for it").isFalse();
         }
     }
