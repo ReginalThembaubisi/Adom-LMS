@@ -31,11 +31,18 @@ import java.util.zip.ZipFile;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The portfolio browser, tested against the one requirement that actually matters: it must never
- * disagree with the export. Every test here either inspects the tree on its own terms (all six
- * sections present, the three categories always there under 3/4/5) or builds a rich fixture,
- * exports it, browses it, and diffs the two — the same check an admin could do by hand, run as a
- * test so it runs on every change instead of once.
+ * The portfolio browser, tested against the requirement that actually matters: outside sections 3
+ * and 4, it must never disagree with the export. Every test here either inspects the tree on its
+ * own terms (all six sections present, the three categories always there under 3/4/5) or builds a
+ * rich fixture, exports it, browses it, and diffs the two — the same check an admin could do by
+ * hand, run as a test so it runs on every change instead of once.
+ *
+ * <p>Sections 3 (guide) and 4 (raw submission) are the one deliberate exception: {@link
+ * PoeExportService} excludes both from the zip (see its {@code EXCLUDED_SECTION_NUMBERS}), while
+ * this service's own tree — what {@code GET /api/admin/poe/portfolio/learners/{id}} returns —
+ * still resolves and returns them in full. It is {@code PoePortfolioBrowser.jsx}'s own {@code
+ * HIDDEN_SECTION_NUMBERS} that hides them on screen, not this backend. {@link
+ * #matchesTheExportedZipExactly} asserts that narrower relationship, not byte-for-byte parity.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -116,7 +123,7 @@ class PoePortfolioBrowserServiceTest {
     }
 
     @Test
-    @DisplayName("On-screen structure matches a zip exported for the same learner")
+    @DisplayName("On-screen structure matches a zip exported for the same learner, outside the sections the export deliberately excludes")
     void matchesTheExportedZipExactly() throws Exception {
         Learnership learnership = learnership("Parity");
         Learner learner = learner(learnership);
@@ -138,10 +145,19 @@ class PoePortfolioBrowserServiceTest {
         Set<String> zipFilenames = zipBasenames(job.getResultPublicId());
 
         LearnerPortfolioTree tree = browserService.browse(learner.getId());
-        Set<String> browserFilenames = allCanonicalFilenames(tree);
+        Set<String> browserFilenames = allCanonicalFilenames(tree, Set.of());
+        Set<String> browserFilenamesOutsideExcludedSections = allCanonicalFilenames(tree, Set.of(3, 4));
 
         assertThat(browserFilenames).isNotEmpty();
-        assertThat(browserFilenames).isEqualTo(zipFilenames);
+        // The zip and the browser agree everywhere except sections 3/4 -- PoeExportService's own
+        // EXCLUDED_SECTION_NUMBERS -- which the export leaves out entirely while the browser
+        // still resolves and returns them in full (see this class's own doc comment).
+        assertThat(browserFilenamesOutsideExcludedSections).isEqualTo(zipFilenames);
+        assertThat(browserFilenames)
+                .as("the browser still shows the guide and the raw submission the zip leaves out")
+                .isNotEqualTo(zipFilenames)
+                .anyMatch(name -> name.contains("Facilitator Guide"))
+                .anyMatch(name -> name.contains("Task"));
     }
 
     @Test
@@ -177,9 +193,13 @@ class PoePortfolioBrowserServiceTest {
         return section.getCategories().stream().filter(c -> c.getName().equals(name)).findFirst().orElseThrow();
     }
 
-    private Set<String> allCanonicalFilenames(LearnerPortfolioTree tree) {
+    /** Every canonical filename in the tree, skipping any section whose number is in {@code excludedSectionNumbers}. */
+    private Set<String> allCanonicalFilenames(LearnerPortfolioTree tree, Set<Integer> excludedSectionNumbers) {
         Set<String> names = new HashSet<>();
         for (PortfolioSection section : tree.getSections()) {
+            if (excludedSectionNumbers.contains(section.getNumber())) {
+                continue;
+            }
             if (section.getFiles() != null) {
                 section.getFiles().forEach(f -> names.add(f.getCanonicalFilename()));
             }

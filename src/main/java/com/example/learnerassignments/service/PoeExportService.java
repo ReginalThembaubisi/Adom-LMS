@@ -41,8 +41,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Builds a SETA portfolio export: a zip laid out exactly like the folder structure section 2 of
- * the implementation brief describes, plus an index and a signatures manifest.
+ * Builds a SETA portfolio export: a zip laid out like the folder structure section 2 of the
+ * implementation brief describes, plus an index and a signatures manifest — except for sections 3
+ * and 4, which this export deliberately omits; see {@link #EXCLUDED_SECTION_NUMBERS}.
  *
  * <p>Two rules run through the whole class.
  *
@@ -111,6 +112,23 @@ public class PoeExportService {
             5, "5. FEEDBACK",
             6, "6. ADDITIONAL EVIDENCE"
     );
+
+    // 3 (Assessment Guidelines): module-level shared reference material — the same guide file
+    // for every learner in a module, not something a specific learner has "on record"
+    // personally. 4 (Assessment Activities): the raw, unmarked file the learner originally
+    // submitted — once it has been assessed, what belongs on record is the outcome (section 5's
+    // marked/graded copy and written feedback), not a second, unmarked copy of the same file.
+    //
+    // Excluded from the export ZIP entirely — writeLearnerFolder never writes a file or an
+    // IndexEntry for either, so 00_INDEX.pdf (built purely from IndexEntry rows) never
+    // references them either. This does not touch how submissions or guides are stored, or how
+    // they're served to the student portal or the marking screens — only what this export
+    // writes into the bundle.
+    //
+    // Must be kept in sync with PoePortfolioBrowser.jsx's own HIDDEN_SECTION_NUMBERS (Java can't
+    // share a JS constant across the language boundary): the on-screen browser and the
+    // downloaded export are meant to show the same reduced set of sections.
+    static final Set<Integer> EXCLUDED_SECTION_NUMBERS = Set.of(3, 4);
 
     static final Map<String, String> CATEGORY_FOLDERS = Map.of(
             "FUNDAMENTAL", "Fundamentals",
@@ -585,7 +603,9 @@ public class PoeExportService {
             Module module = mf.module();
             String moduleBase = folder + "%s/" + mf.categoryFolder() + "/" + sanitizeSegment(module.getModuleName()) + "/";
 
-            if (mf.guide() != null) {
+            // See EXCLUDED_SECTION_NUMBERS: section 3 (the module guide) is never written into
+            // the export, whether or not this module has one pinned.
+            if (mf.guide() != null && !EXCLUDED_SECTION_NUMBERS.contains(3)) {
                 String entryName = sectionPath(moduleBase, 3) + canonicalGuideFilename(module, mf.guide());
                 writeStoredFile(zos, entryName, mf.guide().getFilePath(), "facilitator guide", counters);
                 indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(3),
@@ -597,10 +617,15 @@ public class PoeExportService {
                 String sessionName = som.sessionName();
                 int ordinal = som.ordinal();
 
-                String activityEntry = sectionPath(moduleBase, 4) + canonicalSubmissionFilename(learner, sessionName, ordinal, submission);
-                writeStoredFile(zos, activityEntry, submission.getFilePath(), "submission", counters);
-                indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(4),
-                        sessionName + " v" + ordinal, submission.getSubmittedAt()));
+                // See EXCLUDED_SECTION_NUMBERS: section 4 (the raw, unmarked submission) is
+                // never written into the export. The submission itself is still iterated below
+                // for its own sake — section 5's feedback and marked copy are keyed off it.
+                if (!EXCLUDED_SECTION_NUMBERS.contains(4)) {
+                    String activityEntry = sectionPath(moduleBase, 4) + canonicalSubmissionFilename(learner, sessionName, ordinal, submission);
+                    writeStoredFile(zos, activityEntry, submission.getFilePath(), "submission", counters);
+                    indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(4),
+                            sessionName + " v" + ordinal, submission.getSubmittedAt()));
+                }
 
                 if (submission.getGradedAt() != null) {
                     String feedbackEntry = sectionPath(moduleBase, 5) + canonicalFeedbackFilename(learner, sessionName, ordinal);

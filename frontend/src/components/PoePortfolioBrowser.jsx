@@ -8,10 +8,16 @@ import React, { useState, useEffect, useCallback } from 'react';
  * — which itself is built from the exact resolution the export uses (see
  * PoeExportService.resolvePortfolio and PoePortfolioBrowserService's class doc on the backend).
  * This component does not decide what belongs where; it only renders what it's given and lets an
- * admin open a file or record a document decision. All six sections render even when empty, and
- * sections 3/4/5 always show their Fundamentals/Cores/Electives subfolders for the same reason —
- * the shape of the qualification should be visible whether or not this learner has work in every
- * part of it, exactly as the zip would show it.
+ * admin open a file or record a document decision. Sections 4/5 always show their
+ * Fundamentals/Cores/Electives subfolders even when empty — the shape of the qualification should
+ * be visible whether or not this learner has work in every part of it, exactly as the zip would
+ * show it.
+ *
+ * Sections 3 (Assessment Guidelines) and 4 (Assessment Activities) are deliberately hidden here
+ * — see HIDDEN_SECTION_NUMBERS below — even though the backend still sends them. The export ZIP
+ * now omits them too (see PoeExportService's own EXCLUDED_SECTION_NUMBERS), so admins only ever
+ * see and download a learner's personal documents and marked/graded outcome, never the shared
+ * module guide or the raw unmarked submission.
  *
  * "Open" never links straight to storage: every file is fetched with this screen's own auth
  * header and rendered from a blob URL, through whichever authenticated endpoint already serves
@@ -19,6 +25,22 @@ import React, { useState, useEffect, useCallback } from 'react';
  * rows carry the accept/reject actions Phase 3 built — a guide, a submission or a rendered
  * feedback record has no review workflow of its own.
  */
+
+// 3 (Assessment Guidelines): module-level shared reference material — uploaded once by a
+// lecturer under Modules, identical for every learner in that module — not something a specific
+// learner sent, submitted, or has "on record" personally. A per-learner checklist of guide
+// availability doesn't reflect anything about that learner; it reflects whether the lecturer
+// uploaded a guide at all, which belongs in Modules Directory.
+// 4 (Assessment Activities): the raw, unmarked file the learner originally submitted. Once it's
+// been assessed, what an admin needs on record is the outcome (Section 5's marked/graded copy
+// and written feedback), not a second copy of the same submission sitting in the personal
+// portfolio unmarked.
+//
+// Hidden display-side only. This must be kept in sync with PoeExportService's own
+// EXCLUDED_SECTION_NUMBERS (Java can't share a JS constant across the language boundary) — both
+// now omit 3 and 4 from what an admin sees or downloads, everywhere else in the app (student
+// portal, marking screens, module uploads) is untouched.
+const HIDDEN_SECTION_NUMBERS = new Set([3, 4]);
 
 const KIND_LABELS = {
     DOCUMENT: 'Document',
@@ -103,6 +125,11 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
         decideDocument(documentId, 'REJECTED', rejectNote.trim());
     };
 
+    // See HIDDEN_SECTION_NUMBERS above. The header count is derived from this filtered list
+    // (not tree.totalFiles) so it never counts files from a section that isn't shown.
+    const visibleSections = tree ? tree.sections.filter(section => !HIDDEN_SECTION_NUMBERS.has(section.number)) : [];
+    const visibleFileCount = visibleSections.reduce((sum, section) => sum + section.fileCount, 0);
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6"
@@ -111,7 +138,7 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
                     <div>
                         <h3 className="text-sm font-bold text-slate-900">Portfolio — {learnerLabel}</h3>
                         <p className="text-[10px] text-slate-500">
-                            {tree ? `${tree.totalFiles} file${tree.totalFiles === 1 ? '' : 's'} across all six sections` : 'Loading…'}
+                            {tree ? `${visibleFileCount} file${visibleFileCount === 1 ? '' : 's'} across ${visibleSections.length} sections` : 'Loading…'}
                         </p>
                     </div>
                     <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
@@ -129,7 +156,7 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
                     <p className="text-xs text-slate-500 py-8 text-center">Could not load this learner’s portfolio.</p>
                 ) : (
                     <div className="space-y-5">
-                        {tree.sections.map(section => (
+                        {visibleSections.map(section => (
                             <SectionBlock
                                 key={section.number}
                                 section={section}
