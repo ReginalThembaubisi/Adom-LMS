@@ -19,4 +19,11 @@ FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# TieredStopAtLevel=1 keeps the JIT at C1 only, skipping C2's background compilation --
+# background compiler threads competing with the main thread for CPU is a real cost on a
+# constrained free-tier instance during the one CPU-bound stretch that matters (bean/Hibernate
+# bootstrap), and C2's payoff (faster steady-state throughput after warmup) isn't worth it for a
+# process that spends the bulk of its life idle between requests rather than running hot loops.
+# CICompilerCount=1 keeps that to a single compiler thread instead of the default two, so there
+# is one fewer thread contending with the main thread for whatever CPU share this instance gets.
+ENTRYPOINT ["java", "-XX:TieredStopAtLevel=1", "-XX:CICompilerCount=1", "-jar", "app.jar"]
