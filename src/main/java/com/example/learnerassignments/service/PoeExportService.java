@@ -130,6 +130,26 @@ public class PoeExportService {
     // downloaded export are meant to show the same reduced set of sections.
     static final Set<Integer> EXCLUDED_SECTION_NUMBERS = Set.of(3, 4);
 
+    // Windows' built-in "Compressed Folders" zip reader enforces something close to the
+    // classic ~260-character MAX_PATH on an entry's full internal path -- and enforces it just
+    // to browse an archive, not only to extract one, throwing a generic "is invalid" error with
+    // no indication of why. Confirmed against a real export built from this class before this
+    // fix existed: two entries at 261 and 263 characters were enough to make the whole zip
+    // unreadable there, even though 7-Zip, WinRAR, and this codebase's own unzip -t all read it
+    // perfectly cleanly -- the archive was never actually corrupt, just longer than Explorer's
+    // own reader tolerates.
+    //
+    // The two free-text, learner/facilitator-authored segments below are what actually grow
+    // without bound: a real SETA unit standard title routinely runs well past 100 characters on
+    // its own, and a session name a facilitator typed can be just as long. Every other path
+    // segment (a learner's name, the fixed section/category folder names) stays short in
+    // practice, so only these two are capped -- long enough to still be recognisable to a human
+    // skimming the extracted tree, short enough that even a worst-case combination of every
+    // segment stays comfortably under the limit with room left for whatever folder a user
+    // extracts into on their own machine.
+    private static final int MODULE_FOLDER_TITLE_MAX_LEN = 50;
+    private static final int SESSION_NAME_MAX_LEN = 35;
+
     static final Map<String, String> CATEGORY_FOLDERS = Map.of(
             "FUNDAMENTAL", "Fundamentals",
             "CORE", "Cores",
@@ -587,13 +607,19 @@ public class PoeExportService {
                                      List<IndexEntry> indexEntries, Counters counters) throws IOException {
         String folder = sanitizeSegment(learner.getFullName() + " (" + learner.getLearnerCode() + ")") + "/";
         LearnerPortfolio portfolio = resolvePortfolio(learner, sectionOnlyCategoryId);
+        // Belt-and-braces against MODULE_FOLDER_TITLE_MAX_LEN/SESSION_NAME_MAX_LEN truncating two
+        // originally-distinct names down to the same entry path (or any other future source of a
+        // collision within one learner's own folder — the only scope two entries could actually
+        // collide in, since every learner's top folder is already unique by learner code). See
+        // uniqueEntryName's own doc comment for what happens on a genuine collision.
+        Set<String> usedEntryNames = new HashSet<>();
 
         for (LearnerDocument doc : portfolio.personalDocuments()) {
             if (doc.getDocumentType() == null) {
                 continue;
             }
             String sectionFolder = SECTION_FOLDERS.getOrDefault(doc.getDocumentType().getPoeSection(), SECTION_FOLDERS.get(6));
-            String entryName = folder + sectionFolder + "/" + canonicalDocumentFilename(learner, doc);
+            String entryName = uniqueEntryName(folder + sectionFolder + "/" + canonicalDocumentFilename(learner, doc), usedEntryNames);
             writeStoredFile(zos, entryName, doc.getFilePath(), "document", counters);
             indexEntries.add(new IndexEntry(learner, sectionFolder,
                     doc.getDocumentType().getLabel() + " v" + doc.getVersion(), doc.getUploadedAt()));
@@ -601,12 +627,13 @@ public class PoeExportService {
 
         for (ModulePortfolioFolder mf : portfolio.moduleFolders()) {
             Module module = mf.module();
-            String moduleBase = folder + "%s/" + mf.categoryFolder() + "/" + sanitizeSegment(module.getModuleName()) + "/";
+            String moduleBase = folder + "%s/" + mf.categoryFolder() + "/" + moduleFolderSegment(module) + "/";
 
             // See EXCLUDED_SECTION_NUMBERS: section 3 (the module guide) is never written into
             // the export, whether or not this module has one pinned.
             if (mf.guide() != null && !EXCLUDED_SECTION_NUMBERS.contains(3)) {
-                String entryName = sectionPath(moduleBase, 3) + canonicalGuideFilename(module, mf.guide());
+                String entryName = uniqueEntryName(
+                        sectionPath(moduleBase, 3) + canonicalGuideFilename(module, mf.guide()), usedEntryNames);
                 writeStoredFile(zos, entryName, mf.guide().getFilePath(), "facilitator guide", counters);
                 indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(3),
                         module.getModuleName() + " guide v" + mf.guide().getVersion(), mf.guide().getCreatedAt()));
@@ -621,14 +648,16 @@ public class PoeExportService {
                 // never written into the export. The submission itself is still iterated below
                 // for its own sake — section 5's feedback and marked copy are keyed off it.
                 if (!EXCLUDED_SECTION_NUMBERS.contains(4)) {
-                    String activityEntry = sectionPath(moduleBase, 4) + canonicalSubmissionFilename(learner, sessionName, ordinal, submission);
+                    String activityEntry = uniqueEntryName(sectionPath(moduleBase, 4)
+                            + canonicalSubmissionFilename(learner, sessionName, ordinal, submission), usedEntryNames);
                     writeStoredFile(zos, activityEntry, submission.getFilePath(), "submission", counters);
                     indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(4),
                             sessionName + " v" + ordinal, submission.getSubmittedAt()));
                 }
 
                 if (submission.getGradedAt() != null) {
-                    String feedbackEntry = sectionPath(moduleBase, 5) + canonicalFeedbackFilename(learner, sessionName, ordinal);
+                    String feedbackEntry = uniqueEntryName(
+                            sectionPath(moduleBase, 5) + canonicalFeedbackFilename(learner, sessionName, ordinal), usedEntryNames);
                     writeBytes(zos, feedbackEntry, renderFeedback(submission).getBytes(StandardCharsets.UTF_8), counters);
                     // DRAFT is included on purpose — see renderFeedback's note — but the index
                     // is the one place a verifier scans every row without opening each file, so
@@ -653,9 +682,10 @@ public class PoeExportService {
                         // submission plus the stroke JSON. See flattenAnnotationsOntoPdf()'s
                         // own doc comment.
                         writeFlattenedAnnotatedCopy(zos, jobId, learner, sessionName, ordinal, submission,
-                                moduleBase, indexEntries, counters);
+                                moduleBase, indexEntries, counters, usedEntryNames);
                     } else if (submission.getMarkedFilePath() != null && !submission.getMarkedFilePath().isBlank()) {
-                        String markedEntry = sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal);
+                        String markedEntry = uniqueEntryName(
+                                sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal), usedEntryNames);
                         writeStoredFile(zos, markedEntry, submission.getMarkedFilePath(), "marked copy", counters);
                         indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
                                 sessionName + " marked copy v" + ordinal, submission.getGradedAt()));
@@ -856,7 +886,8 @@ public class PoeExportService {
      */
     private void writeFlattenedAnnotatedCopy(ZipOutputStream zos, Long jobId, Learner learner, String sessionName,
                                               int ordinal, Submission submission, String moduleBase,
-                                              List<IndexEntry> indexEntries, Counters counters) {
+                                              List<IndexEntry> indexEntries, Counters counters,
+                                              Set<String> usedEntryNames) {
         try {
             byte[] original = storedFileService.readBytes(submission.getFilePath(), "submission");
             byte[] flattened = flattenAnnotationsOntoPdf(original, submission.getAnnotationsJson());
@@ -864,7 +895,8 @@ public class PoeExportService {
                 counters.filesSkipped++;
                 return;
             }
-            String markedEntry = sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal);
+            String markedEntry = uniqueEntryName(
+                    sectionPath(moduleBase, 5) + canonicalMarkedCopyFilename(learner, sessionName, ordinal), usedEntryNames);
             writeBytes(zos, markedEntry, flattened, counters);
             indexEntries.add(new IndexEntry(learner, SECTION_FOLDERS.get(5),
                     sessionName + " marked copy v" + ordinal, submission.getGradedAt()));
@@ -1242,13 +1274,14 @@ public class PoeExportService {
     String canonicalSubmissionFilename(Learner learner, String sessionName, int ordinal, Submission submission) {
         return String.format("%s_%s_%s_%s_v%d%s",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
-                sanitizeSegment(sessionName), ordinal, extensionOf(submission.getOriginalFilename()));
+                sanitizeSegment(truncateForPath(sessionName, SESSION_NAME_MAX_LEN)), ordinal,
+                extensionOf(submission.getOriginalFilename()));
     }
 
     String canonicalFeedbackFilename(Learner learner, String sessionName, int ordinal) {
         return String.format("%s_%s_%s_%s_Feedback_v%d.txt",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
-                sanitizeSegment(sessionName), ordinal);
+                sanitizeSegment(truncateForPath(sessionName, SESSION_NAME_MAX_LEN)), ordinal);
     }
 
     String canonicalMarkedCopyFilename(Learner learner, String sessionName, int ordinal) {
@@ -1257,7 +1290,60 @@ public class PoeExportService {
         // unlike the other canonical names, there is no real extension to preserve here.
         return String.format("%s_%s_%s_%s_Marked_v%d.pdf",
                 learner.getLearnerCode(), surname(learner.getFullName()), initials(learner.getFullName()),
-                sanitizeSegment(sessionName), ordinal);
+                sanitizeSegment(truncateForPath(sessionName, SESSION_NAME_MAX_LEN)), ordinal);
+    }
+
+    /**
+     * A module's own path segment inside a learner's folder — length-capped, see
+     * MODULE_FOLDER_TITLE_MAX_LEN's own doc comment for why. The module code goes first: it is
+     * already the thing that officially and uniquely identifies a SETA unit standard (used the
+     * same way in {@link #canonicalGuideFilename}), so leading with it keeps the segment both
+     * short and meaningful even once the title itself has to be cut off.
+     */
+    private String moduleFolderSegment(Module module) {
+        String code = module.getModuleCode() == null || module.getModuleCode().isBlank()
+                ? null : module.getModuleCode().trim();
+        String title = truncateForPath(module.getModuleName(), MODULE_FOLDER_TITLE_MAX_LEN);
+        return sanitizeSegment(code != null ? code + " " + title : title);
+    }
+
+    /** {@code s}, cut to at most {@code maxLen} characters. Never throws on a short/null input. */
+    private String truncateForPath(String s, int maxLen) {
+        if (s == null) {
+            return "";
+        }
+        String trimmed = s.trim();
+        return trimmed.length() <= maxLen ? trimmed : trimmed.substring(0, maxLen).trim();
+    }
+
+    /**
+     * {@code proposed}, or a disambiguated variant of it if that exact path has already been
+     * used earlier in the same learner's folder — the only scope two entries could collide in,
+     * since every learner's own top folder is already unique by learner code. Without this, a
+     * second {@code putNextEntry} for a name already open in the {@code ZipOutputStream} throws
+     * {@code ZipException: duplicate entry}, which is never caught anywhere near where it's
+     * raised and so fails the *entire* export job — confirmed directly against this class's own
+     * code before this guard existed. Most realistically reached by two session names that
+     * happen to be identical (ordinals restart at 1 per session, not per session name) or by two
+     * originally-distinct names truncating down to the same result under
+     * MODULE_FOLDER_TITLE_MAX_LEN/SESSION_NAME_MAX_LEN above — either way, every path through
+     * {@link #writeLearnerFolder} routes its computed entry name through here before writing it,
+     * so a collision is disambiguated instead of sinking the job outright.
+     */
+    private String uniqueEntryName(String proposed, Set<String> usedNames) {
+        if (usedNames.add(proposed)) {
+            return proposed;
+        }
+        int dot = proposed.lastIndexOf('.');
+        String base = dot >= 0 ? proposed.substring(0, dot) : proposed;
+        String ext = dot >= 0 ? proposed.substring(dot) : "";
+        String candidate;
+        int suffix = 2;
+        do {
+            candidate = base + "_dup" + suffix + ext;
+            suffix++;
+        } while (!usedNames.add(candidate));
+        return candidate;
     }
 
     private String[] splitName(String fullName) {

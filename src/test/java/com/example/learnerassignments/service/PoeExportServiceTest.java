@@ -510,6 +510,46 @@ class PoeExportServiceTest {
         assertThat(feedbackText).contains("Released to learner: Yes");
     }
 
+    @Test
+    @DisplayName("A real-length SETA unit standard title and session name stay well under Windows' ~260-char path limit once in the zip")
+    void longModuleAndSessionNamesStayWithinWindowsPathLimit() throws Exception {
+        Learnership learnership = learnership("LongNames");
+        Learner learner = learnerNamed(learnership, "Amanda Randy Mndawe", "A");
+        Category category = category(learnership, "FUNDAMENTAL");
+        // Real unit standard title and code, the actual data that first surfaced this bug: two
+        // entries at 261 and 263 characters were enough for Windows' own zip reader to call a
+        // perfectly valid archive "invalid" -- confirmed against a real downloaded export before
+        // this fix existed. See MODULE_FOLDER_TITLE_MAX_LEN's own doc comment.
+        Module module = moduleRepository.save(Module.builder()
+                .moduleName("Apply Knowledge Of Statistics And Probability To Critically Interrogate "
+                        + "And Effectively Communicate Findings On Life Related Problems")
+                .moduleCode("9015").category(category).build());
+        enrol(learner, module);
+        SubmissionSession session = session(module,
+                "9015 Assessment Intrument Submission", LocalDateTime.now().minusDays(1));
+        Submission submission = submit(learner, session, LocalDateTime.now(), "Well done", "FACILITATOR", FeedbackVisibility.LEARNER);
+        submission.setFilePath(writeRealPdf(1));
+        submission.setAnnotationsJson(
+                "{\"1\":[{\"tool\":\"tick\",\"color\":\"#ff0000\",\"x\":100,\"y\":100,\"size\":40,\"s\":1.5}]}");
+        submissionRepository.save(submission);
+
+        ExportJob job = runToCompletion(ADMIN, request("LEARNERSHIP", learnership.getId(), null, null));
+        assertThat(job.getStatus()).isEqualTo(ExportJobStatus.COMPLETED);
+
+        try (ZipFile zip = new ZipFile(new File(job.getResultPublicId()))) {
+            List<String> names = zip.stream().map(ZipEntry::getName).toList();
+            assertThat(names).isNotEmpty();
+            for (String name : names) {
+                assertThat(name.length())
+                        .as("entry path length for: " + name)
+                        .isLessThan(220);
+            }
+            // The module code is still recognisable in the folder name -- only the long title
+            // got shortened, not replaced with something meaningless.
+            assertThat(names).anyMatch(n -> n.contains("9015"));
+        }
+    }
+
     // ------------------------------------------------------------------ marked copies
 
     @Test
