@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * The per-learner portfolio browser: the same six-section PoE folder structure the SETA export
@@ -56,6 +56,12 @@ const REVIEW_STYLES = {
     REJECTED: 'bg-rose-50 text-rose-700 border-rose-200'
 };
 
+// Turns a display label like "Jane Doe (202600001)" into a filesystem-safe download filename
+// segment — strips characters most OSes reject in a filename and collapses whitespace.
+function sanitizeForFilename(label) {
+    return (label || 'learner').trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
+}
+
 const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, onError, onClose }) => {
     const [tree, setTree] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -64,8 +70,18 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
     const [rejectNote, setRejectNote] = useState('');
     const [reviewError, setReviewError] = useState('');
     const [expandedFeedback, setExpandedFeedback] = useState(null);
+    // null when no download is in flight, otherwise a short label ("Queued…", "Preparing…",
+    // "Downloading…") shown on the button in place of its normal text.
+    const [downloadStatus, setDownloadStatus] = useState(null);
+    const downloadPollRef = useRef(null);
 
     const authHeaders = useCallback(() => ({ Authorization: `Basic ${token}` }), [token]);
+
+    // A poll left running past this modal closing would call setState on an unmounted
+    // component and keep hitting the API for a download nobody is waiting on any more.
+    useEffect(() => () => {
+        if (downloadPollRef.current) clearTimeout(downloadPollRef.current);
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -94,6 +110,78 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
             window.open(objectUrl, '_blank');
         } catch (err) {
             onError?.(err.message || 'Could not open that file.');
+        }
+    };
+
+    // Streams the finished zip through this screen's own auth header, exactly like openFile
+    // does for a single file — never a link the browser could follow unauthenticated.
+    const fetchAndSaveZip = async (jobId) => {
+        const res = await fetch(`/api/poe/export/${jobId}/download`, { headers: authHeaders() });
+        if (res.status === 401) { onAuthFailure?.(); return; }
+        if (!res.ok) throw new Error('That export could not be downloaded.');
+        const objectUrl = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = `${sanitizeForFilename(learnerLabel)}_portfolio.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+    };
+
+    // Polls one export job until it leaves QUEUED/RUNNING, then either downloads it or reports
+    // the failure. Scoped to this one job and this one modal — not the shared job list
+    // PoeExports.jsx polls, so no backoff/pause bookkeeping is needed for a wait this short.
+    const pollDownloadJob = useCallback((jobId) => {
+        downloadPollRef.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/poe/export/${jobId}`, { headers: authHeaders() });
+                if (res.status === 401) { onAuthFailure?.(); setDownloadStatus(null); return; }
+                if (!res.ok) throw new Error('Could not check the export status.');
+                const job = await res.json();
+
+                if (job.status === 'COMPLETED') {
+                    setDownloadStatus('Downloading…');
+                    await fetchAndSaveZip(jobId);
+                    setDownloadStatus(null);
+                } else if (job.status === 'FAILED' || job.status === 'EXPIRED') {
+                    onError?.(job.error || 'That export could not be completed.');
+                    setDownloadStatus(null);
+                } else {
+                    setDownloadStatus(job.status === 'RUNNING' ? 'Preparing…' : 'Queued…');
+                    pollDownloadJob(jobId);
+                }
+            } catch (err) {
+                onError?.(err.message || 'Could not download this portfolio.');
+                setDownloadStatus(null);
+            }
+        }, 1500);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authHeaders, onAuthFailure, onError, learnerLabel]);
+
+    // Requests a fresh, learner-scoped export and downloads it once it finishes — the same
+    // LEARNER scope PoeExportService already supports, just reachable directly from the
+    // screen an admin is already looking at instead of only through a learnership/section
+    // export that happens to include this learner.
+    const downloadPortfolio = async () => {
+        setDownloadStatus('Starting…');
+        try {
+            const res = await fetch('/api/poe/export', {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scopeType: 'LEARNER', learnerId })
+            });
+            if (res.status === 401) { onAuthFailure?.(); setDownloadStatus(null); return; }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || err.error || 'Could not start the export.');
+            }
+            const job = await res.json();
+            setDownloadStatus('Queued…');
+            pollDownloadJob(job.id);
+        } catch (err) {
+            onError?.(err.message || 'Could not start the export.');
+            setDownloadStatus(null);
         }
     };
 
@@ -134,14 +222,25 @@ const PoePortfolioBrowser = ({ learnerId, learnerLabel, token, onAuthFailure, on
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6"
                  onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between mb-4 border-b border-slate-200 pb-3">
-                    <div>
+                <div className="flex items-start justify-between mb-4 border-b border-slate-200 pb-3 gap-3">
+                    <div className="min-w-0">
                         <h3 className="text-sm font-bold text-slate-900">Portfolio — {learnerLabel}</h3>
                         <p className="text-[10px] text-slate-500">
                             {tree ? `${visibleFileCount} file${visibleFileCount === 1 ? '' : 's'} across ${visibleSections.length} sections` : 'Loading…'}
                         </p>
                     </div>
-                    <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <button
+                            type="button"
+                            onClick={downloadPortfolio}
+                            disabled={!!downloadStatus}
+                            title="Builds a fresh SETA-format export for just this learner and downloads it as a zip"
+                            className="bg-blue-600 hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-[11px] px-3 py-1.5 rounded-lg shadow-xs transition-all whitespace-nowrap"
+                        >
+                            {downloadStatus || 'Download portfolio (.zip)'}
+                        </button>
+                        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                    </div>
                 </div>
 
                 {reviewError && (
