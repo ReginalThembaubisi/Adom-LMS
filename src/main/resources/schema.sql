@@ -306,3 +306,21 @@ CREATE TABLE IF NOT EXISTS learner_documents (
 );
 CREATE INDEX IF NOT EXISTS idx_learner_documents_learner ON learner_documents(learner_id);
 CREATE INDEX IF NOT EXISTS idx_learner_documents_current ON learner_documents(learner_id, document_type, is_current);
+
+-- 16. export_jobs.status check constraint cleanup
+-- export_jobs itself is Hibernate-managed (ddl-auto=update creates it straight from the
+-- ExportJob entity, which is why it has no CREATE TABLE of its own here) -- but at some point a
+-- CHECK constraint was added directly against the database, by hand, listing only the status
+-- values ExportJobStatus had at the time. It was never updated when EXPIRED was added later, so
+-- every attempt to mark a completed job EXPIRED (PoeExportService.expireJobWithMissingFile, the
+-- boot-time recovery for a job whose file didn't survive this deployment's ephemeral disk) has
+-- been failing that constraint and getting silently swallowed ever since -- logged as "could not
+-- mark job N expired on boot", the job left stuck COMPLETED with a download link that 404s.
+-- No other enum-backed status column in this schema has a CHECK constraint at all (ExportJob's
+-- own @Enumerated(EnumType.STRING) is what actually keeps its column's values in range); this
+-- one was the odd one out and the thing that went stale, so it's dropped rather than recreated
+-- with today's value list, which would only reset the same clock for whenever a status is next
+-- added. Guarded with IF EXISTS on both the table and the constraint, so this is a safe no-op on
+-- a brand-new database (Hibernate creates the table fresh, with no such constraint to begin
+-- with) as well as on every already-fixed boot after this one.
+ALTER TABLE IF EXISTS export_jobs DROP CONSTRAINT IF EXISTS export_jobs_status_check;
