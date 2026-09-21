@@ -205,6 +205,31 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<CategoryResponseDto> renameCategory(
+            @PathVariable Long id,
+            @RequestBody CreateCategoryRequest request) {
+        com.example.learnerassignments.model.Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Category not found"));
+
+        String newType = request.getCategoryType() == null ? "" : request.getCategoryType().trim();
+        if (newType.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        category.setCategoryType(newType);
+        categoryRepository.save(category);
+
+        CategoryResponseDto response = CategoryResponseDto.builder()
+                .id(category.getId())
+                .categoryType(category.getCategoryType())
+                .lecturerId(category.getLecturer() != null ? category.getLecturer().getId() : null)
+                .lecturerName(category.getLecturer() != null ? category.getLecturer().getFullName() : "Unassigned")
+                .learnershipId(category.getLearnership() != null ? category.getLearnership().getId() : null)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/learnerships")
     public ResponseEntity<LearnershipResponseDto> createLearnership(@RequestBody CreateLearnershipRequest request) {
         com.example.learnerassignments.model.Learnership learnership = com.example.learnerassignments.model.Learnership.builder()
@@ -244,7 +269,7 @@ public class AdminController {
                 .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Learnership not found"));
 
         com.example.learnerassignments.model.Category category = com.example.learnerassignments.model.Category.builder()
-                .categoryType(request.getCategoryType())
+                .categoryType(request.getCategoryType() == null ? null : request.getCategoryType().trim())
                 .learnership(learnership)
                 .build();
 
