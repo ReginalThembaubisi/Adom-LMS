@@ -52,6 +52,8 @@ const AdminDashboard = () => {
 
     // Category form
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategoryId, setEditingCategoryId] = useState(null);
+    const [editingCategoryName, setEditingCategoryName] = useState('');
 
     // Lecturer form
     const [fullName, setFullName] = useState('');
@@ -356,6 +358,33 @@ const AdminDashboard = () => {
                 fetchModules();
             } else {
                 showMsg('error', 'Failed to assign lecturer to category.');
+            }
+        } catch (err) {
+            showMsg('error', 'Connection failed.');
+        }
+    };
+
+    const handleRenameCategory = async (categoryId) => {
+        const trimmed = editingCategoryName.trim();
+        if (!trimmed) return;
+        try {
+            const res = await fetch(`/api/admin/categories/${categoryId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${token}`
+                },
+                body: JSON.stringify({ categoryType: trimmed })
+            });
+            if (!checkAuthResponse(res)) return;
+
+            if (res.ok) {
+                showMsg('success', 'Category renamed successfully!');
+                setEditingCategoryId(null);
+                fetchCategories();
+                fetchModules();
+            } else {
+                showMsg('error', 'Failed to rename category.');
             }
         } catch (err) {
             showMsg('error', 'Connection failed.');
@@ -953,7 +982,43 @@ const AdminDashboard = () => {
                                     return (
                                         <div key={c.id} className="bg-slate-50/50 border border-slate-200 rounded-xl p-4 space-y-2">
                                             <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">{learnershipNameText}</span>
-                                            <h3 className="text-sm font-bold text-slate-800">{c.categoryType} Category</h3>
+                                            {editingCategoryId === c.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editingCategoryName}
+                                                        onChange={e => setEditingCategoryName(e.target.value)}
+                                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRenameCategory(c.id)}
+                                                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingCategoryId(null)}
+                                                        className="text-xs font-semibold text-slate-400 hover:text-slate-600"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <h3 className="text-sm font-bold text-slate-800">
+                                                    {c.categoryType} Category
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setEditingCategoryId(c.id); setEditingCategoryName(c.categoryType); }}
+                                                        className="ml-2 text-[10px] font-semibold text-blue-500 hover:text-blue-700 align-middle"
+                                                        title="Rename this category — fixes typos/duplicates like 'Fundamentals' vs 'FUNDAMENTALS' without moving any modules"
+                                                    >
+                                                        Rename
+                                                    </button>
+                                                </h3>
+                                            )}
                                             <p className="text-xs text-slate-600">
                                                 Currently: <strong className="text-blue-600 font-semibold">{c.lecturerName || 'Unassigned'}</strong>
                                             </p>
