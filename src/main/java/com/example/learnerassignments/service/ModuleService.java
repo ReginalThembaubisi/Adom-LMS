@@ -1,6 +1,7 @@
 package com.example.learnerassignments.service;
 
 import com.example.learnerassignments.dto.ModuleDetailResponseDto;
+import com.example.learnerassignments.dto.ModuleFileDto;
 import com.example.learnerassignments.dto.ModuleResponseDto;
 import com.example.learnerassignments.dto.ModuleSlotDto;
 import com.example.learnerassignments.dto.TimelineResponseDto;
@@ -17,9 +18,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,56 +46,30 @@ public class ModuleService {
             return Collections.emptyList();
         }
 
-        Long learnershipId = learner.getLearnership().getId();
-        List<SubmissionSession> allSessions = sessionRepository.findAll();
+        List<Module> modules = moduleRepository.findWithFilesByCategoryLearnershipId(learner.getLearnership().getId());
+        if (modules.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        return moduleRepository.findAll().stream()
-                .filter(m -> m.getCategory() != null && m.getCategory().getLearnership() != null 
-                        && m.getCategory().getLearnership().getId().equals(learnershipId))
-                .map(m -> {
-                    List<ModuleSlotDto> slots = allSessions.stream()
-                        .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null
-                                && s.getAssignment().getModule().getId().equals(m.getId())
-                                && s.getStatus() == SessionStatus.OPEN)
-                        .map(s -> {
-                            boolean submitted = false;
-                            if (studentNumber != null && !studentNumber.isBlank()) {
-                                submitted = submissionRepository.findBySessionId(s.getId()).stream()
-                                    .anyMatch(sub -> sub.getLearner() != null && studentNumber.equals(sub.getLearner().getLearnerCode()));
-                            }
-                            return ModuleSlotDto.builder()
-                                .id(s.getId())
-                                .title(s.getAssignment().getTitle())
-                                .description(s.getAssignment().getDescription())
-                                .endTime(s.getEndTime())
-                                .sessionName(s.getSessionName())
-                                .status(s.getStatus().name())
-                                .isSubmitted(submitted)
-                                .taskFileName(s.getTaskFileName())
-                                .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
-                                .build();
-                        })
-                        .collect(Collectors.toList());
+        Map<Long, List<SubmissionSession>> openSessionsByModule = sessionsForModules(modules).stream()
+                .filter(s -> s.getStatus() == SessionStatus.OPEN)
+                .collect(Collectors.groupingBy(s -> s.getAssignment().getModule().getId()));
+        Set<Long> submittedSessionIds = submittedSessionIds(learner);
 
-                    return ModuleResponseDto.builder()
+        return modules.stream()
+                .map(m -> ModuleResponseDto.builder()
                         .id(m.getId())
                         .moduleName(m.getModuleName())
                         .moduleCode(m.getModuleCode())
-                        .lecturerName(m.getCategory() != null && m.getCategory().getLecturer() != null ? m.getCategory().getLecturer().getFullName() : "N/A")
-                        .fileName(m.getFilePath() != null ? m.getFilePath().substring(m.getFilePath().lastIndexOf("/") + 1) : null)
+                        .lecturerName(lecturerName(m))
+                        .fileName(fileName(m))
                         .filePath(m.getFilePath())
-                        .moduleType(m.getCategory() != null ? m.getCategory().getCategoryType() : "CORE")
-                        .files(m.getFiles() != null ? m.getFiles().stream()
-                                .map(f -> com.example.learnerassignments.dto.ModuleFileDto.builder()
-                                        .id(f.getId())
-                                        .title(f.getTitle())
-                                        .originalFilename(f.getOriginalFilename())
-                                        .fileType(f.getFileType())
-                                        .build())
-                                .collect(Collectors.toList()) : java.util.Collections.emptyList())
-                        .slots(slots)
-                        .build();
-                })
+                        .moduleType(moduleType(m))
+                        .files(fileDtos(m))
+                        .slots(openSessionsByModule.getOrDefault(m.getId(), List.of()).stream()
+                                .map(s -> toSlot(s, submittedSessionIds))
+                                .collect(Collectors.toList()))
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -99,50 +78,26 @@ public class ModuleService {
         Module module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Module not found with id: " + moduleId));
 
-        // Get all submission sessions (slots) whose assignments are linked to this module
-        List<SubmissionSession> sessions = sessionRepository.findAll().stream()
-                .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null
-                        && s.getAssignment().getModule().getId().equals(moduleId))
+        Set<Long> submittedSessionIds = (studentNumber == null || studentNumber.isBlank())
+                ? Set.of()
+                : learnerRepository.findByLearnerCode(studentNumber)
+                        .map(this::submittedSessionIds)
+                        .orElse(Set.of());
+
+        List<ModuleSlotDto> slots = sessionsForModules(List.of(module)).stream()
+                .map(s -> toSlot(s, submittedSessionIds))
                 .collect(Collectors.toList());
-
-        List<ModuleSlotDto> slots = sessions.stream().map(s -> {
-            boolean submitted = false;
-            if (studentNumber != null && !studentNumber.isBlank()) {
-                submitted = submissionRepository.findBySessionId(s.getId()).stream()
-                        .anyMatch(sub -> sub.getLearner() != null && studentNumber.equals(sub.getLearner().getLearnerCode()));
-            }
-
-            return ModuleSlotDto.builder()
-                    .id(s.getId())
-                    .title(s.getAssignment().getTitle())
-                    .description(s.getAssignment().getDescription())
-                    .startTime(s.getStartTime())
-                    .endTime(s.getEndTime())
-                    .sessionName(s.getSessionName())
-                    .status(s.getStatus().name())
-                    .isSubmitted(submitted)
-                    .taskFileName(s.getTaskFileName())
-                    .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
-                    .build();
-        }).collect(Collectors.toList());
 
         return ModuleDetailResponseDto.builder()
                 .id(module.getId())
                 .moduleName(module.getModuleName())
                 .moduleCode(module.getModuleCode())
-                .lecturerName(module.getCategory() != null && module.getCategory().getLecturer() != null ? module.getCategory().getLecturer().getFullName() : "N/A")
-                .fileName(module.getFilePath() != null ? module.getFilePath().substring(module.getFilePath().lastIndexOf("/") + 1) : null)
+                .lecturerName(lecturerName(module))
+                .fileName(fileName(module))
                 .filePath(module.getFilePath())
-                .moduleType(module.getCategory() != null ? module.getCategory().getCategoryType() : "CORE")
+                .moduleType(moduleType(module))
                 .slots(slots)
-                .files(module.getFiles() != null ? module.getFiles().stream()
-                        .map(f -> com.example.learnerassignments.dto.ModuleFileDto.builder()
-                                .id(f.getId())
-                                .title(f.getTitle())
-                                .originalFilename(f.getOriginalFilename())
-                                .fileType(f.getFileType())
-                                .build())
-                        .collect(Collectors.toList()) : java.util.Collections.emptyList())
+                .files(fileDtos(module))
                 .build();
     }
 
@@ -227,37 +182,86 @@ public class ModuleService {
             return Collections.emptyList();
         }
 
-        Long learnershipId = learner.getLearnership().getId();
-        java.util.Set<Long> enrolledModuleIds = moduleRepository.findAll().stream()
-                .filter(m -> m.getCategory() != null && m.getCategory().getLearnership() != null 
-                        && m.getCategory().getLearnership().getId().equals(learnershipId))
-                .map(Module::getId)
-                .collect(Collectors.toSet());
+        List<Module> modules = moduleRepository.findByCategoryLearnershipId(learner.getLearnership().getId());
+        if (modules.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> submittedSessionIds = submittedSessionIds(learner);
 
-        return sessionRepository.findAll().stream()
-                .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null
-                        && enrolledModuleIds.contains(s.getAssignment().getModule().getId()))
+        return sessionsForModules(modules).stream()
                 .filter(s -> s.getStatus() == SessionStatus.OPEN || s.getStatus() == SessionStatus.SCHEDULED)
-                .sorted(java.util.Comparator.comparing(SubmissionSession::getEndTime))
-                .map(s -> {
-                    boolean submitted = false;
-                    if (studentNumber != null && !studentNumber.isBlank()) {
-                        submitted = submissionRepository.findBySessionId(s.getId()).stream()
-                                .anyMatch(sub -> sub.getLearner() != null && studentNumber.equals(sub.getLearner().getLearnerCode()));
-                    }
-                    return TimelineResponseDto.builder()
-                            .sessionId(s.getId())
-                            .moduleId(s.getAssignment().getModule().getId())
-                            .moduleName(s.getAssignment().getModule().getModuleName())
-                            .slotTitle(s.getAssignment().getTitle())
-                            .description(s.getAssignment().getDescription())
-                            .endTime(s.getEndTime())
-                            .status(s.getStatus().name())
-                            .submitted(submitted)
-                            .taskFileName(s.getTaskFileName())
-                            .hasBrief(s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank())
-                            .build();
-                })
+                .sorted(Comparator.comparing(SubmissionSession::getEndTime))
+                .map(s -> TimelineResponseDto.builder()
+                        .sessionId(s.getId())
+                        .moduleId(s.getAssignment().getModule().getId())
+                        .moduleName(s.getAssignment().getModule().getModuleName())
+                        .slotTitle(s.getAssignment().getTitle())
+                        .description(s.getAssignment().getDescription())
+                        .endTime(s.getEndTime())
+                        .status(s.getStatus().name())
+                        .submitted(submittedSessionIds.contains(s.getId()))
+                        .taskFileName(s.getTaskFileName())
+                        .hasBrief(hasBrief(s))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // --- helpers ---
+
+    /** Sessions for these modules in one query, rather than every session in the database. */
+    private List<SubmissionSession> sessionsForModules(Collection<Module> modules) {
+        List<Long> moduleIds = modules.stream().map(Module::getId).toList();
+        return sessionRepository.findByAssignmentModuleIdIn(moduleIds);
+    }
+
+    /** One query for the whole list, instead of loading every submission of every slot. */
+    private Set<Long> submittedSessionIds(Learner learner) {
+        return new HashSet<>(submissionRepository.findSessionIdsByLearnerId(learner.getId()));
+    }
+
+    private ModuleSlotDto toSlot(SubmissionSession s, Set<Long> submittedSessionIds) {
+        return ModuleSlotDto.builder()
+                .id(s.getId())
+                .title(s.getAssignment().getTitle())
+                .description(s.getAssignment().getDescription())
+                .startTime(s.getStartTime())
+                .endTime(s.getEndTime())
+                .sessionName(s.getSessionName())
+                .status(s.getStatus().name())
+                .isSubmitted(submittedSessionIds.contains(s.getId()))
+                .taskFileName(s.getTaskFileName())
+                .hasBrief(hasBrief(s))
+                .build();
+    }
+
+    private static boolean hasBrief(SubmissionSession s) {
+        return s.getTaskFilePath() != null && !s.getTaskFilePath().isBlank();
+    }
+
+    private static String lecturerName(Module m) {
+        return m.getCategory() != null && m.getCategory().getLecturer() != null
+                ? m.getCategory().getLecturer().getFullName() : "N/A";
+    }
+
+    private static String fileName(Module m) {
+        return m.getFilePath() != null ? m.getFilePath().substring(m.getFilePath().lastIndexOf("/") + 1) : null;
+    }
+
+    private static String moduleType(Module m) {
+        return m.getCategory() != null ? m.getCategory().getCategoryType() : "CORE";
+    }
+
+    private static List<ModuleFileDto> fileDtos(Module m) {
+        if (m.getFiles() == null) {
+            return Collections.emptyList();
+        }
+        return m.getFiles().stream()
+                .map(f -> ModuleFileDto.builder()
+                        .id(f.getId())
+                        .title(f.getTitle())
+                        .originalFilename(f.getOriginalFilename())
+                        .fileType(f.getFileType())
+                        .build())
                 .collect(Collectors.toList());
     }
 }

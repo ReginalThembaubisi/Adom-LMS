@@ -39,25 +39,26 @@ public class SubmissionSessionController {
     @GetMapping
     public ResponseEntity<List<SessionResponse>> getAllSessions(Authentication auth) {
         StaffPrincipal principal = currentStaff.require(auth);
-        java.util.Set<Long> visible = scopeService.accessibleSessions(principal).stream()
-                .map(com.example.learnerassignments.model.SubmissionSession::getId)
-                .collect(java.util.stream.Collectors.toSet());
-        List<SessionResponse> sessions = sessionService.getAllSessions().stream()
-                .filter(s -> visible.contains(s.getId()))
-                .collect(java.util.stream.Collectors.toList());
-        return ResponseEntity.ok(sessions);
+        return ResponseEntity.ok(visibleTo(principal, sessionService.getAllSessions()));
     }
 
     @GetMapping("/active")
     public ResponseEntity<List<SessionResponse>> getActiveSessions(Authentication auth) {
         StaffPrincipal principal = currentStaff.require(auth);
+        return ResponseEntity.ok(visibleTo(principal, sessionService.getActiveSessions()));
+    }
+
+    /** Admins are unscoped, so skip resolving a scope that would be every session anyway. */
+    private List<SessionResponse> visibleTo(StaffPrincipal principal, List<SessionResponse> sessions) {
+        if (principal.isAdmin()) {
+            return sessions;
+        }
         java.util.Set<Long> visible = scopeService.accessibleSessions(principal).stream()
                 .map(com.example.learnerassignments.model.SubmissionSession::getId)
                 .collect(java.util.stream.Collectors.toSet());
-        List<SessionResponse> activeSessions = sessionService.getActiveSessions().stream()
+        return sessions.stream()
                 .filter(s -> visible.contains(s.getId()))
                 .collect(java.util.stream.Collectors.toList());
-        return ResponseEntity.ok(activeSessions);
     }
 
     @GetMapping("/{id}/submissions")

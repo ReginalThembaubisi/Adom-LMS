@@ -32,7 +32,7 @@ Purpose-built around South African learnership/SETA-style vocational training st
 - Five separate login flows/portals: Learner, Admin, Facilitator/Lecturer, Moderator, Assessor.
 - Learner-facing concepts: learnerships, modules, categories, assignments, submission sessions.
 - Admin-facing concepts: managing lecturers, moderators, assessors, learners, learnerships, and modules; an admin overview/dashboard.
-- A repo-root `src/main/frontend` (plain CSS components: Landing, Login, FacilitatorDashboard, StudentPortal, SubmissionForm, LearnerRegistration) appears to be an earlier/legacy frontend, distinct from the active `frontend/` Vite app described in the README. Not yet confirmed with the user which is authoritative going forward — treat as an open question before doing work that touches both.
+- The `frontend/` Vite app is the only frontend. An earlier plain-CSS frontend under `src/main/frontend` was confirmed dead and removed.
 - Data privacy: learner registration collects ID numbers and other PII. POPIA (South Africa's data-protection law) or equivalent compliance is a real constraint on how this data is handled and displayed, not yet elaborated in detail.
 
 ## Brand Commitments

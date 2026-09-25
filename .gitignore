@@ -21,3 +21,6 @@ build/
 # OS Temp Files
 .DS_Store
 Thumbs.db
+
+# Local run logs
+*.log

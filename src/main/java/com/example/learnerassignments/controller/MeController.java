@@ -9,7 +9,6 @@ import com.example.learnerassignments.repository.LecturerRepository;
 import com.example.learnerassignments.security.CurrentLearner;
 import com.example.learnerassignments.security.LearnerPrincipal;
 import com.example.learnerassignments.security.LearnerTokenService;
-import com.example.learnerassignments.service.ChatbotService;
 import com.example.learnerassignments.service.LearnerService;
 import com.example.learnerassignments.service.MessageService;
 import com.example.learnerassignments.service.ModuleService;
@@ -59,7 +58,6 @@ public class MeController {
     private final ModuleService moduleService;
     private final MessageService messageService;
     private final SubmissionService submissionService;
-    private final ChatbotService chatbotService;
     private final StoredFileService storedFileService;
     private final NotificationService notificationService;
     private final NotificationStream notificationStream;
@@ -490,20 +488,6 @@ public class MeController {
         Lecturer lecturer = requireOwnFacilitator(lecturerId, learner);
         MessageDto saved = messageService.sendMessage(learner, lecturer, SenderType.LEARNER, request.getBody());
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
-
-    // --- Assistant ---
-
-    @PostMapping("/chatbot/ask")
-    public ResponseEntity<Map<String, String>> askChatbot(@RequestBody Map<String, String> payload) {
-        LearnerPrincipal principal = currentLearner.require();
-        String query = payload.get("query");
-        if (query == null || query.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("response", "Please ask a question."));
-        }
-        // The learner code comes from the session, not the request body — the assistant
-        // answers with deadlines and submission state, which is one learner's own record.
-        return ResponseEntity.ok(Map.of("response", chatbotService.generateResponse(query, principal.learnerCode())));
     }
 
     /**

@@ -46,6 +46,8 @@ public class ReminderScheduler {
             if (minutesRemaining >= 50 && minutesRemaining <= 65) {
                 Long moduleId = session.getAssignment().getModule().getId();
                 List<Learner> enrolledStudents = learnerRepository.findByModules_Id(moduleId);
+                java.util.Set<Long> submittedLearnerIds =
+                        new java.util.HashSet<>(submissionRepository.findLearnerIdsBySessionId(session.getId()));
 
                 for (Learner student : enrolledStudents) {
                     String reminderKey = session.getId() + "_" + student.getId();
@@ -56,11 +58,7 @@ public class ReminderScheduler {
                     }
 
                     // Skip if the student has already submitted their work for this session
-                    boolean alreadySubmitted = submissionRepository.existsByLearnerIdAndSessionId(
-                            student.getId(),
-                            session.getId()
-                    );
-                    if (alreadySubmitted) {
+                    if (submittedLearnerIds.contains(student.getId())) {
                         continue;
                     }
 
