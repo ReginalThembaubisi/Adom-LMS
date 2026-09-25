@@ -50,7 +50,8 @@ public class SubmissionService {
     @Transactional
     public SubmissionResponse submitAssignment(String learnerCode, Long sessionId, MultipartFile file) {
         // 1. Validate Learner code
-        Learner learner = learnerRepository.findByLearnerCode(learnerCode)
+        //    Locked, so concurrent uploads from this learner are serialised (see step 7).
+        Learner learner = learnerRepository.findByLearnerCodeForUpdate(learnerCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Learner code not found, please check with your facilitator."));
 
         // 2. Validate Session ID
@@ -96,7 +97,9 @@ public class SubmissionService {
                 throw new IllegalStateException("Could not upload file to Cloudinary. Please try again!", e);
             }
         } else {
-            String storedFilename = String.format("%s_%d_%s", learnerCode, sessionId, originalFilename);
+            // Timestamped so a second attempt never overwrites the file a grade was given on.
+            String storedFilename = String.format("%s_%d_%d_%s",
+                    learnerCode, sessionId, System.currentTimeMillis(), originalFilename);
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             try {
                 if (!Files.exists(uploadPath)) {
@@ -124,30 +127,47 @@ public class SubmissionService {
                 : SubmissionStatus.SUBMITTED;
 
         // 7. Save Submission Entity
-        Submission submission = Submission.builder()
-                .learner(learner)
-                .session(session)
-                .filePath(filePathString)
-                .originalFilename(originalFilename)
-                .submittedAt(now)
-                .status(status)
-                .sha256(sha256)
-                .build();
+        //
+        //    One submission per learner per session. Uploading again before it has been marked
+        //    edits that submission — the new file replaces the old — rather than adding another
+        //    row, so a double click or a changed mind leaves one thing for the facilitator to
+        //    mark. Once marked, the marked row is the record the grade is about and stays as it
+        //    is; a new upload then is a genuine second attempt (e.g. after Not Yet Competent)
+        //    and gets its own row. The learner lock taken in step 1 makes this check-then-write
+        //    safe against two requests arriving together.
+        List<Submission> existing = submissionRepository
+                .findByLearner_IdAndSession_IdOrderBySubmittedAtDesc(learner.getId(), session.getId());
+        Submission unmarked = existing.stream()
+                .filter(s -> s.getGradedAt() == null)
+                .findFirst()
+                .orElse(null);
 
-        Submission savedSubmission = submissionRepository.save(submission);
+        Submission savedSubmission;
+        if (unmarked != null) {
+            unmarked.setFilePath(filePathString);
+            unmarked.setOriginalFilename(originalFilename);
+            unmarked.setSubmittedAt(now);
+            unmarked.setStatus(status);
+            unmarked.setSha256(sha256);
+            savedSubmission = submissionRepository.save(unmarked);
+        } else {
+            savedSubmission = submissionRepository.save(Submission.builder()
+                    .learner(learner)
+                    .session(session)
+                    .filePath(filePathString)
+                    .originalFilename(originalFilename)
+                    .submittedAt(now)
+                    .status(status)
+                    .sha256(sha256)
+                    .build());
+        }
 
-        // A resubmission to the same session supersedes any earlier attempt at it. A signature
-        // already placed on that earlier submission attested to work that is no longer this
-        // learner's current answer to this session, so it is withdrawn rather than left
-        // standing against superseded work — the same reasoning LearnerDocumentService applies
-        // to a new document version. Each Submission row is immutable once created (a
-        // resubmission is always a new row, never an edit to this one), so "earlier" here means
-        // every other submission this learner has on this session, not a version of this one.
-        submissionRepository.findByLearner_IdAndSession_IdOrderBySubmittedAtDesc(learner.getId(), session.getId())
-                .stream()
-                .filter(s -> !s.getId().equals(savedSubmission.getId()))
-                .forEach(previous -> signatureService.revokeActiveSignature(
-                        SignableType.SUBMISSION, previous.getId(), "Superseded by a resubmission."));
+        // A signature attests to specific bytes. Whether the file was replaced in place or a
+        // new attempt was added, every signature on this session's earlier work — including
+        // one on the row just edited — attested to something that is no longer the learner's
+        // current answer, so it is withdrawn rather than left standing.
+        existing.forEach(previous -> signatureService.revokeActiveSignature(
+                SignableType.SUBMISSION, previous.getId(), "Superseded by a resubmission."));
 
         // Accepting the work is the last honest moment to record that they were on the module.
         // The roster is fixed at module creation now, but if that is ever missed again a

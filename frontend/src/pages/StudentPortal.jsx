@@ -160,6 +160,11 @@ const StudentPortal = () => {
     const [attachedFile, setAttachedFile] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
+    // Set synchronously, so a second click that lands before React re-renders the disabled
+    // button is still ignored. State alone lets a fast double click through on a slow network.
+    const submitInFlightRef = useRef(false);
+    // The slot whose upload just succeeded; its Submit stays locked until the form closes.
+    const [justSubmittedId, setJustSubmittedId] = useState(null);
     const fileInputRef = useRef(null);
 
     // Unread badge poll — always active regardless of active tab
@@ -547,6 +552,7 @@ const StudentPortal = () => {
 
     const handleInlineSubmit = async (e, sessionId) => {
         e.preventDefault();
+        if (submitInFlightRef.current || justSubmittedId === sessionId) return;
         setInlineAlerts(prev => ({ ...prev, [sessionId]: null }));
 
         if (!inlineFile) {
@@ -557,6 +563,7 @@ const StudentPortal = () => {
             return;
         }
 
+        submitInFlightRef.current = true;
         setUploading(true);
         const formData = new FormData();
         formData.append('session_id', sessionId);
@@ -571,6 +578,7 @@ const StudentPortal = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Upload failed.');
 
+            setJustSubmittedId(sessionId);
             setInlineAlerts(prev => ({
                 ...prev,
                 [sessionId]: { type: 'success', message: 'Submission uploaded successfully!' }
@@ -596,6 +604,7 @@ const StudentPortal = () => {
             setTimeout(() => {
                 setActiveUploadSessionId(null);
                 setInlineFile(null);
+                setJustSubmittedId(null);
             }, 1500);
 
         } catch (err) {
@@ -604,6 +613,7 @@ const StudentPortal = () => {
                 [sessionId]: { type: 'error', message: err.message || 'Connection failed.' }
             }));
         } finally {
+            submitInFlightRef.current = false;
             setUploading(false);
         }
     };
@@ -826,10 +836,10 @@ const StudentPortal = () => {
                                                         )}
 
                                                         <div className="flex gap-2">
-                                                            <button type="submit" disabled={uploading}
+                                                            <button type="submit" disabled={uploading || justSubmittedId === s.id}
                                                                 className="flex-1 py-3 rounded-xl text-white font-semibold text-[13px] disabled:opacity-50"
                                                                 style={{background:'#4A3AFF', boxShadow:'0 8px 18px -8px rgba(74,58,255,.7)'}}>
-                                                                {uploading ? 'Uploading…' : 'Submit'}
+                                                                {uploading ? 'Uploading…' : isSubmitted ? 'Replace submission' : 'Submit'}
                                                             </button>
                                                             <button type="button" onClick={() => { setActiveUploadSessionId(null); setInlineFile(null); }}
                                                                 className="px-4 py-3 rounded-xl font-semibold text-[13px] text-[#8A90A8]" style={{background:'#F6F7FB'}}>

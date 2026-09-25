@@ -11,6 +11,16 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
 
     Optional<Learner> findByLearnerCode(String learnerCode);
 
+    /**
+     * The same, holding a row lock until the transaction ends. Submitting takes this first so
+     * two uploads from one learner (a double click on a slow connection) run one after the
+     * other: the second sees the first's row and replaces it instead of adding another.
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT l FROM Learner l WHERE l.learnerCode = :learnerCode")
+    Optional<Learner> findByLearnerCodeForUpdate(
+            @org.springframework.data.repository.query.Param("learnerCode") String learnerCode);
+
     boolean existsByLearnerCode(String learnerCode);
 
     /** Every learner id, without hydrating the entities. */
