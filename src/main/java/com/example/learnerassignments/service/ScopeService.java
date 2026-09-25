@@ -49,7 +49,7 @@ public class ScopeService {
             return Collections.emptySet();
         }
         return switch (principal.role()) {
-            case ADMIN -> learnerRepository.findAll().stream().map(Learner::getId).collect(Collectors.toSet());
+            case ADMIN -> new HashSet<>(learnerRepository.findAllIds());
             case LECTURER -> lecturerLearnerIds(principal.id());
             case ASSESSOR -> new HashSet<>(assessorAssignmentRepository.findAccessibleLearnerIds(principal.id()));
             case MODERATOR -> new HashSet<>(moderatorAssignmentRepository.findAccessibleLearnerIds(principal.id()));
@@ -103,11 +103,8 @@ public class ScopeService {
             return moduleRepository.findAll();
         }
         if (principal.role() == StaffPrincipal.StaffRole.LECTURER) {
-            return moduleRepository.findAll().stream()
-                    .filter(m -> lecturerOwns(principal.id(), m))
-                    .collect(Collectors.toList());
+            return moduleRepository.findByCategoryLecturerId(principal.id());
         }
-
 
         // An assessor or moderator sees the modules their assigned learners are enrolled on,
         // and nothing else. No assignments means no learners, which means no modules.
@@ -126,6 +123,11 @@ public class ScopeService {
         if (principal.isAdmin()) {
             return true;
         }
+        if (principal.role() == StaffPrincipal.StaffRole.LECTURER) {
+            return moduleRepository.findById(moduleId)
+                    .map(m -> lecturerOwns(principal.id(), m))
+                    .orElse(false);
+        }
         return accessibleModules(principal).stream().anyMatch(m -> m.getId().equals(moduleId));
     }
 
@@ -143,10 +145,7 @@ public class ScopeService {
         if (moduleIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return sessionRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null
-                        && moduleIds.contains(s.getAssignment().getModule().getId()))
-                .collect(Collectors.toList());
+        return sessionRepository.findByAssignmentModuleIdInOrderByCreatedAtDesc(moduleIds);
     }
 
     @Transactional(readOnly = true)
@@ -157,14 +156,19 @@ public class ScopeService {
         if (principal.isAdmin()) {
             return true;
         }
-        return accessibleSessions(principal).stream().anyMatch(s -> s.getId().equals(sessionId));
+        // One session and one module check, rather than listing every session this identity
+        // can see. Deleted sessions stay unreachable, as they are from the listing.
+        return sessionRepository.findById(sessionId)
+                .filter(s -> s.getDeletedAt() == null)
+                .map(s -> s.getAssignment() == null ? null : s.getAssignment().getModule())
+                .map(m -> canAccessModule(principal, m.getId()))
+                .orElse(false);
     }
 
     // --- Lecturer resolution, as SubmissionController already did it ---
 
     private Set<Long> lecturerLearnerIds(Long lecturerId) {
-        List<Long> moduleIds = moduleRepository.findAll().stream()
-                .filter(m -> lecturerOwns(lecturerId, m))
+        List<Long> moduleIds = moduleRepository.findByCategoryLecturerId(lecturerId).stream()
                 .map(Module::getId)
                 .collect(Collectors.toList());
         if (moduleIds.isEmpty()) {

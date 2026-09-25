@@ -335,9 +335,7 @@ public class SubmissionService {
         List<Long> sessionIds = sessions.stream().map(SubmissionSession::getId).collect(Collectors.toList());
 
         List<Submission> submissions = sessionIds.isEmpty() ? Collections.emptyList() :
-                sessionIds.stream()
-                        .flatMap(sId -> submissionRepository.findBySessionId(sId).stream())
-                        .collect(Collectors.toList());
+                submissionRepository.findBySessionIdIn(sessionIds);
 
         Map<Long, List<Submission>> submissionsByLearnerMap = submissions.stream()
                 .collect(Collectors.groupingBy(s -> s.getLearner().getId()));

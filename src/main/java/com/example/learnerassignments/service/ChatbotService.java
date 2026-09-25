@@ -48,20 +48,22 @@ public class ChatbotService {
         if (lowerQuery.contains("due") || lowerQuery.contains("deadline") || lowerQuery.contains("date") || 
             lowerQuery.contains("when") || lowerQuery.contains("upcoming") || lowerQuery.contains("assignment")) {
             
-            List<SubmissionSession> activeSessions = sessionRepository.findAll().stream()
-                    .filter(s -> s.getStatus() == SessionStatus.OPEN)
-                    .filter(s -> s.getAssignment() != null && s.getAssignment().getModule() != null)
-                    .filter(s -> student.getModules().stream().anyMatch(m -> m.getId().equals(s.getAssignment().getModule().getId())))
-                    .toList();
+            List<Long> moduleIds = student.getModules() == null ? List.of()
+                    : student.getModules().stream().map(m -> m.getId()).toList();
+            List<SubmissionSession> activeSessions = moduleIds.isEmpty() ? List.of()
+                    : sessionRepository.findByAssignmentModuleIdIn(moduleIds).stream()
+                            .filter(s -> s.getStatus() == SessionStatus.OPEN)
+                            .toList();
 
             if (activeSessions.isEmpty()) {
                 return "Good news! You have no active submission deadlines open for your enrolled modules right now.";
             }
 
+            java.util.Set<Long> submittedSessionIds =
+                    new java.util.HashSet<>(submissionRepository.findSessionIdsByLearnerId(student.getId()));
             StringBuilder sb = new StringBuilder("📅 **Your Active Deadlines**:\n");
             for (SubmissionSession s : activeSessions) {
-                // Check if already submitted
-                boolean submitted = submissionRepository.existsByLearnerIdAndSessionId(student.getId(), s.getId());
+                boolean submitted = submittedSessionIds.contains(s.getId());
                 String status = submitted ? "✅ Submitted" : "⏳ Pending";
                 
                 sb.append(String.format("* **%s** (%s) - Due: %s [%s]\n",

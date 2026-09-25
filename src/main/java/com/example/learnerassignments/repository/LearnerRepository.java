@@ -13,6 +13,10 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
 
     boolean existsByLearnerCode(String learnerCode);
 
+    /** Every learner id, without hydrating the entities. */
+    @org.springframework.data.jpa.repository.Query("SELECT l.id FROM Learner l")
+    java.util.List<Long> findAllIds();
+
     java.util.List<Learner> findByModules_Id(Long moduleId);
 
     java.util.List<Learner> findDistinctByModulesCategoryLecturerId(Long lecturerId);

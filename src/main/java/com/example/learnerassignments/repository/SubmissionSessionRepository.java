@@ -2,6 +2,7 @@ package com.example.learnerassignments.repository;
 
 import com.example.learnerassignments.model.SessionStatus;
 import com.example.learnerassignments.model.SubmissionSession;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,10 @@ public interface SubmissionSessionRepository extends JpaRepository<SubmissionSes
     List<SubmissionSession> findByAssignmentId(Long assignmentId);
 
     List<SubmissionSession> findByAssignmentModuleIdInOrderByCreatedAtDesc(Collection<Long> moduleIds);
+
+    /** Sessions for these modules, assignment and module fetched with them since every caller reads both. */
+    @EntityGraph(attributePaths = {"assignment", "assignment.module"})
+    List<SubmissionSession> findByAssignmentModuleIdIn(Collection<Long> moduleIds);
 
     @Query("SELECT s FROM SubmissionSession s WHERE s.status = 'OPEN' OR (s.startTime <= :now AND s.endTime >= :now AND s.status <> 'CLOSED') ORDER BY s.createdAt DESC")
     List<SubmissionSession> findActiveSessions(@Param("now") LocalDateTime now);

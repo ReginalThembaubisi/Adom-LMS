@@ -2,6 +2,7 @@ package com.example.learnerassignments.repository;
 
 import com.example.learnerassignments.dto.MarkingBacklogEntryDto;
 import com.example.learnerassignments.model.Submission;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,12 +10,27 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
+    /** Learner fetched with the rows: every caller reads it, and lazily that is one query each. */
+    @EntityGraph(attributePaths = "learner")
     List<Submission> findBySessionId(Long sessionId);
+
+    /** The same, across several sessions in one round trip. */
+    @EntityGraph(attributePaths = "learner")
+    List<Submission> findBySessionIdIn(Collection<Long> sessionIds);
+
+    /** Sessions this learner has submitted to — for marking "submitted" across a list of slots. */
+    @Query("SELECT DISTINCT s.session.id FROM Submission s WHERE s.learner.id = :learnerId")
+    List<Long> findSessionIdsByLearnerId(@Param("learnerId") Long learnerId);
+
+    /** Learners who have submitted to one session. */
+    @Query("SELECT DISTINCT s.learner.id FROM Submission s WHERE s.session.id = :sessionId")
+    List<Long> findLearnerIdsBySessionId(@Param("sessionId") Long sessionId);
 
     List<Submission> findByLearner_LearnerCodeOrderBySubmittedAtDesc(String learnerCode);
 
