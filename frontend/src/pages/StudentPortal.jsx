@@ -16,7 +16,6 @@ import {
     CaretLeft,
     CaretRight,
     X,
-    PaperPlaneTilt,
     House,
     Stack,
     ClipboardText,
@@ -140,15 +139,6 @@ const StudentPortal = () => {
     const [moduleSegment, setModuleSegment] = useState('assignments');
     // Modules search filter
     const [moduleSearch, setModuleSearch] = useState('');
-
-    // Chatbot State
-    const [chatOpen, setChatOpen] = useState(false);
-    const [chatQuery, setChatQuery] = useState('');
-    const [chatMessages, setChatMessages] = useState([
-        { sender: 'bot', text: "Hello! 🤖 I'm your LMS Assistant. Ask me about upcoming deadlines, your grades, or facilitator contacts. Type 'help' to see what I can do!" }
-    ]);
-    const [chatLoading, setChatLoading] = useState(false);
-    const chatEndRef = useRef(null);
 
     // Inline submit slot session state
     const [activeUploadSessionId, setActiveUploadSessionId] = useState(null);
@@ -516,43 +506,6 @@ const StudentPortal = () => {
     const handleSignout = () => {
         logoutStudent();
         navigate('/');
-    };
-
-    useEffect(() => {
-        if (chatEndRef.current) {
-            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [chatMessages, chatOpen]);
-
-    const handleSendChatMessage = async (e) => {
-        e.preventDefault();
-        const msg = chatQuery.trim();
-        if (!msg) return;
-
-        const updatedMessages = [...chatMessages, { sender: 'user', text: msg }];
-        setChatMessages(updatedMessages);
-        setChatQuery('');
-        setChatLoading(true);
-
-        try {
-            const res = await authFetch('/api/me/chatbot/ask', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ query: msg })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setChatMessages([...updatedMessages, { sender: 'bot', text: data.response }]);
-            } else {
-                setChatMessages([...updatedMessages, { sender: 'bot', text: "Sorry, I encountered an error. Please try again." }]);
-            }
-        } catch (err) {
-            setChatMessages([...updatedMessages, { sender: 'bot', text: "Network error. Please try again." }]);
-        } finally {
-            setChatLoading(false);
-        }
     };
 
     const triggerAssignmentSelect = (session) => {
@@ -1451,60 +1404,6 @@ const StudentPortal = () => {
                     })}
                 </nav>
             )}
-
-            {/* ── Floating Chatbot ── */}
-            <div className="fixed bottom-[84px] right-4 z-50 flex flex-col items-end">
-                {chatOpen && (
-                    <div className="w-[340px] h-[440px] rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-3 text-white animate-fadeIn"
-                        style={{background:'#101425', border:'1px solid rgba(255,255,255,0.08)'}}>
-                        <div className="p-4 flex justify-between items-center" style={{background:'rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-[#16A97A] rounded-full animate-pulse" />
-                                <span className="text-[11px] font-bold uppercase tracking-wider">LMS Assistant</span>
-                            </div>
-                            <button onClick={() => setChatOpen(false)} className="text-white/40 hover:text-white/80">
-                                <X size={15} weight="bold" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {chatMessages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-[11px] leading-relaxed whitespace-pre-line ${
-                                        msg.sender === 'user'
-                                            ? 'text-white rounded-br-none'
-                                            : 'text-white/80 rounded-bl-none'
-                                    }`} style={msg.sender === 'user' ? {background:'#4A3AFF'} : {background:'rgba(255,255,255,0.08)'}}>
-                                        {msg.text}
-                                    </div>
-                                </div>
-                            ))}
-                            {chatLoading && (
-                                <div className="flex justify-start">
-                                    <div className="rounded-2xl rounded-bl-none px-3.5 py-2 text-[11px] flex items-center gap-1" style={{background:'rgba(255,255,255,0.08)'}}>
-                                        {[0,160,320].map(d => <span key={d} className="w-1 h-1 bg-white/40 rounded-full animate-typing-pulse" style={{animationDelay:`${d}ms`}} />)}
-                                    </div>
-                                </div>
-                            )}
-                            <div ref={chatEndRef} />
-                        </div>
-                        <form onSubmit={handleSendChatMessage} className="p-3 flex gap-2" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-                            <input type="text" value={chatQuery} onChange={e => setChatQuery(e.target.value)}
-                                placeholder="Ask me something…"
-                                className="flex-1 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:ring-1"
-                                style={{background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)'}} />
-                            <button type="submit" className="p-2 rounded-xl flex items-center justify-center" style={{background:'#4A3AFF'}}>
-                                <PaperPlaneTilt size={15} weight="fill" />
-                            </button>
-                        </form>
-                    </div>
-                )}
-                <button onClick={() => setChatOpen(!chatOpen)}
-                    className="w-12 h-12 text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 transition-all cursor-pointer"
-                    style={{background:'#4A3AFF', boxShadow:'0 8px 20px -6px rgba(74,58,255,.6)'}}
-                    title="Open LMS Chat Assistant">
-                    {chatOpen ? <X size={18} weight="bold" /> : <ChatCircleDots size={20} weight="fill" />}
-                </button>
-            </div>
 
             {viewingSubmission && (
                 <SubmissionViewer
