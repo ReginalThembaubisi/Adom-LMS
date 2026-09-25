@@ -34,8 +34,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     List<Submission> findByLearner_LearnerCodeOrderBySubmittedAtDesc(String learnerCode);
 
-    boolean existsByLearnerIdAndSessionId(Long learnerId, Long sessionId);
-
     // Soft-delete: marks submissions as deleted instead of removing the rows,
     // so they remain in the database and can be restored if a session was deleted by mistake.
     @Modifying

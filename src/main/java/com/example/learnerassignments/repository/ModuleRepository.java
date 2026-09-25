@@ -12,6 +12,11 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
 
     List<Module> findByCategoryLearnershipId(Long learnershipId);
 
+    /** The same modules with their files and lecturer, for the portal list that shows all three. */
+    @org.springframework.data.jpa.repository.EntityGraph(
+            attributePaths = {"files", "category", "category.lecturer"})
+    List<Module> findWithFilesByCategoryLearnershipId(Long learnershipId);
+
     /** Every module in one category — the PoE export's SECTION scope narrows to these. */
     List<Module> findByCategoryId(Long categoryId);
 

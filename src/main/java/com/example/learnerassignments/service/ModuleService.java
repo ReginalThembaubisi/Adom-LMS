@@ -46,7 +46,7 @@ public class ModuleService {
             return Collections.emptyList();
         }
 
-        List<Module> modules = moduleRepository.findByCategoryLearnershipId(learner.getLearnership().getId());
+        List<Module> modules = moduleRepository.findWithFilesByCategoryLearnershipId(learner.getLearnership().getId());
         if (modules.isEmpty()) {
             return Collections.emptyList();
         }
