@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByCategoryTypeIgnoreCase(String categoryType);
     List<Category> findByLecturerId(Long lecturerId);
+
+    boolean existsByLearnership_Id(Long learnershipId);
 }

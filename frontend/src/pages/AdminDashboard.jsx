@@ -4,6 +4,8 @@ import PoeCompleteness from '../components/PoeCompleteness';
 import PoeExports from '../components/PoeExports';
 import LegacyImport from '../components/LegacyImport';
 import PoePortfolioBrowser from '../components/PoePortfolioBrowser';
+import LearnershipAdverts from '../components/LearnershipAdverts';
+import ApplicationsPipeline from '../components/ApplicationsPipeline';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -38,6 +40,8 @@ const AdminDashboard = () => {
     const [editingLearner, setEditingLearner] = useState(null);
     const [staffRole, setStaffRole] = useState('LECTURER');
     const [activeTab, setActiveTab] = useState('overview');
+    // Which learnership the Applications tab opens filtered to, when reached from an advert.
+    const [applicationsLearnershipId, setApplicationsLearnershipId] = useState(null);
     // { id, label } of the learner currently open in the portfolio browser modal, or null.
     // Reachable from the Student Directory row action, PoeCompleteness's own drill-down, and
     // the Student Portfolios search tab, which is why this lives up here rather than inside
@@ -93,6 +97,8 @@ const AdminDashboard = () => {
         } else if (activeTab === 'export') {
             fetchLearnerships();
             fetchCategories();
+        } else if (activeTab === 'applications') {
+            fetchLearnerships();
         }
     }, [activeTab, token]);
 
@@ -701,6 +707,8 @@ const AdminDashboard = () => {
                             </div>
                             {[
                                 { id: 'overview', label: 'Overview & Status', icon: '📊' },
+                                { id: 'adverts', label: 'Learnership Adverts', icon: '📣' },
+                                { id: 'applications', label: 'Applications', icon: '📝' },
                                 { id: 'programs', label: 'Programs & Categories', icon: '🎓' },
                                 { id: 'modules', label: 'Modules Directory', icon: '📚' },
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
@@ -713,7 +721,10 @@ const AdminDashboard = () => {
                                 <button
                                     key={tab.id}
                                     type="button"
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        if (tab.id === 'applications') setApplicationsLearnershipId(null);
+                                        setActiveTab(tab.id);
+                                    }}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                                         activeTab === tab.id
                                             ? 'bg-[#C8F25A] text-slate-900 shadow-md shadow-black/20'
@@ -729,6 +740,42 @@ const AdminDashboard = () => {
 
                     {/* Right Content Workspace */}
                     <div className="lg:col-span-9 space-y-6">
+                        {activeTab === 'adverts' && (
+                            <LearnershipAdverts
+                                token={token}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => {
+                                    showMsg('success', message);
+                                    // Other tabs list learnerships too; let them refetch.
+                                    fetchedTabsRef.current.clear();
+                                    fetchedTabsRef.current.add('adverts');
+                                }}
+                                onViewApplications={(learnershipId) => {
+                                    setApplicationsLearnershipId(learnershipId);
+                                    fetchLearnerships();
+                                    setActiveTab('applications');
+                                }}
+                            />
+                        )}
+
+                        {activeTab === 'applications' && (
+                            <ApplicationsPipeline
+                                token={token}
+                                learnerships={learnerships}
+                                initialLearnershipId={applicationsLearnershipId}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => showMsg('success', message)}
+                            />
+                        )}
+
                         {activeTab === 'completeness' && (
                             <PoeCompleteness
                                 token={token}

@@ -58,6 +58,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/learners/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/learners/reset-password").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/learnerships").permitAll()
+
+                        // The public website: open learnership adverts, the application form
+                        // and the applicant's own status check. Rate limited per caller in
+                        // PublicApplicationController; the status check needs both the
+                        // reference and the ID number, so neither alone reveals anything.
+                        .requestMatchers(HttpMethod.GET, "/api/learnerships/openings", "/api/learnerships/openings/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/applications", "/api/applications/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
 
                         // The Phase 9 public signature-verification page. Deliberately open to

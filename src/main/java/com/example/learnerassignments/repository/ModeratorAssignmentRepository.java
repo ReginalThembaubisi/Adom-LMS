@@ -26,4 +26,6 @@ public interface ModeratorAssignmentRepository extends JpaRepository<ModeratorAs
              AND (a.cohort IS NULL OR l.cohort = a.cohort)
            """)
     List<Long> findAccessibleLearnerIds(@Param("moderatorId") Long moderatorId);
+
+    boolean existsByLearnership_Id(Long learnershipId);
 }

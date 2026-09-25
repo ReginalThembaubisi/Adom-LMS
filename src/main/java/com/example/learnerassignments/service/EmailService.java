@@ -173,4 +173,84 @@ public class EmailService {
             log.error("Failed to send export-ready email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
+
+    // --- Learnership applications from the website ---
+    // All fire-and-forget: an applicant's submission or a staff status change has already
+    // been saved when these run, and a mail outage must not undo or fail either. The applicant
+    // can always check their status on the website with their reference number.
+
+    @Async("emailTaskExecutor")
+    public void sendApplicationReceivedEmail(String toEmail, String firstName, String reference,
+                                             String learnershipName) {
+        sendApplicantEmail(toEmail, "We've received your application (" + reference + ")", String.format(
+                "Hi %s,\n\nThank you for applying for the %s learnership.\n\n"
+                        + "Your reference number is: %s\n\n"
+                        + "Keep it safe. To check your application status on our website you'll need this "
+                        + "reference number and the ID or passport number you applied with.\n\n"
+                        + "We'll email you again when your application moves forward.\n\n"
+                        + "Kind regards,\nAdom Admissions",
+                firstName, learnershipName, reference), reference);
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendApplicationStatusEmail(String toEmail, String firstName, String reference,
+                                           String learnershipName, com.example.learnerassignments.model.ApplicationStatus status) {
+        String body = switch (status) {
+            case SCREENING -> "We're now checking the documents you sent with your application.";
+            case SHORTLISTED -> "Good news: you've been shortlisted. We'll be in touch about the next step.";
+            case INTERVIEW -> "You're invited to an interview or assessment. We'll contact you with the date, time and venue.";
+            case ACCEPTED -> "Congratulations, you've been accepted! We'll send your student number and "
+                    + "LMS sign-in details once you are enrolled.";
+            case WAITLISTED -> "All places are currently filled, so you're on the waiting list. "
+                    + "If a place opens up, we'll contact you.";
+            case DECLINED -> "Unfortunately your application was not successful this time. "
+                    + "Thank you for your interest. Please look out for future learnerships on our website.";
+            case WITHDRAWN -> "Your application has been withdrawn as requested.";
+            default -> null;
+        };
+        if (body == null) {
+            return;
+        }
+        sendApplicantEmail(toEmail, "Update on your application (" + reference + ")", String.format(
+                "Hi %s,\n\nAn update on your application for the %s learnership (reference %s):\n\n%s\n\n"
+                        + "Kind regards,\nAdom Admissions",
+                firstName, learnershipName, reference, body), reference);
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendEnrolmentEmail(String toEmail, String firstName, String learnershipName,
+                                   String studentNumber, String portalUrl) {
+        String where = portalUrl == null || portalUrl.isBlank()
+                ? "the Adom learner portal"
+                : portalUrl.replaceAll("/+$", "");
+        String reset = portalUrl == null || portalUrl.isBlank()
+                ? "the \"Forgot password\" page"
+                : where + "/#/forgot-password";
+        sendApplicantEmail(toEmail, "Welcome to Adom: your student number", String.format(
+                "Hi %s,\n\nYou're now enrolled on the %s learnership.\n\n"
+                        + "Your 9-digit student number is: %s\n\n"
+                        + "To set your password, open %s, enter your student number and this email "
+                        + "address, and we'll send you a code. Then sign in at %s.\n\n"
+                        + "Kind regards,\nAdom Admissions",
+                firstName, learnershipName, studentNumber, reset, where), studentNumber);
+    }
+
+    private void sendApplicantEmail(String toEmail, String subject, String text, String logRef) {
+        if (toEmail == null || toEmail.isBlank()) {
+            log.debug("No email address for {}, skipping applicant email.", logRef);
+            return;
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "adomtechnologies12@gmail.com";
+            message.setFrom(sender);
+            message.setTo(toEmail.trim());
+            message.setSubject(subject);
+            message.setText(text);
+            mailSender.send(message);
+            log.info("Dispatched applicant email \"{}\" for {}", subject, logRef);
+        } catch (Exception e) {
+            log.error("Failed to send applicant email for {}: {}", logRef, e.getMessage(), e);
+        }
+    }
 }
