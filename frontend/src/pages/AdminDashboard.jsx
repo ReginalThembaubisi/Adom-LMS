@@ -7,6 +7,7 @@ import PoePortfolioBrowser from '../components/PoePortfolioBrowser';
 import LearnershipAdverts from '../components/LearnershipAdverts';
 import ApplicationsPipeline from '../components/ApplicationsPipeline';
 import AppointmentsPanel from '../components/AppointmentsPanel';
+import JobOpenings from '../components/JobOpenings';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -43,6 +44,7 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     // Which learnership the Applications tab opens filtered to, when reached from an advert.
     const [applicationsLearnershipId, setApplicationsLearnershipId] = useState(null);
+    const [applicationsOpeningId, setApplicationsOpeningId] = useState(null);
     // { id, label } of the learner currently open in the portfolio browser modal, or null.
     // Reachable from the Student Directory row action, PoeCompleteness's own drill-down, and
     // the Student Portfolios search tab, which is why this lives up here rather than inside
@@ -709,6 +711,7 @@ const AdminDashboard = () => {
                             {[
                                 { id: 'overview', label: 'Overview & Status', icon: '📊' },
                                 { id: 'adverts', label: 'Learnership Adverts', icon: '📣' },
+                                { id: 'openings', label: 'Jobs & Internships', icon: '💼' },
                                 { id: 'applications', label: 'Applications', icon: '📝' },
                                 { id: 'appointments', label: 'Appointments', icon: '📅' },
                                 { id: 'programs', label: 'Programs & Categories', icon: '🎓' },
@@ -724,7 +727,7 @@ const AdminDashboard = () => {
                                     key={tab.id}
                                     type="button"
                                     onClick={() => {
-                                        if (tab.id === 'applications') setApplicationsLearnershipId(null);
+                                        if (tab.id === 'applications') { setApplicationsLearnershipId(null); setApplicationsOpeningId(null); }
                                         setActiveTab(tab.id);
                                     }}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -757,6 +760,7 @@ const AdminDashboard = () => {
                                     fetchedTabsRef.current.add('adverts');
                                 }}
                                 onViewApplications={(learnershipId) => {
+                                    setApplicationsOpeningId(null);
                                     setApplicationsLearnershipId(learnershipId);
                                     fetchLearnerships();
                                     setActiveTab('applications');
@@ -769,12 +773,31 @@ const AdminDashboard = () => {
                                 token={token}
                                 learnerships={learnerships}
                                 initialLearnershipId={applicationsLearnershipId}
+                                initialOpeningId={applicationsOpeningId}
                                 onAuthFailure={() => {
                                     sessionStorage.removeItem('admin_auth');
                                     navigate('/admin-login');
                                 }}
                                 onError={(message) => showMsg('error', message)}
                                 onInfo={(message) => showMsg('success', message)}
+                            />
+                        )}
+
+                        {activeTab === 'openings' && (
+                            <JobOpenings
+                                token={token}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => showMsg('success', message)}
+                                onViewApplications={(openingId) => {
+                                    setApplicationsLearnershipId(null);
+                                    setApplicationsOpeningId(openingId);
+                                    fetchLearnerships();
+                                    setActiveTab('applications');
+                                }}
                             />
                         )}
 

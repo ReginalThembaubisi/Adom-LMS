@@ -33,10 +33,11 @@ public class AdminApplicationController {
 
     @GetMapping
     public List<ApplicationSummary> list(@RequestParam(required = false) Long learnershipId,
+                                         @RequestParam(required = false) Long openingId,
                                          @RequestParam(required = false) String type,
                                          @RequestParam(required = false) String status,
                                          @RequestParam(required = false) String q) {
-        return applicationService.list(learnershipId, type, status, q);
+        return applicationService.list(learnershipId, openingId, type, status, q);
     }
 
     @GetMapping("/{id}")

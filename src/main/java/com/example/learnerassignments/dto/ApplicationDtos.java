@@ -31,7 +31,9 @@ public class ApplicationDtos {
         @Size(max = 160) private String learnershipSlug;
         /** COURSE: up to three course names, in order of preference. */
         private List<@Size(max = 150) String> courseChoices;
-        /** INTERNSHIP or JOB. */
+        /** INTERNSHIP or JOB: an advertised opening. Sets the type and position title. */
+        private Long openingId;
+        /** INTERNSHIP or JOB without an opening (e.g. an open application). */
         @Size(max = 200) private String positionTitle;
         @Size(max = 50) private String experience;
         /** PLACEMENT. */
@@ -143,6 +145,7 @@ public class ApplicationDtos {
         private String appliedFor;
         private Long learnershipId;
         private String learnershipName;
+        private Long openingId;
         private String hostCompany;
         private String status;
         private String statusLabel;

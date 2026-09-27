@@ -45,6 +45,7 @@ public class ApplicationService {
     private final ApplicationDocumentRepository documentRepository;
     private final ApplicationStatusEventRepository eventRepository;
     private final LearnershipService learnershipService;
+    private final OpeningService openingService;
     private final LearnerRepository learnerRepository;
     private final ModuleRepository moduleRepository;
     private final LearnerService learnerService;
@@ -90,7 +91,8 @@ public class ApplicationService {
             throw new IllegalArgumentException("Please accept the privacy notice so we can process your application.");
         }
 
-        ApplicationType type = resolveType(request);
+        JobOpening opening = request.getOpeningId() != null ? openingService.require(request.getOpeningId()) : null;
+        ApplicationType type = opening != null ? opening.getCategory().applicationType() : resolveType(request);
         String idType = request.getIdType().trim();
         String idNumber = normaliseIdNumber(request.getIdNumber());
         validateIdNumber(idType, idNumber);
@@ -123,7 +125,10 @@ public class ApplicationService {
                 draft.courseChoices(String.join("; ", choices));
             }
             case INTERNSHIP, JOB -> {
-                String position = trim(request.getPositionTitle());
+                if (opening != null && !opening.isAcceptingApplications(LearnershipService.today())) {
+                    throw new IllegalArgumentException("Applications for " + opening.getTitle() + " are closed.");
+                }
+                String position = opening != null ? opening.getTitle() : trim(request.getPositionTitle());
                 if (position == null) {
                     throw new IllegalArgumentException("Tell us which position you're applying for.");
                 }
@@ -131,7 +136,7 @@ public class ApplicationService {
                         type, idNumber, position, ApplicationStatus.ACTIVE)) {
                     throw duplicate("this position");
                 }
-                draft.positionTitle(position).experience(trim(request.getExperience()));
+                draft.opening(opening).positionTitle(position).experience(trim(request.getExperience()));
             }
             case PLACEMENT -> {
                 String university = trim(request.getUniversity());
@@ -242,7 +247,7 @@ public class ApplicationService {
     // --- Staff ---
 
     @Transactional(readOnly = true)
-    public List<ApplicationSummary> list(Long learnershipId, String type, String status, String query) {
+    public List<ApplicationSummary> list(Long learnershipId, Long openingId, String type, String status, String query) {
         ApplicationStatus statusFilter = status == null || status.isBlank() ? null : parseStatus(status);
         ApplicationType typeFilter = type == null || type.isBlank() ? null : parseType(type);
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
@@ -253,6 +258,7 @@ public class ApplicationService {
         Map<Long, Long> documentCounts = documentCounts();
 
         return rows.stream()
+                .filter(a -> openingId == null || (a.getOpening() != null && openingId.equals(a.getOpening().getId())))
                 .filter(a -> typeFilter == null || a.getProgrammeType() == typeFilter)
                 .filter(a -> statusFilter == null || a.getStatus() == statusFilter)
                 .filter(a -> q.isEmpty() || matches(a, q))
@@ -636,6 +642,7 @@ public class ApplicationService {
                 .appliedFor(a.getAppliedFor())
                 .learnershipId(a.getLearnership() != null ? a.getLearnership().getId() : null)
                 .learnershipName(a.getLearnership() != null ? a.getLearnership().getName() : null)
+                .openingId(a.getOpening() != null ? a.getOpening().getId() : null)
                 .hostCompany(a.getHostCompany())
                 .status(a.getStatus().name())
                 .statusLabel(a.getStatus().getLabel())

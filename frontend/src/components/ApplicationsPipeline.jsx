@@ -43,7 +43,8 @@ const formatDate = (iso) => iso
     ? new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
-const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAuthFailure, onError, onInfo }) => {
+const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, initialOpeningId, onAuthFailure, onError, onInfo }) => {
+    const [openingId, setOpeningId] = useState(initialOpeningId || null);
     const [learnershipId, setLearnershipId] = useState(initialLearnershipId ? String(initialLearnershipId) : '');
     const [statusFilter, setStatusFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
@@ -58,6 +59,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
     useEffect(() => {
         setLearnershipId(initialLearnershipId ? String(initialLearnershipId) : '');
     }, [initialLearnershipId]);
+    useEffect(() => { setOpeningId(initialOpeningId || null); }, [initialOpeningId]);
 
     const request = useCallback(async (url, options = {}) => {
         const res = await fetch(url, {
@@ -83,6 +85,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
             const params = new URLSearchParams();
             if (learnershipId) params.set('learnershipId', learnershipId);
             if (typeFilter) params.set('type', typeFilter);
+            if (openingId) params.set('openingId', openingId);
             const res = await request(`/api/admin/applications?${params}`);
             setRows(await res.json());
             setSelected(new Set());
@@ -91,7 +94,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
         } finally {
             setLoading(false);
         }
-    }, [learnershipId, typeFilter, request, report]);
+    }, [learnershipId, typeFilter, openingId, request, report]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -194,6 +197,13 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
                 </select>
                 <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, ID, reference, phone…" className={`${inputClass} flex-1 min-w-[200px]`} />
             </div>
+
+            {openingId && (
+                <div className="flex items-center gap-3 text-xs">
+                    <span className="font-semibold text-slate-700">Showing applications for one opening{rows[0] ? `: ${rows[0].appliedFor.replace(/^[^:]+: /, '')}` : ''}</span>
+                    <button type="button" onClick={() => setOpeningId(null)} className="font-semibold text-blue-600 hover:text-blue-700">Show all</button>
+                </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => setStatusFilter('')}

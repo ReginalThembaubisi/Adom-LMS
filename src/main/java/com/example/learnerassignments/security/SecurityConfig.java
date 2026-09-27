@@ -63,7 +63,7 @@ public class SecurityConfig {
                         // the applicant's own status check and Services appointment requests. Rate limited per caller in
                         // PublicApplicationController; the status check needs both the
                         // reference and the ID number, so neither alone reveals anything.
-                        .requestMatchers(HttpMethod.GET, "/api/learnerships/openings", "/api/learnerships/openings/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/learnerships/openings", "/api/learnerships/openings/*", "/api/openings").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/applications", "/api/applications/status", "/api/appointments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/registration-status").permitAll()
 

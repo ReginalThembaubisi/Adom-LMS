@@ -22,14 +22,15 @@ import java.util.List;
 @Table(name = "learnership_applications", indexes = {
         @Index(name = "idx_application_learnership_status", columnList = "learnership_id, status"),
         @Index(name = "idx_application_type_status", columnList = "programme_type, status"),
+        @Index(name = "idx_application_opening", columnList = "opening_id"),
         @Index(name = "idx_application_id_number", columnList = "id_number")
 })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(exclude = {"learnership", "documents", "events", "enrolledLearner"})
-@ToString(exclude = {"learnership", "documents", "events", "enrolledLearner"})
+@EqualsAndHashCode(exclude = {"learnership", "opening", "documents", "events", "enrolledLearner"})
+@ToString(exclude = {"learnership", "opening", "documents", "events", "enrolledLearner"})
 public class LearnershipApplication {
 
     @Id
@@ -49,6 +50,11 @@ public class LearnershipApplication {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "learnership_id")
     private Learnership learnership;
+
+    /** INTERNSHIP or JOB applications made against an advertised opening. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "opening_id")
+    private JobOpening opening;
 
     // --- What they applied for, by type ---
 

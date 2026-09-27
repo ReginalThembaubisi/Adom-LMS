@@ -465,4 +465,66 @@ class LearnershipApplicationFlowIntegrationTest {
         mockMvc.perform(get("/api/admin/appointments").param("status", "NEW").header("Authorization", adminAuth()))
                 .andExpect(jsonPath("$", hasSize(0)));
     }
+
+    @Test
+    @DisplayName("Admin-posted job and internship openings appear on Careers and collect applications")
+    void jobAndInternshipOpenings() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/admin/openings").header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Software Developer\",\"category\":\"INTERNSHIP\",\"division\":\"Software Development\","
+                                + "\"positions\":8,\"closingDate\":\"" + LocalDate.now().plusDays(20) + "\",\"status\":\"OPEN\","
+                                + "\"requirements\":\"IT diploma\\nBasic Java\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoryLabel").value("Internships"))
+                .andReturn();
+        long internshipId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        mockMvc.perform(post("/api/admin/openings").header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Draft Cleaner\",\"category\":\"ENTRY_LEVEL\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+        MvcResult job = mockMvc.perform(post("/api/admin/openings").header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Project Manager\",\"category\":\"ENTRY_LEVEL\",\"status\":\"OPEN\"}"))
+                .andReturn();
+        long jobId = objectMapper.readTree(job.getResponse().getContentAsString()).get("id").asLong();
+
+        // Only open openings are public, and nothing internal leaks.
+        mockMvc.perform(get("/api/openings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].title").value("Software Developer"))
+                .andExpect(jsonPath("$[0].requirements", contains("IT diploma", "Basic Java")))
+                .andExpect(jsonPath("$[0].applicationCounts").doesNotExist());
+
+        // Applying against an opening sets the type and title from it.
+        mockMvc.perform(typedApplication("", SA_ID, java.util.Map.of("openingId", String.valueOf(internshipId))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.programmeType").value("INTERNSHIP"))
+                .andExpect(jsonPath("$.appliedFor").value("Internship: Software Developer"));
+        mockMvc.perform(typedApplication("", SA_ID, java.util.Map.of("openingId", String.valueOf(jobId))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.programmeType").value("JOB"));
+
+        mockMvc.perform(get("/api/admin/applications").param("openingId", String.valueOf(internshipId))
+                        .header("Authorization", adminAuth()))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].openingId").value(internshipId));
+        mockMvc.perform(get("/api/admin/openings").header("Authorization", adminAuth()))
+                .andExpect(jsonPath("$[?(@.id == " + internshipId + ")].applicationTotal").value(contains(1)));
+
+        // Closing it takes it off the site and stops applications; it can't be deleted.
+        mockMvc.perform(put("/api/admin/openings/" + internshipId).header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Software Developer\",\"category\":\"INTERNSHIP\",\"status\":\"CLOSED\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/openings")).andExpect(jsonPath("$", hasSize(1)));
+        mockMvc.perform(typedApplication("", "0001015009088", java.util.Map.of("openingId", String.valueOf(internshipId))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(delete("/api/admin/openings/" + internshipId).header("Authorization", adminAuth()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/admin/openings").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
 }

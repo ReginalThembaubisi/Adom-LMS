@@ -7,6 +7,8 @@ import com.example.learnerassignments.model.PoeDocumentType;
 import com.example.learnerassignments.service.ApplicationService;
 import com.example.learnerassignments.service.ApplicationService.Upload;
 import com.example.learnerassignments.service.AppointmentService;
+import com.example.learnerassignments.service.OpeningService;
+import com.example.learnerassignments.dto.OpeningDtos.PublicOpeningDto;
 import com.example.learnerassignments.service.LearnershipService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -32,12 +34,19 @@ public class PublicApplicationController {
     private final LearnershipService learnershipService;
     private final ApplicationService applicationService;
     private final AppointmentService appointmentService;
+    private final OpeningService openingService;
     private final PublicRateLimiter rateLimiter;
 
     /** Learnerships currently taking applications, soonest closing first. */
     @GetMapping("/api/learnerships/openings")
     public List<LearnershipAdvertDto> openings() {
         return learnershipService.openAdverts();
+    }
+
+    /** Job and internship openings taking applications, for the Careers page. */
+    @GetMapping("/api/openings")
+    public List<PublicOpeningDto> jobOpenings() {
+        return openingService.openOpenings();
     }
 
     /** One open learnership by its web address (slug) or id. 404 once it stops taking applications. */

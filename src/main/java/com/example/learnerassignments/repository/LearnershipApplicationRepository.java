@@ -28,6 +28,13 @@ public interface LearnershipApplicationRepository extends JpaRepository<Learners
 
     long countByLearnership_Id(Long learnershipId);
 
+    long countByOpening_Id(Long openingId);
+
+    /** [openingId, status, count] for every opening with applications. */
+    @Query("SELECT a.opening.id, a.status, COUNT(a) FROM LearnershipApplication a " +
+            "WHERE a.opening IS NOT NULL GROUP BY a.opening.id, a.status")
+    List<Object[]> countByOpeningAndStatus();
+
     // Staff lists, newest first, with the learnership fetched so a list is one query. Two
     // queries rather than one with an optional ":id IS NULL OR" parameter, which PostgreSQL
     // rejects when the parameter is bound as null ("could not determine data type").
