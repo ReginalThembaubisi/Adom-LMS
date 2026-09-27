@@ -10,6 +10,9 @@ const dist = path.join(root, 'dist');
 const template = fs.readFileSync(path.join(dist, 'index.html'), 'utf-8');
 const { render, routes } = await import(path.join(root, 'dist-server', 'entry-server.js'));
 const siteUrl = (process.env.VITE_SITE_URL || 'https://www.adomtechnologies.co.za').replace(/\/+$/, '');
+// SITE_NOINDEX=true keeps a test copy (e.g. the onrender.com site) out of search results, so it
+// never competes with the real domain. Off by default: the real site must be listable.
+const noindex = process.env.SITE_NOINDEX === 'true';
 
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -17,6 +20,7 @@ for (const route of routes) {
   const html = render(route.page, route.props || {});
   const head = [
     `<title>${esc(route.title)}</title>`,
+    ...(noindex ? ['<meta name="robots" content="noindex, nofollow">'] : []),
     `<meta name="description" content="${esc(route.description)}">`,
     `<link rel="canonical" href="${siteUrl}${route.path}">`,
     `<meta property="og:title" content="${esc(route.title)}">`,
@@ -41,10 +45,12 @@ fs.writeFileSync(path.join(dist, '404.html'), notFound);
 fs.writeFileSync(path.join(dist, 'sitemap.xml'),
   '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
   + routes.map(r => `  <url><loc>${siteUrl}${r.path}</loc></url>`).join('\n') + '\n</urlset>\n');
-fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${siteUrl}/sitemap.xml\n`);
+fs.writeFileSync(path.join(dist, 'robots.txt'), noindex
+  ? 'User-agent: *\nDisallow: /\n'
+  : `User-agent: *\nAllow: /\nSitemap: ${siteUrl}/sitemap.xml\n`);
 
 // Apache (xneelo) reads this; Render ignores it. Serves 404.html for missing pages.
 fs.writeFileSync(path.join(dist, '.htaccess'), 'ErrorDocument 404 /404.html\nOptions -Indexes\n');
 
 fs.rmSync(path.join(root, 'dist-server'), { recursive: true, force: true });
-console.log(`Prerendered ${routes.length} pages into dist/`);
+console.log(`Prerendered ${routes.length} pages into dist/` + (noindex ? ' (hidden from search engines: SITE_NOINDEX=true)' : ''));
