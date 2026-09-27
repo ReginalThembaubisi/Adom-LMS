@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Adom · Services</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="adom-api.js"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;display=swap">
+<style>html{scroll-behavior:smooth}body{margin:0;background:#0E0F1A}a{color:#22D3C5}a:hover{color:#7DEBE1}input::placeholder,textarea::placeholder{color:#7C7F96}*:focus-visible{outline:2px solid #22D3C5;outline-offset:3px}</style>
+</helmet>
+<div style="min-height:100vh;background:#0E0F1A;color:#F4F3EE;font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden">
+<dc-import name="SiteHeader" active="services" hint-size="100%,76px"></dc-import>
+
+<section style="max-width:1320px;margin:0 auto;padding:88px 28px 88px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:56px;align-items:end">
+  <div style="display:flex;flex-direction:column;gap:28px">
+    <span style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#22D3C5">For business</span>
+    <h1 style="font-size:clamp(52px,7.4vw,108px);line-height:.9;margin:0;font-weight:900;font-stretch:115%;letter-spacing:-.02em;text-transform:uppercase">Built, hosted <span style="color:#22D3C5">and fixed.</span></h1>
+    <p style="font-size:20px;line-height:1.5;margin:0;max-width:540px;color:#C9CAD6;text-wrap:pretty">Websites, apps, cloud and hardware support for businesses around Nelspruit. 801 projects delivered so far.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="#book" style="padding:18px 28px;border-radius:10px;background:#22D3C5;color:#0E0F1A;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#7DEBE1;color:#0E0F1A">Book an appointment</a>
+      <a href="tel:013763338331" style="padding:16px 26px;border-radius:10px;border:2px solid #F4F3EE;color:#F4F3EE;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#F4F3EE;color:#0E0F1A">Call 013 7633 8331</a>
+    </div>
+  </div>
+  <div style="border-radius:14px;overflow:hidden;aspect-ratio:4/3;background:#181A2A"><img src="/_blob/9d08e0f556eaa44a7f6067d802a177c8" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+</section>
+
+<section style="background:#FF4D4D;color:#0E0F1A">
+  <div style="max-width:1320px;margin:0 auto;padding:28px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+    <span style="font-size:clamp(22px,2.6vw,34px);font-weight:900;font-stretch:112%;text-transform:uppercase">25% off a full software package</span>
+    <span style="font-size:17px;font-weight:700">Website + mobile app + CRM, built together.</span>
+  </div>
+</section>
+
+<section style="max-width:1320px;margin:0 auto;padding:110px 28px;display:flex;flex-direction:column;gap:40px">
+  <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">What we do</h2>
+  <div style="display:flex;flex-direction:column;border-top:2px solid #2A2D42">
+    <sc-for list="{{ services }}" as="s" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:80px minmax(0,1.1fr) minmax(0,1fr);gap:28px;padding:32px 0;border-bottom:2px solid #2A2D42;align-items:start">
+        <span style="font-size:40px;font-weight:900;font-stretch:115%;line-height:1;color:#22D3C5">{{ s.n }}</span>
+        <span style="font-size:clamp(24px,2.6vw,36px);font-weight:800;font-stretch:108%;line-height:1.05">{{ s.title }}</span>
+        <span style="font-size:17px;line-height:1.5;color:#A9ABBE;text-wrap:pretty">{{ s.body }}</span>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section id="book" style="background:#F4F3EE;color:#0E0F1A">
+  <div style="max-width:1320px;margin:0 auto;padding:110px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:56px">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">Book an appointment</h2>
+      <p style="font-size:18px;line-height:1.55;margin:0;color:#3A3C4E;max-width:460px">Tell us what you need and pick a time. We'll confirm by phone or email the same day.</p>
+    </div>
+    <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:32px;border-radius:14px;background:#0E0F1A;color:#F4F3EE;display:flex;flex-direction:column;gap:10px;align-self:start">
+        <span style="font-size:28px;font-weight:900;font-stretch:110%;text-transform:uppercase;color:#22D3C5">Request sent</span>
+        <span style="font-size:17px;color:#C9CAD6">We'll be in touch to confirm your slot.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+      <form sc-camel-on-submit="{{ submit }}" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Name<input name="fullName" required="" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Company<input name="company" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Email<input name="email" required="" type="email" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Cellphone<input name="phone" type="tel" required="" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+        </div>
+        <span style="font-size:14px;font-weight:700">Service</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ serviceOpts }}" as="o" hint-placeholder-count="6">
+            <button type="button" sc-camel-on-click="{{ o.pick }}" style="all:unset;cursor:pointer;padding:10px 16px;border-radius:8px;font-size:15px;font-weight:700;border:2px solid #0E0F1A;background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Date<input name="preferredDate" required="" type="date" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:13px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Time<sc-raw-select name="preferredTime" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"><option>08:00 – 10:00</option><option>10:00 – 12:00</option><option>13:00 – 15:00</option></sc-raw-select></label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">What do you need?<textarea name="message" sc-camel-on-change="{{ set }}" style="font:inherit;font-weight:400;font-size:16px;padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;min-height:110px"></textarea></label>
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="padding:14px 18px;border-radius:10px;background:#FFE1E1;color:#8A1C1C;font-size:15px;font-weight:700">{{ error }}</div>
+        </sc-if>
+        <button type="submit" style="all:unset;cursor:pointer;align-self:flex-start;padding:17px 28px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800;font-size:17px" style-hover="background:#0A8C83">{{ submitLabel }}</button>
+      </form>
+    </sc-if>
+  </div>
+</section>
+
+<dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+class Component extends DCLogic {
+  state = { sent: false, svc: 'Software', v: { preferredTime: '08:00 – 10:00' }, sending: false, error: '' };
+  async submit(e) {
+    e.preventDefault();
+    const v = this.state.v;
+    this.setState({ sending: true, error: '' });
+    try {
+      await AdomAPI.bookAppointment({ ...v, service: this.state.svc, website: '' });
+      this.setState({ sent: true, sending: false });
+    } catch (err) {
+      this.setState({ sending: false, error: err.message });
+    }
+  }
+  renderVals() {
+    const services = [
+      ['Software development', 'Websites, mobile apps and CRM systems. Take all three as a full package and save 25%.'],
+      ['Cloud services', 'Setup, migration and security on AWS, Microsoft Azure, Google Cloud, IBM Cloud and ServerSpace.'],
+      ['Technical support', 'We troubleshoot and fix computers, printers and management systems, remotely or on site.'],
+      ['IT equipment', 'Buy computers through us and we deliver around Nelspruit.'],
+      ['Networking', 'Upgrade your network to full capacity and extend its range across your building.'],
+      ['Electrical & components', 'Safe cabling, replacement electronic components and air-conditioner installs.']
+    ].map(([title, body], i) => ({ n: String(i + 1).padStart(2, '0'), title, body }));
+    return {
+      services,
+      serviceOpts: ['Software', 'Cloud', 'Support', 'Equipment', 'Networking', 'Electrical'].map(l => ({
+        label: l, bg: l === this.state.svc ? '#0E0F1A' : 'transparent', fg: l === this.state.svc ? '#F4F3EE' : '#0E0F1A', pick: () => this.setState({ svc: l })
+      })),
+      sent: this.state.sent, notSent: !this.state.sent,
+      submit: (e) => this.submit(e),
+      set: (e) => { const { name, value } = e.target; this.setState(p => ({ v: { ...p.v, [name]: value } })); },
+      hasError: !!this.state.error, error: this.state.error, submitLabel: this.state.sending ? 'Sending…' : 'Request appointment'
+    };
+  }
+}
+</script>
+
+
+</body></html>

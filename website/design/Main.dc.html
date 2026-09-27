@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Adom · Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;display=swap">
+<style>html{scroll-behavior:smooth}body{margin:0;background:#0E0F1A}a{color:#22D3C5}a:hover{color:#7DEBE1}input::placeholder{color:#7C7F96}*:focus-visible{outline:2px solid #22D3C5;outline-offset:3px}</style>
+</helmet>
+<div style="min-height:100vh;background:#0E0F1A;color:#F4F3EE;font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden">
+
+<dc-import name="SiteHeader" active="" hint-size="100%,76px"></dc-import>
+
+<section id="top" style="max-width:1320px;margin:0 auto;padding:72px 28px 88px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:56px;align-items:center">
+  <div style="display:flex;flex-direction:column;gap:32px">
+    <h1 style="font-size:clamp(52px,7.4vw,108px);line-height:.92;margin:0;font-weight:900;font-stretch:112%;letter-spacing:-.02em;text-transform:uppercase">Write code.<br><span style="color:#22D3C5">Fix machines.</span><br>Get hired.</h1>
+    <p style="font-size:20px;line-height:1.5;margin:0;max-width:520px;color:#C9CAD6;text-wrap:pretty">Courses, learnerships, internships and university placements, in Nelspruit and online. You learn from the team that builds software and fixes networks for 750 local businesses.</p>
+    <form sc-camel-on-submit="{{ submitSearch }}" style="display:flex;align-items:stretch;max-width:560px;width:100%;border:2px solid #F4F3EE;border-radius:10px;overflow:hidden">
+      <input value="{{ query }}" sc-camel-on-change="{{ onQuery }}" placeholder="What do you want to learn?" style="all:unset;flex:1;min-width:0;font-size:17px;padding:16px 18px;color:#F4F3EE">
+      <button type="submit" style="all:unset;cursor:pointer;flex:none;padding:0 24px;background:#22D3C5;color:#0E0F1A;font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#7DEBE1">Find a course
+        <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </button>
+    </form>
+  </div>
+  <div style="position:relative;width:100%;max-width:600px;justify-self:end">
+    <div style="position:absolute;inset:18px -18px -18px 18px;border-radius:14px;background:#22D3C5"></div>
+    <div style="position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#181A2A"><img src="/_blob/de93424948aafa6006e3a6fec5d632e5" alt="Adom students at work" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+    <div style="position:absolute;left:-18px;bottom:36px;background:#FF4D4D;color:#0E0F1A;padding:14px 20px;border-radius:10px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.04em">Technology without limit</div>
+  </div>
+</section>
+
+<sc-if value="{{ showStats }}" hint-placeholder-val="{{ true }}">
+  <section style="background:#22D3C5;color:#0E0F1A">
+    <div style="max-width:1320px;margin:0 auto;padding:44px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:28px">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:clamp(48px,5vw,72px);line-height:1;font-weight:900;font-stretch:115%">{{ s.n }}</span>
+          <span style="font-size:16px;font-weight:600">{{ s.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+
+<section id="pathways" style="max-width:1320px;margin:0 auto;padding:110px 28px 0;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <span style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#F4F3EE">Ways to study with Adom</span>
+    <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase;letter-spacing:-.01em">Four ways in.<br>Pick yours.</h2>
+    <p style="font-size:19px;line-height:1.5;margin:0;max-width:640px;color:#C9CAD6;text-wrap:pretty">Study a course, earn while you learn on a learnership, get work experience on an internship, or let us help you get into university.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:20px">
+      <a href="Courses.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:28px;border-radius:16px;background:#181A2A;color:#F4F3EE;text-decoration:none;border:2px solid #181A2A;border-top:6px solid #F4F3EE" style-hover="border-color:#F4F3EE;color:#F4F3EE">
+        <span style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#F4F3EE"><span>12 months</span><span style="color:#7C7F96">01</span></span>
+        <span style="font-size:32px;font-weight:900;font-stretch:110%;line-height:1;text-transform:uppercase">Courses</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE;flex-grow:1">Full-time courses on campus or through e-Learning, each ending with a project you can show an employer.</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#F4F3EE">See courses <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+      </a>
+      <a href="Learnerships.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:28px;border-radius:16px;background:#181A2A;color:#F4F3EE;text-decoration:none;border:2px solid #181A2A;border-top:6px solid #22D3C5" style-hover="border-color:#22D3C5;color:#F4F3EE">
+        <span style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#22D3C5"><span>Earn while you learn</span><span style="color:#7C7F96">02</span></span>
+        <span style="font-size:32px;font-weight:900;font-stretch:110%;line-height:1;text-transform:uppercase">Learnerships</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE;flex-grow:1">Classroom learning plus real work, with a monthly stipend. You finish with a nationally recognised qualification.</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#22D3C5">See open learnerships <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+      </a>
+      <a href="Internships.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:28px;border-radius:16px;background:#181A2A;color:#F4F3EE;text-decoration:none;border:2px solid #181A2A;border-top:6px solid #FF4D4D" style-hover="border-color:#FF4D4D;color:#F4F3EE">
+        <span style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#FF4D4D"><span>Work experience</span><span style="color:#7C7F96">03</span></span>
+        <span style="font-size:32px;font-weight:900;font-stretch:110%;line-height:1;text-transform:uppercase">Internships</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE;flex-grow:1">Get workplace experience at Adom and with our partner companies in software, IT support, design and business.</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#FF4D4D">See internships <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+      </a>
+      <a href="Placements.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:28px;border-radius:16px;background:#181A2A;color:#F4F3EE;text-decoration:none;border:2px solid #181A2A;border-top:6px solid #FFC24D" style-hover="border-color:#FFC24D;color:#F4F3EE">
+        <span style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#FFC24D"><span>Final-year students</span><span style="color:#7C7F96">04</span></span>
+        <span style="font-size:32px;font-weight:900;font-stretch:110%;line-height:1;text-transform:uppercase">University placements</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE;flex-grow:1">Studying at TUT, DUT or another university? We find you the workplace you need for your final-year work-integrated learning, so you can graduate.</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#FFC24D">Find a placement <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+      </a>
+  </div>
+</section>
+
+<section id="courses" style="max-width:1320px;margin:0 auto;padding:110px 28px 100px;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+    <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase;letter-spacing:-.01em">Seven courses.<br>One goal: a job.</h2>
+    <span style="font-size:16px;color:#A9ABBE">{{ resultLabel }}</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <sc-for list="{{ areas }}" as="a" hint-placeholder-count="5">
+      <button sc-camel-on-click="{{ a.select }}" style="all:unset;cursor:pointer;padding:10px 18px;border-radius:8px;font-size:15px;font-weight:700;border:2px solid {{ a.border }};background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</button>
+    </sc-for>
+    <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
+      <button sc-camel-on-click="{{ clearQuery }}" style="all:unset;cursor:pointer;padding:10px 16px;border-radius:8px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px;border:2px dashed #7C7F96;color:#F4F3EE" style-hover="border-color:#F4F3EE">“{{ query }}”
+        <svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </button>
+    </sc-if>
+  </div>
+  <div style="display:flex;flex-direction:column;border-top:2px solid #2A2D42">
+    <sc-for list="{{ courses }}" as="c" hint-placeholder-count="7">
+      <a href="{{ c.href }}" style="display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:28px;align-items:center;padding:22px 0;border-bottom:2px solid #2A2D42;text-decoration:none;color:#F4F3EE" style-hover="background:#181A2A">
+        <div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#181A2A"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+          <span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#22D3C5">{{ c.area }}</span>
+          <span style="font-size:clamp(22px,2.4vw,32px);font-weight:800;font-stretch:108%;line-height:1.05">{{ c.name }}</span>
+          <span style="font-size:16px;color:#A9ABBE;text-wrap:pretty">{{ c.outcome }}</span>
+        </div>
+        <span style="width:52px;height:52px;border-radius:50%;border:2px solid #F4F3EE;display:grid;place-items:center;flex:none">
+          <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"></path><path d="M7 7h10v10"></path></svg>
+        </span>
+      </a>
+    </sc-for>
+  </div>
+  <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start;padding:24px 0">
+      <span style="font-size:24px;font-weight:800">Nothing matches that yet.</span>
+      <button sc-camel-on-click="{{ clearQuery }}" style="all:unset;cursor:pointer;padding:12px 20px;border-radius:8px;background:#F4F3EE;color:#0E0F1A;font-weight:700">Show all courses</button>
+    </div>
+  </sc-if>
+</section>
+
+<section id="apply" style="background:#F4F3EE;color:#0E0F1A">
+  <div style="max-width:1320px;margin:0 auto;padding:110px 28px;display:flex;flex-direction:column;gap:56px">
+    <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase;letter-spacing:-.01em;max-width:900px">From application to first class</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:0">
+      <div style="display:flex;flex-direction:column;gap:14px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A">
+        <span style="font-size:64px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83">01</span>
+        <span style="font-size:26px;font-weight:800">Apply online</span>
+        <span style="font-size:17px;line-height:1.5;color:#3A3C4E">Choose a course, learnership, internship or university placement and fill in the form. Have your ID and latest results ready.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A">
+        <span style="font-size:64px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83">02</span>
+        <span style="font-size:26px;font-weight:800">Check your status</span>
+        <span style="font-size:17px;line-height:1.5;color:#3A3C4E">Log in with your reference number to see where your application is. Register once you're accepted.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A">
+        <span style="font-size:64px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83">03</span>
+        <span style="font-size:26px;font-weight:800">Start class</span>
+        <span style="font-size:17px;line-height:1.5;color:#3A3C4E">Join us at Lindokuhle House or log in to e-Learning from home.</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="Apply.dc.html" style="padding:18px 28px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#0A8C83;color:#F4F3EE">Start my application</a>
+      <a href="Status.dc.html" style="padding:16px 26px;border-radius:10px;border:2px solid #0E0F1A;color:#0E0F1A;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#0E0F1A;color:#F4F3EE">Check status</a>
+    </div>
+  </div>
+</section>
+
+<section id="about" style="max-width:1320px;margin:0 auto;padding:110px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:64px;align-items:center">
+  <div style="border-radius:14px;overflow:hidden;aspect-ratio:1/1;background:#181A2A"><img src="/_blob/e1caefe9bddc2b35eff0ea07ccfd4b5e" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+  <div style="display:flex;flex-direction:column;gap:28px">
+    <span style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FF4D4D">A note from our CEO</span>
+    <p style="font-size:clamp(34px,4vw,56px);line-height:1.02;margin:0;font-weight:900;font-stretch:108%;text-wrap:balance">“We aim to bring the future into now.”</p>
+    <p style="font-size:18px;line-height:1.55;margin:0;color:#C9CAD6;max-width:540px;text-wrap:pretty">Adom started as a software and support company in Nelspruit. We teach because businesses here kept asking us for people who could do the work. Our courses are built around what those businesses need.</p>
+    <a href="About.dc.html" style="align-self:flex-start;font-weight:800;font-size:17px;color:#22D3C5;text-decoration:none;display:flex;align-items:center;gap:8px" style-hover="color:#7DEBE1">Our story
+      <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+    </a>
+  </div>
+</section>
+
+<section id="business" style="max-width:1320px;margin:0 auto;padding:0 28px 110px">
+  <div style="background:#181A2A;border-radius:16px;padding:clamp(32px,5vw,64px);display:flex;flex-direction:column;gap:44px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:640px">
+        <span style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#22D3C5">For business</span>
+        <h2 style="font-size:clamp(34px,4vw,56px);line-height:.98;margin:0;font-weight:900;font-stretch:110%;text-transform:uppercase">Need it built or fixed?</h2>
+      </div>
+      <button sc-camel-on-click="{{ openDialog }}" style="all:unset;cursor:pointer;padding:16px 26px;border-radius:10px;background:#22D3C5;color:#0E0F1A;font-weight:800;font-size:16px" style-hover="background:#7DEBE1">Book an appointment</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:32px">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #2A2D42;padding-top:22px">
+        <span style="font-size:24px;font-weight:800">Software</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE">Websites, web apps and mobile apps, including CRM and tracking systems.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #2A2D42;padding-top:22px">
+        <span style="font-size:24px;font-weight:800">Cloud</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE">Setup and security on AWS, Azure, Google Cloud and IBM Cloud.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #2A2D42;padding-top:22px">
+        <span style="font-size:24px;font-weight:800">Support</span>
+        <span style="font-size:16px;line-height:1.5;color:#A9ABBE">Computers, printers and networks, fixed remotely or on site.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background:#FF4D4D;color:#0E0F1A">
+  <div style="max-width:1320px;margin:0 auto;padding:clamp(64px,9vw,120px) 28px;display:flex;flex-direction:column;gap:32px">
+    <h2 style="font-size:clamp(52px,8vw,128px);line-height:.9;margin:0;font-weight:900;font-stretch:115%;text-transform:uppercase;letter-spacing:-.02em;max-width:1100px">Your seat is waiting.</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="Apply.dc.html" style="padding:18px 30px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800;font-size:18px;text-decoration:none" style-hover="background:#2A2D42;color:#F4F3EE">Apply now</a>
+      <a href="Courses.dc.html" style="padding:16px 28px;border-radius:10px;border:2px solid #0E0F1A;color:#0E0F1A;font-weight:800;font-size:18px;text-decoration:none" style-hover="background:#0E0F1A;color:#F4F3EE">See courses</a>
+    </div>
+  </div>
+</section>
+
+<dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+
+<sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ closeDialog }}" style="position:fixed;inset:0;z-index:50;background:rgba(14,15,26,.7);display:grid;place-items:center;padding:20px">
+    <div sc-camel-on-click="{{ stop }}" style="width:min(520px,100%);background:#F4F3EE;color:#0E0F1A;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:26px;font-weight:900;font-stretch:110%;text-transform:uppercase">Book an appointment</span>
+        <button sc-camel-on-click="{{ closeDialog }}" aria-label="Close" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;border:2px solid #0E0F1A;display:grid;place-items:center"><svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Name<input style="font:inherit;font-weight:400;padding:12px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Email<input type="email" style="font:inherit;font-weight:400;padding:12px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Type<sc-raw-select style="font:inherit;font-weight:400;padding:12px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"><option>Website</option><option>Web app</option><option>Mobile app</option><option>Support</option></sc-raw-select></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Date<input type="date" style="font:inherit;font-weight:400;padding:12px;border:2px solid #0E0F1A;border-radius:8px;background:#fff"></label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">What do you need?<textarea style="font:inherit;font-weight:400;padding:12px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;min-height:90px"></textarea></label>
+      <button sc-camel-on-click="{{ closeDialog }}" style="all:unset;cursor:pointer;align-self:flex-start;padding:14px 24px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800">Send request</button>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;showStats&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { query: '', area: 'All', dialogOpen: false };
+  data = [
+    { name: 'Systems Development', area: 'Programming', img: '/_blob/7f86da5dee3142ec5f96aa53d3f465e0', outcome: 'Build business software from database to front end.' },
+    { name: 'Software Testing', area: 'Programming', img: '/_blob/523ec1a9756a934d6427be14540af24a', outcome: 'Manual and automated testing. Catch bugs before users do.' },
+    { name: 'End-User Computing', area: 'Technology', img: '/_blob/ede1655841d6b9e76e5a7e8d46879e08', outcome: 'Office software, email and files. The basics every job asks for.' },
+    { name: 'Technical Support', area: 'Technology', img: '/_blob/d971a119e0818d36572c15cd3582ae65', outcome: 'Repair hardware, set up networks, solve user problems.' },
+    { name: 'Graphic Design', area: 'Art & Media', img: '/_blob/713c72cbd2840a9b26deafcee1650ee4', outcome: 'Logos, print and social. Leave with a portfolio.' },
+    { name: 'Advertising & Marketing', area: 'Art & Media', img: '/_blob/86cf5a85722981c2ed5daf0c5dc53c77', outcome: 'Plan campaigns, write ads, read the numbers.' },
+    { name: 'Business Analysis', area: 'Business', img: '/_blob/3c6842aec6bfe0f6cc8435f3273f820e', outcome: 'Turn what a business needs into specs developers can build.' }
+  ];
+  scrollToCourses() {
+    const el = document.getElementById('courses');
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+  }
+  renderVals() {
+    const s = this.state;
+    const q = s.query.trim().toLowerCase();
+    const list = this.data.filter(c => (s.area === 'All' || c.area === s.area) && (!q || (c.name + ' ' + c.area + ' ' + c.outcome).toLowerCase().includes(q)));
+    return {
+      query: s.query,
+      hasQuery: !!q,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      submitSearch: (e) => { e.preventDefault(); this.setState({ area: 'All' }); this.scrollToCourses(); },
+      clearQuery: () => this.setState({ query: '', area: 'All' }),
+      areas: ['All', 'Programming', 'Technology', 'Art & Media', 'Business'].map(a => {
+        const on = a === s.area;
+        return { label: a, bg: on ? '#F4F3EE' : 'transparent', fg: on ? '#0E0F1A' : '#F4F3EE', border: on ? '#F4F3EE' : '#2A2D42', select: () => this.setState({ area: a }) };
+      }),
+      courses: list.map(c => ({ ...c, href: 'Course.dc.html?c=' + c.name.toLowerCase().replace(/ & /g, '-').replace(/[^a-z]+/g, '-') })),
+      empty: list.length === 0,
+      resultLabel: list.length + (list.length === 1 ? ' course' : ' courses'),
+      showStats: this.props.showStats ?? true,
+      stats: [{ n: '801', label: 'Client projects delivered' }, { n: '750', label: 'Businesses we work with' }, { n: '588', label: 'Industry partners' }, { n: '58', label: 'Awards' }],
+      dialogOpen: s.dialogOpen,
+      openDialog: () => this.setState({ dialogOpen: true }),
+      closeDialog: () => this.setState({ dialogOpen: false }),
+      stop: (e) => e.stopPropagation()
+    };
+  }
+}
+</script>
+
+
+</body></html>

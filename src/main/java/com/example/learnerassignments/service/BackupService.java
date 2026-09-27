@@ -31,6 +31,10 @@ public class BackupService {
             "learners", "categories", "modules", "module_files", "assignments",
             "submission_sessions", "submissions", "learner_modules", "learner_code_sequences",
             "messages",
+            // Applications from the public website. After learnerships and learners, which
+            // they reference.
+            "job_openings", "learnership_applications", "application_documents", "application_status_events",
+            "appointment_requests",
             // Durable flags a boot-time task can rely on having survived a restore — added for
             // FeedbackPublicationBackfill's completion marker, which must not come back missing
             // after a restore and be mistaken for a fresh install. registration-status lives in

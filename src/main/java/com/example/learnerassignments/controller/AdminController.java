@@ -49,6 +49,7 @@ public class AdminController {
     private final com.example.learnerassignments.service.PoeRequirementService poeRequirementService;
     private final ModuleFileRepository moduleFileRepository;
     private final com.example.learnerassignments.service.StoredFileService storedFileService;
+    private final com.example.learnerassignments.service.LearnershipService learnershipService;
 
     @PostMapping("/lecturers")
     public ResponseEntity<AdminLecturerResponse> createLecturer(@Valid @RequestBody CreateLecturerRequest request) {
@@ -231,34 +232,40 @@ public class AdminController {
     }
 
     @PostMapping("/learnerships")
-    public ResponseEntity<LearnershipResponseDto> createLearnership(@RequestBody CreateLearnershipRequest request) {
-        com.example.learnerassignments.model.Learnership learnership = com.example.learnerassignments.model.Learnership.builder()
-                .name(request.getName())
-                .qualificationCode(request.getQualificationCode())
-                .build();
-        com.example.learnerassignments.model.Learnership saved = learnershipRepository.save(learnership);
-        // Seed its document requirements now rather than at the next boot, so there is never a
-        // window where a learnership has learners but no requirements and the completeness
-        // dashboard reports every one of them complete.
-        poeRequirementService.seedDefaults(saved, java.time.LocalDate.now());
-        LearnershipResponseDto dto = LearnershipResponseDto.builder()
-                .id(saved.getId())
-                .name(saved.getName())
-                .qualificationCode(saved.getQualificationCode())
-                .build();
+    public ResponseEntity<LearnershipResponseDto> createLearnership(@RequestBody CreateLearnershipRequest request,
+                                                                    Authentication auth) {
+        LearnershipResponseDto dto = learnershipService.create(request);
+        auditLogService.log(auth, "CREATE_LEARNERSHIP", "Learnership", dto.getId(), dto.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
+    /** Every learnership with its advert fields and application counts per status. */
     @GetMapping("/learnerships")
     public ResponseEntity<List<LearnershipResponseDto>> getAdminLearnerships() {
-        List<LearnershipResponseDto> list = learnershipRepository.findAll().stream()
-                .map(l -> LearnershipResponseDto.builder()
-                        .id(l.getId())
-                        .name(l.getName())
-                        .qualificationCode(l.getQualificationCode())
-                        .build())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(learnershipService.listForAdmin());
+    }
+
+    @GetMapping("/learnerships/{id}")
+    public ResponseEntity<LearnershipResponseDto> getAdminLearnership(@PathVariable Long id) {
+        return ResponseEntity.ok(learnershipService.getForAdmin(id));
+    }
+
+    /** Edits a learnership and its public advert. Setting status OPEN publishes it on the website. */
+    @PutMapping("/learnerships/{id}")
+    public ResponseEntity<LearnershipResponseDto> updateLearnership(@PathVariable Long id,
+                                                                    @RequestBody CreateLearnershipRequest request,
+                                                                    Authentication auth) {
+        LearnershipResponseDto dto = learnershipService.update(id, request);
+        auditLogService.log(auth, "UPDATE_LEARNERSHIP", "Learnership", id, dto.getName() + " [" + dto.getStatus() + "]");
+        return ResponseEntity.ok(dto);
+    }
+
+    /** Only a learnership nothing depends on yet; see LearnershipService#delete. */
+    @DeleteMapping("/learnerships/{id}")
+    public ResponseEntity<Void> deleteLearnership(@PathVariable Long id, Authentication auth) {
+        learnershipService.delete(id);
+        auditLogService.log(auth, "DELETE_LEARNERSHIP", "Learnership", id, null);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/learnerships/{id}/categories")

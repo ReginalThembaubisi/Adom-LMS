@@ -75,8 +75,25 @@ public class LearnerDocumentService {
 
         // Hash the bytes as received, before storage can touch them.
         String sha256 = ContentHash.of(file);
-        String storedPath = store(learner, documentType, file, originalFilename);
+        String storedPath = store(learner.getLearnerCode(), documentType, file, originalFilename);
 
+        return record(learner, documentType, storedPath, originalFilename, sha256, uploadedByRole);
+    }
+
+    /**
+     * Records a file that is already in private storage as the learner's newest version of
+     * {@code documentType} — used when an accepted applicant is enrolled, so the ID copy they
+     * uploaded with their application becomes the first version in their vault without being
+     * uploaded or stored a second time. Supersedes exactly as {@link #upload} does.
+     */
+    @Transactional
+    public LearnerDocument adoptStored(Learner learner, PoeDocumentType documentType, String storedPath,
+                                       String originalFilename, String sha256, String uploadedByRole) {
+        return record(learner, documentType, storedPath, originalFilename, sha256, uploadedByRole);
+    }
+
+    private LearnerDocument record(Learner learner, PoeDocumentType documentType, String storedPath,
+                                   String originalFilename, String sha256, String uploadedByRole) {
         // Supersede rather than replace.
         List<LearnerDocument> superseded = documentRepository.findCurrentForType(learner.getId(), documentType);
         superseded.forEach(previous -> previous.setCurrent(false));
@@ -105,6 +122,19 @@ public class LearnerDocumentService {
         log.info("Learner document stored: learner {} supplied {} version {} ({} superseded).",
                 learner.getLearnerCode(), documentType, nextVersion, superseded.size());
         return document;
+    }
+
+    /**
+     * Validates and stores a personal document for someone who is not a learner yet — an
+     * applicant's ID copy or results — in the same private storage a learner's documents use.
+     * Returns the stored path (a Cloudinary public_id or a private disk path) for
+     * {@link #load}-style reading later.
+     */
+    public String storePrivate(String ownerLabel, PoeDocumentType documentType, MultipartFile file) {
+        validate(file);
+        String originalFilename = StringUtils.cleanPath(
+                file.getOriginalFilename() == null ? "document" : file.getOriginalFilename());
+        return store(ownerLabel, documentType, file, originalFilename);
     }
 
     /** Every version this learner has supplied, newest first, superseded ones included. */
@@ -197,7 +227,8 @@ public class LearnerDocumentService {
         };
     }
 
-    private void validate(MultipartFile file) {
+    /** Rejects an empty, oversized or wrongly typed file, with a message fit to show the uploader. */
+    public void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileException("Choose a file to upload.");
         }
@@ -217,7 +248,7 @@ public class LearnerDocumentService {
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
     }
 
-    private String store(Learner learner, PoeDocumentType documentType, MultipartFile file,
+    private String store(String ownerLabel, PoeDocumentType documentType, MultipartFile file,
                          String originalFilename) {
         if (cloudinaryService.isConfigured()) {
             try {
@@ -231,8 +262,8 @@ public class LearnerDocumentService {
                 // vault was rejecting documents was to guess. The learner-facing message stays
                 // generic — storage errors are not theirs to act on — but the reason has to
                 // land somewhere.
-                log.error("Could not upload {} for learner {} to Cloudinary.",
-                        documentType, learner.getLearnerCode(), e);
+                log.error("Could not upload {} for {} to Cloudinary.",
+                        documentType, ownerLabel, e);
                 throw new InvalidFileException("That file could not be uploaded. Please try again.");
             }
         }
@@ -240,8 +271,12 @@ public class LearnerDocumentService {
         // Local fallback, outside the statically served directory — these are somebody's ID
         // document, and the uploads directory is mapped as a public resource handler.
         Path directory = Paths.get(privateDir, "documents").toAbsolutePath().normalize();
+        // Only the characters a filename needs. originalFilename is whatever the uploader's
+        // browser sent, and a name like "../../x.pdf" must not resolve outside this directory —
+        // which matters more now that applicants upload here without signing in.
         String storedName = String.format("%s_%s_%d_%s",
-                learner.getLearnerCode(), documentType.name(), System.currentTimeMillis(), originalFilename);
+                ownerLabel, documentType.name(), System.currentTimeMillis(), originalFilename)
+                .replaceAll("[^A-Za-z0-9._-]", "_");
         try {
             Files.createDirectories(directory);
             Path target = directory.resolve(storedName);
@@ -250,8 +285,8 @@ public class LearnerDocumentService {
             }
             return target.toString();
         } catch (IOException e) {
-            log.error("Could not write {} for learner {} to {}.",
-                    documentType, learner.getLearnerCode(), directory, e);
+            log.error("Could not write {} for {} to {}.",
+                    documentType, ownerLabel, directory, e);
             throw new InvalidFileException("That file could not be saved. Please try again.");
         }
     }

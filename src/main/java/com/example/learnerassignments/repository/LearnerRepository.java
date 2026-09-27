@@ -23,6 +23,8 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
 
     boolean existsByLearnerCode(String learnerCode);
 
+    Optional<Learner> findFirstByIdNumber(String idNumber);
+
     /** Every learner id, without hydrating the entities. */
     @org.springframework.data.jpa.repository.Query("SELECT l.id FROM Learner l")
     java.util.List<Long> findAllIds();
@@ -58,4 +60,6 @@ public interface LearnerRepository extends JpaRepository<Learner, Long> {
 
     /** Everyone in one cohort within one learnership — the PoE export's COHORT scope. */
     java.util.List<Learner> findByLearnership_IdAndCohort(Long learnershipId, String cohort);
+
+    boolean existsByLearnership_Id(Long learnershipId);
 }

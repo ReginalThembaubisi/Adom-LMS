@@ -1,0 +1,8 @@
+/* Page basics from the design's <helmet> blocks, shared by every page. */
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #0E0F1A; }
+a { color: #22D3C5; }
+a:hover { color: #7DEBE1; }
+input::placeholder, textarea::placeholder { color: #7C7F96; }
+input, select, textarea { font: inherit; }
+*:focus-visible { outline: 2px solid #22D3C5; outline-offset: 3px; }

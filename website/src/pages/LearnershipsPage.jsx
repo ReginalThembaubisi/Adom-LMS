@@ -1,0 +1,61 @@
+// Generated from design/Learnerships.dc.html by tools/convert_design.py. Do not edit by hand.
+/* eslint-disable */
+import React from 'react';
+import { s as __style } from '../lib/style.js';
+import { ADOM } from '../lib/data.js';
+import { AdomAPI, LMS_LOGIN, LMS_STAFF_LOGIN } from '../lib/api.js';
+import SiteHeader from '../components/SiteHeader.jsx';
+import SiteFooter from '../components/SiteFooter.jsx';
+
+class LearnershipsPage extends React.Component {
+  state = { ads: [], loading: true, regOpen: true, sel: null };
+  componentDidMount() {
+    this.onChange = () => this.load();
+    window.addEventListener('adom-ads-changed', this.onChange);
+    window.addEventListener('storage', this.onChange);
+    if (AdomAPI) this.load(); else this.iv = setInterval(() => { if (AdomAPI) { clearInterval(this.iv); this.load(); } }, 50);
+  }
+  componentWillUnmount() { clearInterval(this.iv); window.removeEventListener('adom-ads-changed', this.onChange); window.removeEventListener('storage', this.onChange); }
+  async load() {
+    try { const [ads, regOpen] = await Promise.all([AdomAPI.list(), AdomAPI.registrationOpen()]); this.setState({ ads, regOpen, loading: false }); }
+    catch (e) { this.setState({ loading: false }); }
+  }
+  days(d) { return d ? Math.ceil((new Date(d + 'T23:59') - new Date()) / 864e5) : null; }
+  fmt(d) { const x = new Date(d + 'T00:00'); return isNaN(x) ? d : x.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }); }
+  view(a) {
+    const n = this.days(a.closingDate);
+    const stipend = a.stipend && 'R' + Number(a.stipend).toLocaleString('en-ZA') + ' / month';
+    return {
+      ...a, kicker: a.seta || 'Learnership',
+      facts: [a.nqfLevel && 'NQF ' + a.nqfLevel, a.durationMonths && a.durationMonths + ' months', stipend, a.intake].filter(Boolean),
+      short: (a.description || '').slice(0, 150) + ((a.description || '').length > 150 ? '…' : ''),
+      closes: n == null ? 'Open until filled' : n === 0 ? 'Closes today' : 'Closes in ' + n + ' day' + (n === 1 ? '' : 's'),
+      closeColor: n != null && n <= 7 ? '#FF4D4D' : '#C9CAD6',
+      details: [['NQF level', a.nqfLevel], ['Duration', a.durationMonths && a.durationMonths + ' months'], ['Stipend', stipend], ['Intake', a.intake], ['Closing date', a.closingDate && this.fmt(a.closingDate)], ['Location', a.location], ['Qualification', a.qualificationCode]]
+        .filter(x => x[1]).map(([k, v]) => ({ k, v })),
+      hasDesc: !!a.description, reqs: (a.requirements || '').split('\n').map(x => x.trim()).filter(Boolean),
+      hasReqs: !!(a.requirements || '').trim(),
+      open: () => this.setState({ sel: a })
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const live = s.ads.filter(a => a.status === 'Open' && (this.days(a.closingDate) == null || this.days(a.closingDate) >= 0));
+    return {
+      loading: s.loading, empty: !s.loading && live.length === 0,
+      countLabel: live.length === 1 ? '1 learnership' : live.length + ' learnerships',
+      ads: live.map(a => this.view(a)),
+      regOpen: s.regOpen, regClosed: !s.regOpen,
+      registerUrl: '/apply/?type=learnership&learnership=' + encodeURIComponent(s.sel ? s.sel.id : ''),
+      hasSel: !!s.sel, sel: s.sel ? this.view(s.sel) : { details: [], reqs: [] },
+      close: () => this.setState({ sel: null }), stop: (e) => e.stopPropagation()
+    };
+  }
+
+  render() {
+    const v = this.renderVals();
+    return (<div style={__style("min-height:100vh;background:#0E0F1A;color:#F4F3EE;font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden")}><SiteHeader active={"learnerships"} /><section style={__style("max-width:1320px;margin:0 auto;padding:88px 28px 64px;display:flex;flex-direction:column;gap:28px")}><span style={__style("font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#22D3C5")}>{"Learnerships"}</span><h1 style={__style("font-size:clamp(52px,8vw,120px);line-height:.9;margin:0;font-weight:900;font-stretch:115%;letter-spacing:-.02em;text-transform:uppercase;max-width:1100px")}>{"Learn on the job. "}<span style={__style("color:#22D3C5")}>{"Leave qualified."}</span></h1><p style={__style("font-size:20px;line-height:1.5;margin:0;max-width:640px;color:#C9CAD6;text-wrap:pretty")}>{"A learnership combines classroom learning with real work, and ends with a nationally recognised qualification."}</p></section><section style={__style("max-width:1320px;margin:0 auto;padding:0 28px 110px;display:flex;flex-direction:column;gap:28px")}>{v.regClosed ? (<><div style={__style("padding:18px 22px;border-radius:12px;background:#FF4D4D;color:#0E0F1A;font-weight:800;font-size:17px")}>{"Applications are closed right now. Check back for the next intake."}</div></>) : null}<div style={__style("display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap")}><h2 style={__style("font-size:clamp(34px,4.4vw,60px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase")}>{"Open now"}</h2><span style={__style("font-size:16px;color:#A9ABBE")}>{v.countLabel}</span></div>{v.loading ? (<><span style={__style("font-size:17px;color:#A9ABBE")}>{"Loading learnerships\u2026"}</span></>) : null}{v.empty ? (<><div style={__style("background:#181A2A;border-radius:16px;padding:clamp(28px,4vw,48px);display:flex;flex-direction:column;gap:14px;align-items:flex-start")}><span style={__style("font-size:28px;font-weight:900;font-stretch:110%;text-transform:uppercase")}>{"No learnerships open right now"}</span><span style={__style("font-size:17px;color:#A9ABBE;max-width:560px")}>{"New intakes are posted here first. Follow us on Facebook or call 013 7633 8331 to hear when the next one opens."}</span></div></>) : null}<div style={__style("display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:20px")}>{(v.ads || []).map((a, $index) => (<React.Fragment key={$index}><div style={__style("background:#181A2A;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:14px;border:2px solid #181A2A")} className="h-66f2e741"><div style={__style("display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase")}><span style={__style("color:#22D3C5")}>{a.kicker}</span><span style={__style("color:#7C7F96")}>{a.qualificationCode}</span></div><span style={__style("font-size:30px;font-weight:900;font-stretch:108%;line-height:1.02;text-transform:uppercase")}>{a.name}</span><div style={__style("display:flex;gap:6px;flex-wrap:wrap")}>{(a.facts || []).map((x, $index) => (<React.Fragment key={$index}><span style={__style("padding:6px 10px;border-radius:6px;background:#0E0F1A;font-size:13px;font-weight:700;color:#C9CAD6")}>{x}</span></React.Fragment>))}</div><span style={__style("font-size:16px;line-height:1.5;color:#A9ABBE")}>{a.short}</span><div style={__style("display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:auto;padding-top:14px;border-top:2px solid #2A2D42")}><span style={__style(`font-size:15px;font-weight:700;color:${a.closeColor}`)}>{a.closes}</span><button onClick={a.open} style={__style("all:unset;cursor:pointer;padding:12px 18px;border-radius:8px;background:#22D3C5;color:#0E0F1A;font-weight:800;font-size:15px")} className="h-bbf0fe71">{"View & apply"}</button></div></div></React.Fragment>))}</div></section><section style={__style("background:#F4F3EE;color:#0E0F1A")}><div style={__style("max-width:1320px;margin:0 auto;padding:100px 28px;display:flex;flex-direction:column;gap:48px")}><h2 style={__style("font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase")}>{"How it works"}</h2><div style={__style("display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))")}><div style={__style("display:flex;flex-direction:column;gap:12px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A")}><span style={__style("font-size:56px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83")}>{"01"}</span><span style={__style("font-size:24px;font-weight:800")}>{"Apply online"}</span><span style={__style("font-size:17px;line-height:1.5;color:#3A3C4E")}>{"Pick an open learnership, fill in the form and upload your ID and latest results. You get a reference number to track your application."}</span></div><div style={__style("display:flex;flex-direction:column;gap:12px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A")}><span style={__style("font-size:56px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83")}>{"02"}</span><span style={__style("font-size:24px;font-weight:800")}>{"Get selected"}</span><span style={__style("font-size:17px;line-height:1.5;color:#3A3C4E")}>{"We screen applications and may invite you to an interview or assessment. We email you at every step."}</span></div><div style={__style("display:flex;flex-direction:column;gap:12px;padding:28px 32px 28px 0;border-top:4px solid #0E0F1A")}><span style={__style("font-size:56px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83")}>{"03"}</span><span style={__style("font-size:24px;font-weight:800")}>{"Enrol and start"}</span><span style={__style("font-size:17px;line-height:1.5;color:#3A3C4E")}>{"You get a 9-digit student number and join your intake on the LMS, where you submit assignments towards your qualification."}</span></div></div></div></section><SiteFooter />{v.hasSel ? (<><div onClick={v.close} style={__style("position:fixed;inset:0;z-index:50;background:rgba(14,15,26,.75);display:flex;justify-content:flex-end")}><div onClick={v.stop} style={__style("width:min(640px,100%);height:100%;overflow:auto;background:#F4F3EE;color:#0E0F1A;padding:clamp(24px,4vw,44px);box-sizing:border-box;display:flex;flex-direction:column;gap:22px")}><div style={__style("display:flex;justify-content:space-between;align-items:flex-start;gap:16px")}><div style={__style("display:flex;flex-direction:column;gap:8px")}><span style={__style("font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0A8C83")}>{v.sel.kicker}</span><span style={__style("font-size:clamp(30px,3.6vw,44px);font-weight:900;font-stretch:112%;text-transform:uppercase;line-height:.95")}>{v.sel.name}</span></div><button onClick={v.close} aria-label={"Close"} style={__style("all:unset;cursor:pointer;flex:none;width:44px;height:44px;border-radius:50%;border:2px solid #0E0F1A;display:grid;place-items:center")}><svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2.75"} strokeLinecap={"round"} strokeLinejoin={"round"}><path d={"M18 6 6 18"}></path><path d={"m6 6 12 12"}></path></svg></button></div><div style={__style("display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:14px 20px;padding:20px;border-radius:12px;background:#fff")}>{(v.sel.details || []).map((d, $index) => (<React.Fragment key={$index}><div style={__style("display:flex;flex-direction:column;gap:2px")}><span style={__style("font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C7F96")}>{d.k}</span><span style={__style("font-size:16px;font-weight:700")}>{d.v}</span></div></React.Fragment>))}</div>{v.sel.hasDesc ? (<><p style={__style("margin:0;font-size:17px;line-height:1.6;color:#3A3C4E;white-space:pre-line")}>{v.sel.description}</p></>) : null}{v.sel.hasReqs ? (<><div style={__style("display:flex;flex-direction:column;gap:10px")}><span style={__style("font-size:20px;font-weight:900;font-stretch:108%;text-transform:uppercase")}>{"You'll need"}</span><div style={__style("display:flex;flex-direction:column;border-top:2px solid #0E0F1A")}>{(v.sel.reqs || []).map((r, $index) => (<React.Fragment key={$index}><span style={__style("padding:14px 0;border-bottom:2px solid #E2E0D8;font-size:16px")}>{r}</span></React.Fragment>))}</div></div></>) : null}{v.regOpen ? (<><a href={v.registerUrl} style={__style("align-self:flex-start;padding:18px 28px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800;font-size:17px;text-decoration:none")} className="h-d5a474dd">{"Apply for this learnership"}</a></>) : null}</div></div></>) : null}</div>);
+  }
+}
+
+export default LearnershipsPage;

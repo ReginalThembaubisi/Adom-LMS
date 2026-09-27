@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Adom · Course detail</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;display=swap">
+<script src="adom-data.js"></script>
+<style>html{scroll-behavior:smooth}body{margin:0;background:#0E0F1A}a{color:#22D3C5}a:hover{color:#7DEBE1}*:focus-visible{outline:2px solid #22D3C5;outline-offset:3px}</style>
+</helmet>
+<div style="min-height:100vh;background:#0E0F1A;color:#F4F3EE;font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden">
+<dc-import name="SiteHeader" active="courses" hint-size="100%,76px"></dc-import>
+
+<section style="max-width:1320px;margin:0 auto;padding:72px 28px 88px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:56px;align-items:center">
+  <div style="display:flex;flex-direction:column;gap:26px">
+    <a href="Courses.dc.html" style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#22D3C5;text-decoration:none;display:flex;align-items:center;gap:6px">
+      <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>All courses · {{ c.area }}
+    </a>
+    <h1 style="font-size:clamp(48px,7vw,104px);line-height:.9;margin:0;font-weight:900;font-stretch:115%;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance">{{ c.name }}</h1>
+    <p style="font-size:20px;line-height:1.5;margin:0;max-width:560px;color:#C9CAD6;text-wrap:pretty">{{ c.summary }}</p>
+    <div style="display:flex;gap:40px;flex-wrap:wrap;padding-top:4px">
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C7F96">Duration</span><span style="font-size:24px;font-weight:800">{{ c.months }} months</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C7F96">Modules</span><span style="font-size:24px;font-weight:800">{{ moduleCount }}</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C7F96">Study</span><span style="font-size:24px;font-weight:800">Campus or online</span></div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="{{ applyHref }}" style="padding:18px 28px;border-radius:10px;background:#22D3C5;color:#0E0F1A;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#7DEBE1;color:#0E0F1A">Apply for this course</a>
+      <a href="#modules" style="padding:16px 26px;border-radius:10px;border:2px solid #F4F3EE;color:#F4F3EE;font-weight:800;font-size:17px;text-decoration:none" style-hover="background:#F4F3EE;color:#0E0F1A">See modules</a>
+    </div>
+  </div>
+  <div style="position:relative;width:100%;max-width:600px;justify-self:end">
+    <div style="position:absolute;inset:18px -18px -18px 18px;border-radius:14px;background:#22D3C5"></div>
+    <div style="position:relative;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:#181A2A"><img src="{{ c.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>
+  </div>
+</section>
+
+<section style="background:#F4F3EE;color:#0E0F1A">
+  <div style="max-width:1320px;margin:0 auto;padding:100px 28px;display:flex;flex-direction:column;gap:40px">
+    <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">Where it gets you</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))">
+      <sc-for list="{{ careers }}" as="j" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:26px 32px 26px 0;border-top:4px solid #0E0F1A">
+          <span style="font-size:40px;font-weight:900;font-stretch:115%;line-height:1;color:#0A8C83">{{ j.n }}</span>
+          <span style="font-size:26px;font-weight:800">{{ j.title }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<section id="modules" style="max-width:1320px;margin:0 auto;padding:110px 28px;display:flex;flex-direction:column;gap:36px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+    <h2 style="font-size:clamp(40px,5.4vw,76px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">What you'll learn</h2>
+    <span style="font-size:16px;color:#A9ABBE">{{ totalCredits }} credits in total</span>
+  </div>
+  <div style="display:flex;flex-direction:column;border-top:2px solid #2A2D42">
+    <sc-for list="{{ modules }}" as="m" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:24px;align-items:center;padding:22px 0;border-bottom:2px solid #2A2D42">
+        <span style="font-size:18px;font-weight:800;color:#7C7F96">{{ m.n }}</span>
+        <span style="font-size:clamp(20px,2vw,26px);font-weight:800">{{ m.name }}</span>
+        <span style="font-size:15px;font-weight:700;color:#22D3C5">{{ m.credits }} credits</span>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section style="max-width:1320px;margin:0 auto;padding:0 28px 110px;display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:clamp(28px,3vw,40px);margin:0;font-weight:900;font-stretch:110%;text-transform:uppercase">Other courses</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:18px">
+    <sc-for list="{{ others }}" as="o" hint-placeholder-count="3">
+      <a href="{{ o.href }}" style="display:flex;flex-direction:column;gap:8px;padding:24px;border-radius:14px;background:#181A2A;color:#F4F3EE;text-decoration:none;border:2px solid #181A2A" style-hover="border-color:#22D3C5">
+        <span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#22D3C5">{{ o.area }}</span>
+        <span style="font-size:22px;font-weight:800">{{ o.name }}</span>
+      </a>
+    </sc-for>
+  </div>
+</section>
+
+<dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;courseId&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;systems-development&quot;,&quot;software-testing&quot;,&quot;end-user-computing&quot;,&quot;technical-support&quot;,&quot;graphic-design&quot;,&quot;advertising-marketing&quot;,&quot;business-analysis&quot;],&quot;default&quot;:&quot;systems-development&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { if (!window.ADOM) this.iv = setInterval(() => { if (window.ADOM) { clearInterval(this.iv); this.forceUpdate(); } }, 50); }
+  componentWillUnmount() { clearInterval(this.iv); }
+  renderVals() {
+    const all = (window.ADOM && window.ADOM.courses) || [];
+    const id = this.props.courseId;
+    const c = all.find(x => x.id === id) || all[0] || { name: '', area: '', summary: '', careers: [], modules: [] };
+    return {
+      c,
+      applyHref: 'Apply.dc.html?c=' + (c.id || ''),
+      moduleCount: c.modules.length,
+      totalCredits: c.modules.reduce((t, m) => t + m[1], 0),
+      careers: c.careers.map((t, i) => ({ title: t, n: String(i + 1).padStart(2, '0') })),
+      modules: c.modules.map(([name, credits], i) => ({ name, credits, n: String(i + 1).padStart(2, '0') })),
+      others: all.filter(x => x.id !== c.id).slice(0, 3).map(x => ({ ...x, href: 'Course.dc.html?c=' + x.id }))
+    };
+  }
+}
+</script>
+
+
+</body></html>
