@@ -1,0 +1,52 @@
+// Courses, contact details and demo jobs. Generated from design/adom-data.js; keep the two in step.
+export const ADOM = {
+  contact: { email: 'adomtechnologies@gmail.com', phone: '013 7633 8331', address: '10 Cameron Street, Lindokuhle House, Nelspruit' },
+  courses: [
+    { id: 'systems-development', name: 'Systems Development', area: 'Programming', img: '/assets/c1.jpg', months: 12,
+      outcome: 'Build business software from database to front end.',
+      summary: 'Learn to build mobile and web apps, and the backend systems behind them. You write, test and document real code for real briefs.',
+      careers: ['Software Developer', 'Software Tester', 'Systems Software Engineer'],
+      modules: [['Programming Fundamentals', 20], ['Web Development', 20], ['Databases & SQL', 15], ['Mobile App Development', 20], ['Object-Oriented Programming', 20], ['Systems Analysis & Design', 15], ['Software Project', 30]] },
+    { id: 'software-testing', name: 'Software Testing', area: 'Programming', img: '/assets/c6.jpg', months: 12,
+      outcome: 'Manual and automated testing. Catch bugs before users do.',
+      summary: 'Test software while it is being built: analyse requirements, find weaknesses, check security and write the reports developers act on.',
+      careers: ['QA Engineer', 'Test Analyst', 'Test Manager'],
+      modules: [['Testing Fundamentals', 20], ['Requirements Analysis', 15], ['Test Automation', 20], ['Security Testing', 15], ['Performance Testing', 15], ['Testing Project', 30]] },
+    { id: 'end-user-computing', name: 'End-User Computing', area: 'Technology', img: '/assets/c2.jpeg', months: 12,
+      outcome: 'Office software, email and files. The basics every job asks for.',
+      summary: 'Get confident with Microsoft Office (Word, Excel, PowerPoint), the internet and email, the everyday tools of any office job.',
+      careers: ['Admin Clerk', 'Assistant Clerk', 'HR Assistant'],
+      modules: [['Computer Basics', 10], ['Word Processing', 15], ['Spreadsheets', 20], ['Presentations', 10], ['Internet & Email', 10], ['Workplace Project', 20]] },
+    { id: 'technical-support', name: 'Technical Support', area: 'Technology', img: '/assets/c4.png', months: 12,
+      outcome: 'Repair hardware, set up networks, solve user problems.',
+      summary: 'Troubleshoot and fix computers, printers and management systems. You work on real machines in our support workshop.',
+      careers: ['IT Technician', 'Hardware Specialist', 'Help Desk Support'],
+      modules: [['Computer Hardware', 20], ['Operating Systems', 20], ['Networking Essentials', 20], ['Printers & Peripherals', 10], ['Customer Support', 10], ['Workshop Practical', 30]] },
+    { id: 'graphic-design', name: 'Graphic Design', area: 'Art & Media', img: '/assets/c3.jpg', months: 12,
+      outcome: 'Logos, print and social. Leave with a portfolio.',
+      summary: 'Design magazines, newspapers, posters and brand identities with industry software, guided by a working designer.',
+      careers: ['Graphic Designer', 'Layout Artist', 'Junior Brand Designer'],
+      modules: [['Design Principles', 15], ['Typography', 15], ['Adobe Photoshop', 20], ['Adobe Illustrator', 20], ['Print & Layout', 15], ['Portfolio Project', 30]] },
+    { id: 'advertising-marketing', name: 'Advertising & Marketing', area: 'Art & Media', img: '/assets/c7.jpg', months: 12,
+      outcome: 'Plan campaigns, write ads, read the numbers.',
+      summary: 'Plan and run campaigns across print, social and search, then measure what worked.',
+      careers: ['Marketing Assistant', 'Social Media Coordinator', 'Copywriter'],
+      modules: [['Marketing Principles', 15], ['Copywriting', 15], ['Digital & Social Media', 20], ['Campaign Planning', 20], ['Analytics', 15], ['Campaign Project', 30]] },
+    { id: 'business-analysis', name: 'Business Analysis', area: 'Business', img: '/assets/c5.jpg', months: 12,
+      outcome: 'Turn what a business needs into specs developers can build.',
+      summary: 'Analyse and manage businesses, processes and supply chains, and turn what you find into clear requirements.',
+      careers: ['Business Analyst', 'Project Manager', 'Supply Chain Coordinator'],
+      modules: [['Business Fundamentals', 15], ['Process Modelling', 20], ['Requirements Engineering', 20], ['Project Management', 20], ['Supply Chain Management', 15], ['Analysis Project', 30]] }
+  ],
+  jobCategories: [
+    { name: 'Internships', count: 125 }, { name: 'Graduate programmes', count: 11 }, { name: 'Learnerships', count: 13 },
+    { name: 'Grade 12 holders', count: 9 }, { name: 'Entry-level jobs', count: 17 }, { name: 'Government jobs', count: 0 }
+  ],
+  jobs: [
+    { title: 'IT Mentor', roles: 3, division: 'Software Development', type: 'Internships', closing: '31 January' },
+    { title: 'Software Developer', roles: 8, division: 'Software Development', type: 'Internships', closing: '31 January' },
+    { title: 'IT Specialist', roles: 3, division: 'Technical Support', type: 'Internships', closing: '31 January' },
+    { title: 'Project Manager', roles: 1, division: 'Business', type: 'Internships', closing: '31 January' },
+    { title: 'Cleaner', roles: 2, division: 'Facilities', type: 'Internships', closing: '31 January' }
+  ]
+};

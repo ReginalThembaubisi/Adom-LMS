@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Adom · Apply online</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;display=swap">
+<script src="adom-data.js"></script>
+<script src="adom-api.js"></script>
+<style>body{margin:0;background:#F4F3EE}a{color:#0A8C83}a:hover{color:#0E0F1A}*:focus-visible{outline:2px solid #0A8C83;outline-offset:3px}input,select,textarea{font:inherit}</style>
+</helmet>
+<div style="min-height:100vh;background:#F4F3EE;color:#0E0F1A;font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden">
+<dc-import name="SiteHeader" active="apply" hint-size="100%,76px"></dc-import>
+
+<section style="background:#0E0F1A;color:#F4F3EE">
+  <div style="max-width:1320px;margin:0 auto;padding:64px 28px 56px;display:flex;flex-direction:column;gap:18px">
+    <span style="font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#22D3C5">Study@Adom / Apply online</span>
+    <h1 style="font-size:clamp(44px,6.4vw,92px);line-height:.9;margin:0;font-weight:900;font-stretch:115%;letter-spacing:-.02em;text-transform:uppercase">Apply in about 15 minutes.</h1>
+    <p style="font-size:18px;line-height:1.5;margin:0;max-width:620px;color:#C9CAD6">Your progress is kept as you go. Have your ID, latest school results and any transcripts ready to upload.</p>
+  </div>
+</section>
+
+<section style="max-width:1320px;margin:0 auto;padding:48px 28px 110px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+  <aside style="background:#0E0F1A;color:#F4F3EE;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:4px;position:sticky;top:96px;flex:1 1 260px;max-width:340px;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px 14px">
+      <span style="font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C7F96">Progress</span>
+      <span style="font-size:15px;font-weight:800;color:#22D3C5">{{ pct }}%</span>
+    </div>
+    <div style="height:6px;border-radius:3px;background:#2A2D42;margin:0 8px 14px;overflow:hidden"><div style="height:100%;width:{{ pct }}%;background:#22D3C5;transition:width .3s"></div></div>
+    <sc-for list="{{ steps }}" as="s" hint-placeholder-count="9">
+      <button sc-camel-on-click="{{ s.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:8px;font-size:15px;font-weight:700;color:{{ s.fg }};background:{{ s.bg }}">
+        <span style="width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;background:{{ s.dotBg }};color:{{ s.dotFg }}">{{ s.mark }}</span>{{ s.label }}
+      </button>
+    </sc-for>
+  </aside>
+
+  <div style="flex:999 1 480px;min-width:0;max-width:820px;display:flex;flex-direction:column;gap:28px">
+    <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#0E0F1A;color:#F4F3EE;border-radius:16px;padding:clamp(28px,5vw,56px);display:flex;flex-direction:column;gap:18px">
+        <span style="width:64px;height:64px;border-radius:50%;background:#22D3C5;color:#0E0F1A;display:grid;place-items:center"><svg width="30" height="30" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <h2 style="font-size:clamp(36px,4.6vw,60px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">Application sent</h2>
+        <p style="font-size:18px;line-height:1.5;margin:0;color:#C9CAD6">Your reference number is <strong style="color:#22D3C5">{{ ref }}</strong>. We've emailed a copy. Use it with your ID number to check your status any time.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="Status.dc.html" style="padding:16px 26px;border-radius:10px;background:#22D3C5;color:#0E0F1A;font-weight:800;text-decoration:none">Check status</a>
+          <a href="Main.dc.html" style="padding:14px 24px;border-radius:10px;border:2px solid #F4F3EE;color:#F4F3EE;font-weight:800;text-decoration:none">Back to home</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0A8C83">Step {{ stepNo }} of 9</span>
+        <h2 style="font-size:clamp(34px,4vw,56px);line-height:.95;margin:0;font-weight:900;font-stretch:112%;text-transform:uppercase">{{ stepTitle }}</h2>
+      </div>
+
+      <sc-if value="{{ st.s0 }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <span style="font-size:17px;font-weight:700">Do you already have an Adom student number?</span>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button sc-camel-on-click="{{ hasNumYes }}" style="all:unset;cursor:pointer;padding:14px 22px;border-radius:10px;border:2px solid #0E0F1A;font-weight:800;background:{{ yesBg }};color:{{ yesFg }}">Yes, I do</button>
+            <button sc-camel-on-click="{{ hasNumNo }}" style="all:unset;cursor:pointer;padding:14px 22px;border-radius:10px;border:2px solid #0E0F1A;font-weight:800;background:{{ noBg }};color:{{ noFg }}">No, I'm new</button>
+          </div>
+          <sc-if value="{{ hasNum }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:20px 24px;border-radius:12px;background:#fff;border:2px solid #0E0F1A;font-size:16px;line-height:1.5">Returning students apply through the portal. <a href="Dashboard.dc.html" style="font-weight:800">Log in to myAdom</a></div>
+          </sc-if>
+          <div style="padding:22px 24px;border-radius:12px;background:#fff;font-size:15px;line-height:1.6;color:#3A3C4E;max-height:160px;overflow:auto">By applying you confirm that the information you give is true and complete. Adom may verify your documents with the issuing institutions. False information may lead to your application being cancelled. Your personal information is processed under the Protection of Personal Information Act (POPIA) and used only for admission.</div>
+          <label style="display:flex;gap:12px;align-items:center;font-size:16px;font-weight:700;cursor:pointer"><input type="checkbox" checked="{{ agreed }}" sc-camel-on-change="{{ toggleAgree }}" style="width:22px;height:22px;accent-color:#0E0F1A">I accept the terms and conditions</label>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s1 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">ID type<sc-raw-select name="idType" sc-camel-default-value="{{ v.idType }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>South African ID</option><option>Passport</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">ID / passport number<input name="idNumber" sc-camel-default-value="{{ v.idNumber }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Title<sc-raw-select name="title" sc-camel-default-value="{{ v.title }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Date of birth<input type="date" name="dob" sc-camel-default-value="{{ v.dob }}" sc-camel-on-change="{{ set }}" style="padding:13px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">First names<input name="names" sc-camel-default-value="{{ v.names }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Surname<input name="surname" sc-camel-default-value="{{ v.surname }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Gender<sc-raw-select name="gender" sc-camel-default-value="{{ v.gender }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Female</option><option>Male</option><option>Prefer not to say</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Home language<sc-raw-select name="language" sc-camel-default-value="{{ v.language }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>siSwati</option><option>isiZulu</option><option>English</option><option>Afrikaans</option><option>Xitsonga</option><option>isiNdebele</option><option>Sepedi</option><option>Other</option></sc-raw-select></label>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s2 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Email<input type="email" name="email" sc-camel-default-value="{{ v.email }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Cellphone<input type="tel" name="cell" sc-camel-default-value="{{ v.cell }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          </div>
+          <span style="font-size:20px;font-weight:800">Physical address</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Street / unit<input name="addr1" sc-camel-default-value="{{ v.addr1 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Suburb<input name="addr2" sc-camel-default-value="{{ v.addr2 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Town<input name="addr3" sc-camel-default-value="{{ v.addr3 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Postal code<input name="addr4" sc-camel-default-value="{{ v.addr4 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          </div>
+          <label style="display:flex;gap:12px;align-items:center;font-size:16px;font-weight:700;cursor:pointer"><input type="checkbox" checked="{{ postalSame }}" sc-camel-on-change="{{ togglePostal }}" style="width:22px;height:22px;accent-color:#0E0F1A">My postal address is the same</label>
+          <sc-if value="{{ postalDiff }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Postal address<input name="post1" sc-camel-default-value="{{ v.post1 }}" sc-camel-on-change="{{ set }}" placeholder="P O Box" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Town<input name="post3" sc-camel-default-value="{{ v.post3 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Postal code<input name="post4" sc-camel-default-value="{{ v.post4 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s3 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Full name<input name="kinName" sc-camel-default-value="{{ v.kinName }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Relationship<sc-raw-select name="kinRel" sc-camel-default-value="{{ v.kinRel }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Parent</option><option>Guardian</option><option>Spouse</option><option>Sibling</option><option>Other</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Cellphone<input type="tel" name="kinCell" sc-camel-default-value="{{ v.kinCell }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Email<input type="email" name="kinEmail" sc-camel-default-value="{{ v.kinEmail }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;grid-column:1/-1">Address<input name="kinAddr" sc-camel-default-value="{{ v.kinAddr }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s4 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Finished Grade 12?<sc-raw-select name="g12" sc-camel-default-value="{{ v.g12 }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Yes</option><option>No, I'm in Grade 12 now</option><option>No</option></sc-raw-select></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Highest grade passed<sc-raw-select name="grade" sc-camel-default-value="{{ v.grade }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Grade 12</option><option>Grade 11</option><option>Grade 10</option><option>Grade 9</option></sc-raw-select></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">School name<input name="school" sc-camel-default-value="{{ v.school }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Province<sc-raw-select name="province" sc-camel-default-value="{{ v.province }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Mpumalanga</option><option>Gauteng</option><option>Limpopo</option><option>KwaZulu-Natal</option><option>North West</option><option>Free State</option><option>Eastern Cape</option><option>Western Cape</option><option>Northern Cape</option></sc-raw-select></label>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+            <span style="font-size:20px;font-weight:800">Latest results</span>
+            <span style="font-size:14px;color:#3A3C4E">{{ subjectCount }} of 9 subjects</span>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;flex:2;min-width:200px">Subject<sc-raw-select value="{{ subj }}" sc-camel-on-change="{{ setSubj }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>Mathematics</option><option>Mathematical Literacy</option><option>English Home Language</option><option>English FAL</option><option>Physical Sciences</option><option>Life Sciences</option><option>Information Technology</option><option>Computer Applications Technology</option><option>Accounting</option><option>Business Studies</option><option>Visual Arts</option><option>Life Orientation</option></sc-raw-select></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;flex:1;min-width:120px">Mark (%)<input type="number" min="0" max="100" value="{{ mark }}" sc-camel-on-change="{{ setMark }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <button sc-camel-on-click="{{ addSubject }}" style="all:unset;cursor:pointer;padding:16px 22px;border-radius:8px;background:#0E0F1A;color:#F4F3EE;font-weight:800" style-hover="background:#0A8C83">Add</button>
+          </div>
+          <div style="display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden">
+            <sc-for list="{{ subjects }}" as="s" hint-placeholder-count="0">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px 80px 40px;gap:12px;align-items:center;padding:14px 18px;border-bottom:2px solid #F4F3EE">
+                <span style="font-weight:700">{{ s.name }}</span><span>{{ s.mark }}%</span><span style="color:#0A8C83;font-weight:800">Level {{ s.level }}</span>
+                <button sc-camel-on-click="{{ s.remove }}" aria-label="Remove" style="all:unset;cursor:pointer;width:32px;height:32px;border-radius:50%;display:grid;place-items:center" style-hover="background:#F4F3EE"><svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noSubjects }}" hint-placeholder-val="{{ true }}"><span style="padding:18px;color:#3A3C4E;font-size:15px">No subjects added yet.</span></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s5 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">What are you doing now?<sc-raw-select name="activity" sc-camel-default-value="{{ v.activity }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>At school</option><option>Studying elsewhere</option><option>Gap year</option><option>Employed</option><option>Unemployed</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Studied after school before?<sc-raw-select name="prevStudy" sc-camel-default-value="{{ v.prevStudy }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>No</option><option>Yes</option></sc-raw-select></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;grid-column:1/-1">Institution name (if yes)<input name="institution" sc-camel-default-value="{{ v.institution }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s6 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span style="font-size:16px;font-weight:800">What are you applying for?</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px">
+            <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="4">
+              <button sc-camel-on-click="{{ k.pick }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px 20px;border-radius:12px;border:2px solid #0E0F1A;background:{{ k.bg }};color:{{ k.fg }}">
+                <span style="font-size:20px;font-weight:800">{{ k.label }}</span>
+                <span style="font-size:14px;line-height:1.4">{{ k.hint }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{ kindLearnership }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;margin-top:28px;padding-top:28px;border-top:2px solid #E2E0D8">
+            <span style="font-size:16px;color:#3A3C4E">Choose the learnership you're applying for.</span>
+            <sc-if value="{{ noLearnerships }}" hint-placeholder-val="{{ false }}">
+              <span style="padding:18px 20px;border-radius:12px;background:#fff;font-size:16px;line-height:1.5">No learnerships are open right now. See the <a href="Learnerships.dc.html" style="color:#0A8C83;font-weight:800">Learnerships page</a> for the next intake.</span>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px">
+              <sc-for list="{{ learnershipOpts }}" as="l" hint-placeholder-count="2">
+                <button sc-camel-on-click="{{ l.pick }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px 20px;border-radius:12px;border:2px solid #0E0F1A;background:{{ l.bg }};color:{{ l.fg }}">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase">{{ l.kicker }}</span>
+                  <span style="font-size:20px;font-weight:800">{{ l.name }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ kindInternship }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px;padding-top:28px;border-top:2px solid #E2E0D8">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Which internship are you applying for?<input name="interest" sc-camel-default-value="{{ v.interest }}" sc-camel-on-change="{{ set }}" placeholder="e.g. Software Developer" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+            <span style="font-size:14px;color:#3A3C4E">Open internships are listed on our <a href="Careers.dc.html" style="color:#0A8C83;font-weight:800">Careers page</a>.</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ kindPlacement }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px;padding-top:28px;border-top:2px solid #E2E0D8">
+            <span style="font-size:16px;color:#3A3C4E">For final-year students who need a workplace for their work-integrated learning (WIL) before they can graduate.</span>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">University<input name="university" sc-camel-default-value="{{ v.university }}" sc-camel-on-change="{{ set }}" placeholder="e.g. Tshwane University of Technology" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Qualification<input name="interest" sc-camel-default-value="{{ v.interest }}" sc-camel-on-change="{{ set }}" placeholder="e.g. Diploma in Information Technology" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Placement must start<input type="month" name="wilStart" sc-camel-default-value="{{ v.wilStart }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">Time required at the workplace<sc-raw-select name="wilLength" sc-camel-default-value="{{ v.wilLength }}" sc-camel-on-change="{{ set }}" style="padding:14px;border:2px solid #0E0F1A;border-radius:8px;background:#fff;font-size:16px"><option>3 months</option><option>6 months</option><option>12 months</option><option>Other</option></sc-raw-select></label>
+            </div>
+            <span style="font-size:14px;color:#3A3C4E">You'll upload your proof of registration and your university's placement letter under Documents.</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ kindCourse }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:16px;margin-top:28px;padding-top:28px;border-top:2px solid #E2E0D8">
+          <span style="font-size:16px;color:#3A3C4E">Choose up to 3 courses, in order of preference. {{ chosenCount }} selected.</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px">
+            <sc-for list="{{ courseOpts }}" as="c" hint-placeholder-count="7">
+              <button sc-camel-on-click="{{ c.toggle }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px 20px;border-radius:12px;border:2px solid #0E0F1A;background:{{ c.bg }};color:{{ c.fg }}">
+                <span style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase"><span>{{ c.area }}</span><span>{{ c.rank }}</span></span>
+                <span style="font-size:20px;font-weight:800">{{ c.name }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ st.s7 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+            <label style="display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:12px;background:#fff;border:2px dashed {{ d.border }};cursor:pointer">
+              <span style="width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;background:{{ d.iconBg }};color:{{ d.iconFg }}"><svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span>
+              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0"><span style="font-weight:800;font-size:17px">{{ d.label }}</span><span style="font-size:14px;color:#3A3C4E;overflow:hidden;text-overflow:ellipsis">{{ d.status }}</span></span>
+              <input type="file" name="{{ d.key }}" sc-camel-on-change="{{ setFile }}" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+              <span style="font-size:14px;font-weight:800;color:#0A8C83">Choose file</span>
+            </label>
+          </sc-for>
+          <span style="font-size:14px;color:#3A3C4E">Your ID or passport is required. PDF, JPG or PNG, up to 5 MB each. Certified copies only.</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.s8 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ review }}" as="r" hint-placeholder-count="5">
+            <div style="background:#fff;border-radius:12px;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:18px;font-weight:800">{{ r.title }}</span><button sc-camel-on-click="{{ r.edit }}" style="all:unset;cursor:pointer;font-size:14px;font-weight:800;color:#0A8C83">Edit</button></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px 20px">
+                <sc-for list="{{ r.rows }}" as="x" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C7F96">{{ x.k }}</span><span style="font-size:16px">{{ x.v }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="padding:16px 20px;border-radius:12px;background:#FFE1E1;color:#8A1C1C;font-size:16px;font-weight:700">{{ error }}</div>
+      </sc-if>
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:2px solid #E2E0D8">
+        <button sc-camel-on-click="{{ back }}" disabled="{{ atStart }}" style="all:unset;cursor:pointer;padding:15px 24px;border-radius:10px;border:2px solid #0E0F1A;font-weight:800;opacity:{{ backOpacity }}">Back</button>
+        <button sc-camel-on-click="{{ next }}" disabled="{{ nextDisabled }}" style="all:unset;cursor:pointer;padding:17px 30px;border-radius:10px;background:#0E0F1A;color:#F4F3EE;font-weight:800;font-size:17px;opacity:{{ nextOpacity }}" style-hover="background:#0A8C83">{{ nextLabel }}</button>
+      </div>
+    </sc-if>
+  </div>
+</section>
+
+<dc-import name="SiteFooter" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+class Component extends DCLogic {
+  labels = ['Before you start', 'Personal details', 'Contact details', 'Next of kin', 'School results', 'Previous study', 'What you’re applying for', 'Documents', 'Review & submit'];
+  state = {
+    step: 0, agreed: false, hasNum: null, postalSame: true, done: false,
+    v: { idType: 'South African ID', title: 'Mr', gender: 'Female', language: 'siSwati', kinRel: 'Parent', g12: 'Yes', grade: 'Grade 12', province: 'Mpumalanga', activity: 'At school', prevStudy: 'No', wilLength: '3 months' },
+    subjects: [], subj: 'Mathematics', mark: '', chosen: [], files: {}, submitting: false, error: '', kind: 'course', learnershipId: null, learnerships: []
+  };
+  componentDidMount() {
+    const c = new URLSearchParams(location.search).get('c');
+    if (c) this.setState({ chosen: [c] });
+    const t = new URLSearchParams(location.search).get('type');
+    if (t) this.setState({ kind: t });
+    const l = new URLSearchParams(location.search).get('learnership');
+    if (l) this.setState({ kind: 'learnership', learnershipId: l });
+    const loadLs = () => AdomAPI.list().then(ads => this.setState({ learnerships: ads.filter(a => a.status === 'Open') })).catch(() => {});
+    if (window.AdomAPI) loadLs(); else this.lv = setInterval(() => { if (window.AdomAPI) { clearInterval(this.lv); loadLs(); } }, 50);
+    if (!window.ADOM) this.iv = setInterval(() => { if (window.ADOM) { clearInterval(this.iv); this.forceUpdate(); } }, 50);
+  }
+  componentWillUnmount() { clearInterval(this.iv); clearInterval(this.lv); }
+  level(m) { m = +m; return m >= 80 ? 7 : m >= 70 ? 6 : m >= 60 ? 5 : m >= 50 ? 4 : m >= 40 ? 3 : m >= 30 ? 2 : 1; }
+  fileObjs = {};
+  // Sends the application to the LMS (or, in demo mode, pretends to) and shows the reference.
+  async submit() {
+    const s = this.state, v = s.v;
+    const courses = (window.ADOM && window.ADOM.courses) || [];
+    const fields = {
+      programmeType: s.kind.toUpperCase(),
+      idType: v.idType, idNumber: v.idNumber, title: v.title, firstNames: v.names, surname: v.surname,
+      dateOfBirth: v.dob, gender: v.gender, homeLanguage: v.language,
+      email: v.email, phone: v.cell, streetAddress: v.addr1, suburb: v.addr2, town: v.addr3, postalCode: v.addr4, province: v.province,
+      kinName: v.kinName, kinRelationship: v.kinRel, kinPhone: v.kinCell,
+      highestGrade: v.grade, schoolName: v.school, currentActivity: v.activity,
+      subjectsJson: s.subjects.length ? JSON.stringify(s.subjects.map(x => ({ name: x.name, mark: Number(x.mark) }))) : '',
+      previousStudy: v.prevStudy === 'Yes' ? (v.institution || 'Yes') : '',
+      popiaConsent: 'true', website: ''
+    };
+    if (s.kind === 'course') fields.courseChoices = s.chosen.map(id => (courses.find(c => c.id === id) || {}).name).filter(Boolean);
+    if (s.kind === 'learnership') fields.learnershipSlug = s.learnershipId;
+    if (s.kind === 'internship') fields.positionTitle = v.interest;
+    if (s.kind === 'placement') Object.assign(fields, { university: v.university, qualification: v.interest, placementStart: v.wilStart, placementLength: v.wilLength });
+    const f = this.fileObjs;
+    const files = { idCopy: f.id, results: f.results, transcript: f.transcript, registration: f.registration, placementLetter: f.wilLetter };
+    this.setState({ submitting: true, error: '' });
+    try {
+      const res = await AdomAPI.submitApplication(fields, files);
+      this.ref = res.reference;
+      this.setState({ done: true, submitting: false });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      this.setState({ submitting: false, error: e.message });
+    }
+  }
+  go(i) { this.setState({ step: i }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  renderVals() {
+    const s = this.state, v = s.v, n = this.labels.length;
+    const courses = (window.ADOM && window.ADOM.courses) || [];
+    const st = {}; this.labels.forEach((_, i) => st['s' + i] = i === s.step);
+    const dash = (x) => x || '—';
+    const docDefs = s.kind === 'placement'
+      ? [['id', 'Certified ID or passport'], ['registration', 'Proof of registration at your university'], ['wilLetter', 'Placement letter from your university'], ['transcript', 'Academic record']]
+      : [['id', 'Certified ID or passport'], ['results', 'Latest school results'], ['transcript', 'Tertiary transcript (if any)']];
+    const canNext = s.step === 7 ? !!s.files.id : s.step === 0 ? s.agreed && s.hasNum === false : s.step === 6 ? (s.kind === 'course' ? s.chosen.length > 0 : s.kind === 'learnership' ? !!s.learnershipId : s.kind === 'placement' ? !!(v.university && v.interest) : !!v.interest) : true;
+    const on = (b) => ({ bg: b ? '#0E0F1A' : 'transparent', fg: b ? '#F4F3EE' : '#0E0F1A' });
+    return {
+      st, done: s.done, notDone: !s.done, ref: this.ref,
+      stepNo: s.step + 1, stepTitle: this.labels[s.step],
+      pct: s.done ? 100 : Math.round(s.step / n * 100),
+      steps: this.labels.map((label, i) => {
+        const cur = i === s.step, past = i < s.step;
+        return { label, mark: past ? '✓' : String(i + 1), go: () => (past || cur) && this.go(i),
+          fg: cur ? '#0E0F1A' : past ? '#F4F3EE' : '#7C7F96', bg: cur ? '#22D3C5' : 'transparent',
+          dotBg: cur ? '#0E0F1A' : past ? '#22D3C5' : '#2A2D42', dotFg: cur ? '#22D3C5' : past ? '#0E0F1A' : '#A9ABBE' };
+      }),
+      v, set: (e) => { const { name, value } = e.target; this.setState(p => ({ v: { ...p.v, [name]: value } })); },
+      agreed: s.agreed, toggleAgree: () => this.setState({ agreed: !s.agreed }),
+      hasNum: s.hasNum === true,
+      hasNumYes: () => this.setState({ hasNum: true }), hasNumNo: () => this.setState({ hasNum: false }),
+      yesBg: on(s.hasNum === true).bg, yesFg: on(s.hasNum === true).fg, noBg: on(s.hasNum === false).bg, noFg: on(s.hasNum === false).fg,
+      postalSame: s.postalSame, postalDiff: !s.postalSame, togglePostal: () => this.setState({ postalSame: !s.postalSame }),
+      subj: s.subj, mark: s.mark,
+      setSubj: (e) => this.setState({ subj: e.target.value }), setMark: (e) => this.setState({ mark: e.target.value }),
+      addSubject: () => { if (s.mark === '' || s.subjects.length >= 9 || s.subjects.some(x => x.name === s.subj)) return; this.setState({ subjects: [...s.subjects, { name: s.subj, mark: s.mark }], mark: '' }); },
+      subjects: s.subjects.map((x, i) => ({ ...x, level: this.level(x.mark), remove: () => this.setState({ subjects: s.subjects.filter((_, j) => j !== i) }) })),
+      subjectCount: s.subjects.length, noSubjects: s.subjects.length === 0,
+      kinds: [['course', 'A course', '12 months, on campus or online'], ['learnership', 'A learnership', 'Earn while you learn'], ['internship', 'An internship', 'Work experience'], ['placement', 'University placement', 'Final-year workplace (WIL)']]
+        .map(([key, label, hint]) => ({ label, hint, ...on(s.kind === key), pick: () => this.setState({ kind: key }) })),
+      kindCourse: s.kind === 'course', kindLearnership: s.kind === 'learnership', kindInternship: s.kind === 'internship', kindPlacement: s.kind === 'placement',
+      noLearnerships: s.learnerships.length === 0,
+      learnershipOpts: s.learnerships.map(l => ({ name: l.name, kicker: l.seta || 'Learnership', ...on(s.learnershipId === l.id), pick: () => this.setState({ learnershipId: l.id }) })),
+      chosenCount: s.chosen.length,
+      courseOpts: courses.map(c => {
+        const idx = s.chosen.indexOf(c.id), sel = idx >= 0;
+        return { name: c.name, area: c.area, rank: sel ? 'Choice ' + (idx + 1) : '', ...on(sel),
+          toggle: () => this.setState({ chosen: sel ? s.chosen.filter(x => x !== c.id) : s.chosen.length < 3 ? [...s.chosen, c.id] : s.chosen }) };
+      }),
+      docs: docDefs.map(([key, label]) => {
+        const f = s.files[key];
+        return { key, label, status: f || 'No file chosen', border: f ? '#0A8C83' : '#A9ABBE', iconBg: f ? '#22D3C5' : '#F4F3EE', iconFg: '#0E0F1A' };
+      }),
+      setFile: (e) => { const { name, files } = e.target; if (files && files[0]) { this.fileObjs[name] = files[0]; this.setState(p => ({ files: { ...p.files, [name]: files[0].name } })); } },
+      review: [
+        { title: 'Personal', step: 1, rows: [['Name', [v.title, v.names, v.surname].filter(Boolean).join(' ')], [v.idType, v.idNumber], ['Date of birth', v.dob], ['Home language', v.language]] },
+        { title: 'Contact', step: 2, rows: [['Email', v.email], ['Cellphone', v.cell], ['Address', [v.addr1, v.addr2, v.addr3, v.addr4].filter(Boolean).join(', ')]] },
+        { title: 'Next of kin', step: 3, rows: [['Name', v.kinName], ['Relationship', v.kinRel], ['Cellphone', v.kinCell]] },
+        { title: 'School', step: 4, rows: [['School', v.school], ['Highest grade', v.grade], ['Subjects', s.subjects.length ? s.subjects.map(x => x.name + ' ' + x.mark + '%').join(', ') : '']] },
+        { title: 'Applying for', step: 6, rows: s.kind === 'course' ? s.chosen.map((id, i) => ['Course choice ' + (i + 1), (courses.find(c => c.id === id) || {}).name])
+            : s.kind === 'learnership' ? [['Learnership', (s.learnerships.find(l => l.id === s.learnershipId) || {}).name]]
+            : s.kind === 'internship' ? [['Internship', v.interest]] : [['University', v.university], ['Qualification', v.interest], ['Starts', v.wilStart], ['Duration', v.wilLength || '3 months']] },
+        { title: 'Documents', step: 7, rows: docDefs.map(([k, l]) => [l, s.files[k]]) }
+      ].map(r => ({ title: r.title, edit: () => this.go(r.step), rows: r.rows.map(([k, x]) => ({ k, v: dash(x) })) })),
+      atStart: s.step === 0, backOpacity: s.step === 0 ? 0.35 : 1,
+      nextDisabled: !canNext, nextOpacity: canNext ? 1 : 0.35,
+      nextLabel: s.step === 0 ? 'Start application' : s.step === n - 1 ? (s.submitting ? 'Sending…' : 'Submit application') : 'Next',
+      hasError: !!s.error, error: s.error,
+      back: () => s.step > 0 && this.go(s.step - 1),
+      next: () => {
+        if (!canNext) return;
+        if (s.step === n - 1) { if (!s.submitting) this.submit(); }
+        else this.go(s.step + 1);
+      }
+    };
+  }
+}
+</script>
+
+
+</body></html>

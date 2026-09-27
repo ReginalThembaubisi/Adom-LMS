@@ -1,0 +1,21 @@
+{
+  "name": "adom-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "The public Adom Technologies website. Static, prerendered HTML; forms post to the Adom LMS.",
+  "scripts": {
+    "dev": "vite",
+    "convert": "python3 tools/convert_design.py design src",
+    "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist-server && node prerender.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.1"
+  }
+}
