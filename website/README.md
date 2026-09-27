@@ -30,15 +30,16 @@ The LMS must also allow the website to call it. On the LMS's Render service, set
 
 ### Option A: Render static site (updates itself on every push)
 
-In the Render dashboard: **New → Static Site**, choose this repository, then:
+This is how the site is hosted now: the **adom-website** static site (https://adom-website.onrender.com), set up as follows.
 
 | Setting | Value |
 |---|---|
-| Branch | `main` |
-| Root directory | `website` |
-| Build command | `npm ci && npm run build` |
-| Publish directory | `dist` |
-| Environment | `VITE_SITE_URL` = the site's address (and `VITE_LMS_URL` if the LMS moves) |
+| Branch | `main` (every push to `main` rebuilds the site) |
+| Build command | `cd website && npm ci && npm run build` |
+| Publish directory | `website/dist` |
+| Environment | `NODE_VERSION=22`, `VITE_LMS_URL=https://adom-lms-portal.onrender.com`, `VITE_SITE_URL=` the site's address |
+
+When the custom domain goes live, change `VITE_SITE_URL` on the static site and add the domain to `CORS_ALLOWED_ORIGINS` on the LMS service (comma-separated, keeping the onrender.com address).
 
 Then add the custom domain under **Settings → Custom Domains** and create the DNS records Render shows you in xneelo's control panel. Email hosted at xneelo is unaffected, because email uses different DNS records (MX).
 
