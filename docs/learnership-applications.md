@@ -1,11 +1,13 @@
-# Learnership adverts and applications
+# Learnership adverts, applications and appointments
 
-How the public website and the LMS share learnerships and applications.
+How the public website and the LMS share learnerships, applications and appointment requests.
+
+People apply for five kinds of thing: a **course**, a **learnership**, an **internship**, a **job**, or a **university placement** (final-year work-integrated learning for students at TUT, DUT and similar). All five go through the same pipeline and appear in the admin dashboard's *Applications* tab, which can be filtered by type. Only learnership applicants can be enrolled on the LMS. For internships and placements, staff record which company the applicant was placed at.
 
 ## Flow
 
 1. **Admin publishes an advert.** In the admin dashboard, open *Learnership Adverts*, fill in the advert and set its status to **Open**. It shows on the website at once and drops off automatically after its closing date.
-2. **The public applies on the website.** The website posts the application form and documents to the LMS. The applicant gets a reference number such as `ADM-7KQ2M9XP`.
+2. **The public applies on the website.** The website posts the application form and documents to the LMS. The applicant gets a reference number such as `ADM-7KQ2M9XP`. Courses, internships, jobs and placements don't need an advert first.
 3. **Admissions staff review it.** The *Applications* tab moves applications through `SUBMITTED → SCREENING → SHORTLISTED → INTERVIEW → ACCEPTED / WAITLISTED / DECLINED`. Each move is recorded in the application's history and, by default, emailed to the applicant.
 4. **Accepted applicants are enrolled.** *Enrol* creates the learner: a 9-digit student number, the learnership, its modules and a cohort (defaulting to the advert's intake). The uploaded ID copy, results and CV become the first versions in the learner's document vault. The welcome email tells the learner to set a password through *Forgot password*.
 
@@ -18,15 +20,31 @@ An existing learnership becomes an advert just by filling in its advert fields. 
 | GET | `/api/learnerships/openings` | Adverts currently taking applications, soonest closing first |
 | GET | `/api/learnerships/openings/{slug}` | One advert. 404 once it stops taking applications |
 | POST | `/api/applications` | Submit an application (multipart form, see below). Limited to 5 per hour per IP |
+| POST | `/api/appointments` | Services page appointment request (JSON, see below). Limited to 5 per hour per IP |
 | POST | `/api/applications/status` | `{"reference", "idNumber"}` → the applicant's status and timeline. Limited to 20 per 15 minutes per IP |
 
 `GET /api/learnerships` still returns every learnership's `id`, `name` and `qualificationCode`, for the LMS registration page.
 
 ### `POST /api/applications` form fields
 
-Required: `learnershipSlug` (or `learnershipId`), `idType` (`South African ID` or `Passport`), `idNumber`, `firstNames`, `surname`, `email`, `phone`, `popiaConsent=true`, and the file `idCopy`.
+Required for every type: `programmeType` (`COURSE`, `LEARNERSHIP`, `INTERNSHIP`, `JOB` or `PLACEMENT`; it can be left out when a learnership is named), `idType` (`South African ID` or `Passport`), `idNumber`, `firstNames`, `surname`, `email`, `phone`, `popiaConsent=true`, and the file `idCopy`.
+
+Required by type:
+
+| Type | Fields |
+|---|---|
+| `LEARNERSHIP` | `learnershipSlug` or `learnershipId` |
+| `COURSE` | `courseChoices`, 1 to 3 values, one per choice |
+| `INTERNSHIP`, `JOB` | `positionTitle` (and optionally `experience`) |
+| `PLACEMENT` | `university`, `qualification` (and optionally `placementStart`, e.g. `2027-02`, and `placementLength`, e.g. `3 months`) |
+
+Other files a form can send: `results` (school results), `cv`, `transcript` (academic record), `registration` (proof of university registration), `placementLetter` (the university's placement letter), `qualification` (highest qualification) and `other`.
 
 Optional: `title`, `dateOfBirth` (`YYYY-MM-DD`), `gender`, `race`, `disability`, `disabilityDetails`, `homeLanguage`, `streetAddress`, `suburb`, `town`, `postalCode`, `province`, `kinName`, `kinRelationship`, `kinPhone`, `highestGrade`, `schoolName`, `matricYear`, `subjectsJson` (e.g. `[{"name":"Mathematics","mark":72}]`), `currentActivity`, `previousStudy`, `motivation`, and the files `results` and `cv`.
+
+### `POST /api/appointments`
+
+JSON: `fullName`, `email`, `phone` and `service` are required. `company`, `preferredDate` (`YYYY-MM-DD`), `preferredTime`, `message` and the hidden `website` honeypot field are optional.
 
 Files may be PDF, JPG, PNG or DOCX, up to 10 MB each.
 
@@ -37,10 +55,11 @@ Errors come back as JSON `{"message": "..."}`, written to be shown to the applic
 ## Admin API (`/api/admin`, admin sign-in)
 
 - `GET/POST /learnerships`, `GET/PUT/DELETE /learnerships/{id}`: learnerships with their advert fields and application counts. Delete only works for a learnership with no learners, categories, moderator assignments or applications.
-- `GET /applications?learnershipId=&status=&q=`, `GET /applications/{id}`
+- `GET /applications?type=&learnershipId=&status=&q=`, `GET /applications/{id}`
 - `POST /applications/{id}/status` `{"status", "note", "notifyApplicant"}`, `POST /applications/bulk-status` `{"ids", "status", "note"}`
-- `PUT /applications/{id}/notes`, `POST /applications/{id}/enrol` `{"cohort"}`
-- `GET /applications/{id}/documents/{docId}/view`, `GET /applications/export.csv?learnershipId=&status=`
+- `PUT /applications/{id}/notes` `{"staffNotes", "hostCompany"}`, `POST /applications/{id}/enrol` `{"cohort"}` (learnerships only)
+- `GET /applications/{id}/documents/{docId}/view`, `GET /applications/export.csv?type=&learnershipId=&status=`
+- `GET /appointments?status=`, `PUT /appointments/{id}` `{"status", "staffNotes"}`: appointment requests move `NEW → CONFIRMED → COMPLETED`, or `CANCELLED`
 
 ## Configuration
 

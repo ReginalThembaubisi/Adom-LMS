@@ -33,9 +33,10 @@ public class AdminApplicationController {
 
     @GetMapping
     public List<ApplicationSummary> list(@RequestParam(required = false) Long learnershipId,
+                                         @RequestParam(required = false) String type,
                                          @RequestParam(required = false) String status,
                                          @RequestParam(required = false) String q) {
-        return applicationService.list(learnershipId, status, q);
+        return applicationService.list(learnershipId, type, status, q);
     }
 
     @GetMapping("/{id}")
@@ -61,7 +62,7 @@ public class AdminApplicationController {
 
     @PutMapping("/{id}/notes")
     public ResponseEntity<Void> updateNotes(@PathVariable Long id, @Valid @RequestBody NotesRequest request) {
-        applicationService.updateNotes(id, request.getStaffNotes());
+        applicationService.updateNotes(id, request);
         return ResponseEntity.noContent().build();
     }
 
@@ -89,9 +90,10 @@ public class AdminApplicationController {
 
     @GetMapping(value = "/export.csv")
     public ResponseEntity<byte[]> exportCsv(@RequestParam(required = false) Long learnershipId,
+                                            @RequestParam(required = false) String type,
                                             @RequestParam(required = false) String status,
                                             Authentication auth) {
-        byte[] body = applicationService.exportCsv(learnershipId, status).getBytes(StandardCharsets.UTF_8);
+        byte[] body = applicationService.exportCsv(learnershipId, type, status).getBytes(StandardCharsets.UTF_8);
         auditLogService.log(auth, "EXPORT_APPLICATIONS", "LearnershipApplication", learnershipId,
                 status == null ? "all statuses" : status);
         return ResponseEntity.ok()

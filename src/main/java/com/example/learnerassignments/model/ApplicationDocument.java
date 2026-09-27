@@ -34,6 +34,10 @@ public class ApplicationDocument {
     @Column(name = "document_type", nullable = false, length = 30)
     private PoeDocumentType documentType;
 
+    /** What the applicant was asked for, e.g. "Proof of registration". Null means the type's own label. */
+    @Column(name = "label", length = 100)
+    private String label;
+
     @Column(name = "file_path", nullable = false, length = 500)
     private String filePath;
 

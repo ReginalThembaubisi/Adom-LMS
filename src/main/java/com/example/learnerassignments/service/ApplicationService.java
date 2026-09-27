@@ -61,13 +61,22 @@ public class ApplicationService {
     // --- Public ---
 
     /**
-     * Files the application with its documents. The ID copy is required; school results and a
-     * CV are optional, since staff can ask for them later and a missing CV should not stop
+     * One uploaded file and what it is. {@code label} names what the applicant was asked for
+     * when the document type alone doesn't ("Proof of registration" is an OTHER).
+     */
+    public record Upload(PoeDocumentType type, String label, MultipartFile file) {
+        boolean present() {
+            return file != null && !file.isEmpty();
+        }
+    }
+
+    /**
+     * Files the application with its documents. The ID copy is required for every type; the
+     * rest are optional, since staff can ask for them later and a missing CV should not stop
      * someone applying.
      */
     @Transactional
-    public SubmitResponse submit(SubmitRequest request, MultipartFile idCopy, MultipartFile results,
-                                 MultipartFile cv, String sourceIp) {
+    public SubmitResponse submit(SubmitRequest request, List<Upload> uploads, String sourceIp) {
         if (StringUtils.hasText(request.getWebsite())) {
             // The honeypot was filled in. Answer exactly as a real submission would, so the bot
             // has nothing to learn from, and store nothing.
@@ -81,34 +90,75 @@ public class ApplicationService {
             throw new IllegalArgumentException("Please accept the privacy notice so we can process your application.");
         }
 
-        Learnership learnership = resolveLearnership(request);
-        if (!learnership.isAcceptingApplications(LearnershipService.today())) {
-            throw new IllegalArgumentException("Applications for " + learnership.getName() + " are closed.");
-        }
-
+        ApplicationType type = resolveType(request);
         String idType = request.getIdType().trim();
         String idNumber = normaliseIdNumber(request.getIdNumber());
         validateIdNumber(idType, idNumber);
 
-        if (applicationRepository.existsByLearnership_IdAndIdNumberAndStatusIn(
-                learnership.getId(), idNumber, ApplicationStatus.ACTIVE)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You've already applied for this learnership. Use your reference number to check your status.");
+        LearnershipApplication.LearnershipApplicationBuilder draft = LearnershipApplication.builder().programmeType(type);
+        switch (type) {
+            case LEARNERSHIP -> {
+                Learnership learnership = resolveLearnership(request);
+                if (!learnership.isAcceptingApplications(LearnershipService.today())) {
+                    throw new IllegalArgumentException("Applications for " + learnership.getName() + " are closed.");
+                }
+                if (applicationRepository.existsByLearnership_IdAndIdNumberAndStatusIn(
+                        learnership.getId(), idNumber, ApplicationStatus.ACTIVE)) {
+                    throw duplicate("this learnership");
+                }
+                draft.learnership(learnership);
+            }
+            case COURSE -> {
+                List<String> choices = request.getCourseChoices() == null ? List.of()
+                        : request.getCourseChoices().stream().map(ApplicationService::trim).filter(Objects::nonNull).distinct().toList();
+                if (choices.isEmpty()) {
+                    throw new IllegalArgumentException("Choose at least one course.");
+                }
+                if (choices.size() > 3) {
+                    throw new IllegalArgumentException("Choose up to 3 courses.");
+                }
+                if (applicationRepository.existsByProgrammeTypeAndIdNumberAndStatusIn(type, idNumber, ApplicationStatus.ACTIVE)) {
+                    throw duplicate("a course");
+                }
+                draft.courseChoices(String.join("; ", choices));
+            }
+            case INTERNSHIP, JOB -> {
+                String position = trim(request.getPositionTitle());
+                if (position == null) {
+                    throw new IllegalArgumentException("Tell us which position you're applying for.");
+                }
+                if (applicationRepository.existsByProgrammeTypeAndIdNumberAndPositionTitleIgnoreCaseAndStatusIn(
+                        type, idNumber, position, ApplicationStatus.ACTIVE)) {
+                    throw duplicate("this position");
+                }
+                draft.positionTitle(position).experience(trim(request.getExperience()));
+            }
+            case PLACEMENT -> {
+                String university = trim(request.getUniversity());
+                String qualification = trim(request.getQualification());
+                if (university == null || qualification == null) {
+                    throw new IllegalArgumentException("Tell us your university and the qualification you're studying.");
+                }
+                if (applicationRepository.existsByProgrammeTypeAndIdNumberAndStatusIn(type, idNumber, ApplicationStatus.ACTIVE)) {
+                    throw duplicate("a university placement");
+                }
+                draft.university(university).qualification(qualification)
+                        .placementStart(trim(request.getPlacementStart()))
+                        .placementLength(trim(request.getPlacementLength()));
+            }
         }
 
-        if (idCopy == null || idCopy.isEmpty()) {
+        List<Upload> files = uploads.stream().filter(Upload::present).toList();
+        if (files.stream().noneMatch(u -> u.type() == PoeDocumentType.ID_COPY)) {
             throw new IllegalArgumentException("Please upload a certified copy of your ID or passport.");
         }
         // Check every file before storing any, so a bad second file doesn't leave the first
         // one orphaned in storage.
-        learnerDocumentService.validate(idCopy);
-        if (results != null && !results.isEmpty()) learnerDocumentService.validate(results);
-        if (cv != null && !cv.isEmpty()) learnerDocumentService.validate(cv);
+        files.forEach(u -> learnerDocumentService.validate(u.file()));
 
         LocalDateTime now = LocalDateTime.now();
-        LearnershipApplication application = applicationRepository.save(LearnershipApplication.builder()
+        LearnershipApplication application = applicationRepository.save(draft
                 .reference(newReference())
-                .learnership(learnership)
                 .status(ApplicationStatus.SUBMITTED)
                 .idType(idType)
                 .idNumber(idNumber)
@@ -144,18 +194,18 @@ public class ApplicationService {
                 .sourceIp(sourceIp)
                 .build());
 
-        attach(application, PoeDocumentType.ID_COPY, idCopy);
-        attach(application, PoeDocumentType.MATRIC, results);
-        attach(application, PoeDocumentType.CV, cv);
+        files.forEach(u -> attach(application, u));
         recordEvent(application, null, ApplicationStatus.SUBMITTED, null, APPLICANT);
 
         emailService.sendApplicationReceivedEmail(application.getEmail(), application.getFirstNames(),
-                application.getReference(), learnership.getName());
-        log.info("Application {} received for learnership {}.", application.getReference(), learnership.getId());
+                application.getReference(), application.getAppliedForPhrase());
+        log.info("Application {} received ({}).", application.getReference(), type);
 
         return SubmitResponse.builder()
                 .reference(application.getReference())
-                .learnershipName(learnership.getName())
+                .programmeType(type.name())
+                .appliedFor(application.getAppliedFor())
+                .learnershipName(application.getLearnership() != null ? application.getLearnership().getName() : null)
                 .status(application.getStatus().name())
                 .statusLabel(application.getStatus().getLabel())
                 .submittedAt(application.getSubmittedAt())
@@ -176,11 +226,13 @@ public class ApplicationService {
 
         return StatusLookupResponse.builder()
                 .reference(application.getReference())
-                .learnershipName(application.getLearnership().getName())
+                .programmeType(application.getProgrammeType().name())
+                .appliedFor(application.getAppliedFor())
+                .learnershipName(application.getLearnership() != null ? application.getLearnership().getName() : null)
                 .firstNames(application.getFirstNames())
                 .status(application.getStatus().name())
                 .statusLabel(application.getStatus().getLabel())
-                .message(applicantMessage(application.getStatus()))
+                .message(applicantMessage(application.getProgrammeType(), application.getStatus()))
                 .submittedAt(application.getSubmittedAt())
                 .updatedAt(application.getUpdatedAt())
                 .timeline(timeline(application))
@@ -190,8 +242,9 @@ public class ApplicationService {
     // --- Staff ---
 
     @Transactional(readOnly = true)
-    public List<ApplicationSummary> list(Long learnershipId, String status, String query) {
+    public List<ApplicationSummary> list(Long learnershipId, String type, String status, String query) {
         ApplicationStatus statusFilter = status == null || status.isBlank() ? null : parseStatus(status);
+        ApplicationType typeFilter = type == null || type.isBlank() ? null : parseType(type);
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
 
         List<LearnershipApplication> rows = learnershipId == null
@@ -200,6 +253,7 @@ public class ApplicationService {
         Map<Long, Long> documentCounts = documentCounts();
 
         return rows.stream()
+                .filter(a -> typeFilter == null || a.getProgrammeType() == typeFilter)
                 .filter(a -> statusFilter == null || a.getStatus() == statusFilter)
                 .filter(a -> q.isEmpty() || matches(a, q))
                 .map(a -> toSummary(a, documentCounts.getOrDefault(a.getId(), 0L).intValue()))
@@ -230,6 +284,13 @@ public class ApplicationService {
                 .schoolName(a.getSchoolName())
                 .matricYear(a.getMatricYear())
                 .subjectsJson(a.getSubjectsJson())
+                .courseChoices(a.getCourseChoices())
+                .positionTitle(a.getPositionTitle())
+                .experience(a.getExperience())
+                .university(a.getUniversity())
+                .qualification(a.getQualification())
+                .placementStart(a.getPlacementStart())
+                .placementLength(a.getPlacementLength())
                 .previousStudy(a.getPreviousStudy())
                 .motivation(a.getMotivation())
                 .popiaConsentAt(a.getPopiaConsentAt())
@@ -238,7 +299,7 @@ public class ApplicationService {
                 .documents(a.getDocuments().stream().map(d -> DocumentDto.builder()
                         .id(d.getId())
                         .documentType(d.getDocumentType().name())
-                        .label(documentLabel(d.getDocumentType()))
+                        .label(d.getLabel() != null ? d.getLabel() : documentLabel(d.getDocumentType()))
                         .originalFilename(d.getOriginalFilename())
                         .sizeBytes(d.getSizeBytes())
                         .uploadedAt(d.getUploadedAt())
@@ -283,9 +344,12 @@ public class ApplicationService {
     }
 
     @Transactional
-    public void updateNotes(Long id, String notes) {
+    public void updateNotes(Long id, NotesRequest request) {
         LearnershipApplication application = require(id);
-        application.setStaffNotes(trim(notes));
+        application.setStaffNotes(trim(request.getStaffNotes()));
+        if (request.getHostCompany() != null) {
+            application.setHostCompany(trim(request.getHostCompany()));
+        }
         application.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -313,6 +377,10 @@ public class ApplicationService {
         }
         if (application.getStatus() != ApplicationStatus.ACCEPTED) {
             throw new IllegalArgumentException("Only accepted applicants can be enrolled. Set the application to Accepted first.");
+        }
+        if (application.getProgrammeType() != ApplicationType.LEARNERSHIP || application.getLearnership() == null) {
+            throw new IllegalArgumentException("Only learnership applicants are enrolled on the LMS. "
+                    + application.getProgrammeType().getLabel() + " applicants are handled outside it.");
         }
         learnerRepository.findFirstByIdNumber(application.getIdNumber()).ifPresent(existing -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -368,20 +436,23 @@ public class ApplicationService {
 
     /** CSV of the applications matching the filters, for SETA reporting and offline review. */
     @Transactional(readOnly = true)
-    public String exportCsv(Long learnershipId, String status) {
+    public String exportCsv(Long learnershipId, String type, String status) {
         ApplicationStatus statusFilter = status == null || status.isBlank() ? null : parseStatus(status);
+        ApplicationType typeFilter = type == null || type.isBlank() ? null : parseType(type);
         List<LearnershipApplication> rows = (learnershipId == null
                 ? applicationRepository.findAllWithLearnership()
                 : applicationRepository.findByLearnershipWithLearnership(learnershipId)).stream()
+                .filter(a -> typeFilter == null || a.getProgrammeType() == typeFilter)
                 .filter(a -> statusFilter == null || a.getStatus() == statusFilter)
                 .toList();
 
-        StringBuilder csv = new StringBuilder("Reference,Learnership,Status,Submitted,First names,Surname,ID type,ID number,"
+        StringBuilder csv = new StringBuilder("Reference,Type,Applied for,Status,Submitted,First names,Surname,ID type,ID number,"
                 + "Date of birth,Gender,Race,Disability,Home language,Email,Phone,Town,Province,Highest grade,"
-                + "School,Current activity,Student number\n");
+                + "School,Current activity,Host company,Student number\n");
         for (LearnershipApplication a : rows) {
             csv.append(String.join(",", List.of(
-                    csvCell(a.getReference()), csvCell(a.getLearnership().getName()), csvCell(a.getStatus().name()),
+                    csvCell(a.getReference()), csvCell(a.getProgrammeType().getLabel()), csvCell(a.getAppliedFor()),
+                    csvCell(a.getStatus().name()),
                     csvCell(a.getSubmittedAt() != null ? a.getSubmittedAt().toLocalDate().toString() : null),
                     csvCell(a.getFirstNames()), csvCell(a.getSurname()), csvCell(a.getIdType()), csvCell(a.getIdNumber()),
                     csvCell(a.getDateOfBirth() != null ? a.getDateOfBirth().toString() : null),
@@ -389,7 +460,7 @@ public class ApplicationService {
                     csvCell(a.getDisability() == null ? null : a.getDisability() ? "Yes" : "No"),
                     csvCell(a.getHomeLanguage()), csvCell(a.getEmail()), csvCell(a.getPhone()), csvCell(a.getTown()),
                     csvCell(a.getProvince()), csvCell(a.getHighestGrade()), csvCell(a.getSchoolName()),
-                    csvCell(a.getCurrentActivity()),
+                    csvCell(a.getCurrentActivity()), csvCell(a.getHostCompany()),
                     csvCell(a.getEnrolledLearner() != null ? a.getEnrolledLearner().getLearnerCode() : null))))
                     .append('\n');
         }
@@ -420,7 +491,7 @@ public class ApplicationService {
         recordEvent(application, from, target, cleanNote, staffUsername);
         if (notify) {
             emailService.sendApplicationStatusEmail(application.getEmail(), application.getFirstNames(),
-                    application.getReference(), application.getLearnership().getName(), target);
+                    application.getReference(), application.getAppliedForPhrase(), application.getProgrammeType(), target);
         }
         return null;
     }
@@ -438,17 +509,16 @@ public class ApplicationService {
         application.getEvents().add(event);
     }
 
-    private void attach(LearnershipApplication application, PoeDocumentType type, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            return;
-        }
+    private void attach(LearnershipApplication application, Upload upload) {
+        MultipartFile file = upload.file();
         String originalFilename = StringUtils.cleanPath(
                 file.getOriginalFilename() == null ? "document" : file.getOriginalFilename());
         String sha256 = ContentHash.of(file);
-        String storedPath = learnerDocumentService.storePrivate(application.getReference(), type, file);
+        String storedPath = learnerDocumentService.storePrivate(application.getReference(), upload.type(), file);
         ApplicationDocument document = documentRepository.save(ApplicationDocument.builder()
                 .application(application)
-                .documentType(type)
+                .documentType(upload.type())
+                .label(upload.label())
                 .filePath(storedPath)
                 .originalFilename(originalFilename)
                 .sha256(sha256)
@@ -456,6 +526,33 @@ public class ApplicationService {
                 .uploadedAt(LocalDateTime.now())
                 .build());
         application.getDocuments().add(document);
+    }
+
+    private static ResponseStatusException duplicate(String what) {
+        return new ResponseStatusException(HttpStatus.CONFLICT,
+                "You've already applied for " + what + ". Use your reference number to check your status.");
+    }
+
+    private static ApplicationType resolveType(SubmitRequest request) {
+        if (!StringUtils.hasText(request.getProgrammeType())) {
+            if (request.getLearnershipId() != null || StringUtils.hasText(request.getLearnershipSlug())) {
+                return ApplicationType.LEARNERSHIP;
+            }
+            throw new IllegalArgumentException("Choose what you're applying for.");
+        }
+        try {
+            return ApplicationType.valueOf(request.getProgrammeType().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Choose what you're applying for.");
+        }
+    }
+
+    public static ApplicationType parseType(String raw) {
+        try {
+            return ApplicationType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Unknown application type: " + raw);
+        }
     }
 
     private Learnership resolveLearnership(SubmitRequest request) {
@@ -521,6 +618,8 @@ public class ApplicationService {
                 || a.getFullName().toLowerCase(Locale.ROOT).contains(q)
                 || Objects.toString(a.getIdNumber(), "").toLowerCase(Locale.ROOT).contains(q)
                 || Objects.toString(a.getEmail(), "").contains(q)
+                || a.getAppliedFor().toLowerCase(Locale.ROOT).contains(q)
+                || Objects.toString(a.getHostCompany(), "").toLowerCase(Locale.ROOT).contains(q)
                 || Objects.toString(a.getPhone(), "").replace(" ", "").contains(q.replace(" ", ""));
     }
 
@@ -532,8 +631,12 @@ public class ApplicationService {
                 .idNumber(a.getIdNumber())
                 .email(a.getEmail())
                 .phone(a.getPhone())
-                .learnershipId(a.getLearnership().getId())
-                .learnershipName(a.getLearnership().getName())
+                .programmeType(a.getProgrammeType().name())
+                .programmeLabel(a.getProgrammeType().getLabel())
+                .appliedFor(a.getAppliedFor())
+                .learnershipId(a.getLearnership() != null ? a.getLearnership().getId() : null)
+                .learnershipName(a.getLearnership() != null ? a.getLearnership().getName() : null)
+                .hostCompany(a.getHostCompany())
                 .status(a.getStatus().name())
                 .statusLabel(a.getStatus().getLabel())
                 .town(a.getTown())
@@ -592,7 +695,12 @@ public class ApplicationService {
         return stages;
     }
 
-    private static String applicantMessage(ApplicationStatus status) {
+    private static String applicantMessage(ApplicationType type, ApplicationStatus status) {
+        if (status == ApplicationStatus.ACCEPTED && type != ApplicationType.LEARNERSHIP) {
+            return type == ApplicationType.PLACEMENT || type == ApplicationType.INTERNSHIP
+                    ? "Congratulations, you've been accepted. We'll contact you with the details of your workplace."
+                    : "Congratulations, you've been accepted. We'll contact you with the next steps.";
+        }
         return switch (status) {
             case SUBMITTED -> "We've received your application. Reviews usually take 5 to 10 working days.";
             case SCREENING -> "We're checking your documents. We'll contact you if anything is missing.";

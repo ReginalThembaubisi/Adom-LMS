@@ -6,6 +6,7 @@ import LegacyImport from '../components/LegacyImport';
 import PoePortfolioBrowser from '../components/PoePortfolioBrowser';
 import LearnershipAdverts from '../components/LearnershipAdverts';
 import ApplicationsPipeline from '../components/ApplicationsPipeline';
+import AppointmentsPanel from '../components/AppointmentsPanel';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -709,6 +710,7 @@ const AdminDashboard = () => {
                                 { id: 'overview', label: 'Overview & Status', icon: '📊' },
                                 { id: 'adverts', label: 'Learnership Adverts', icon: '📣' },
                                 { id: 'applications', label: 'Applications', icon: '📝' },
+                                { id: 'appointments', label: 'Appointments', icon: '📅' },
                                 { id: 'programs', label: 'Programs & Categories', icon: '🎓' },
                                 { id: 'modules', label: 'Modules Directory', icon: '📚' },
                                 { id: 'staff', label: 'Staff Registry', icon: '👥' },
@@ -767,6 +769,18 @@ const AdminDashboard = () => {
                                 token={token}
                                 learnerships={learnerships}
                                 initialLearnershipId={applicationsLearnershipId}
+                                onAuthFailure={() => {
+                                    sessionStorage.removeItem('admin_auth');
+                                    navigate('/admin-login');
+                                }}
+                                onError={(message) => showMsg('error', message)}
+                                onInfo={(message) => showMsg('success', message)}
+                            />
+                        )}
+
+                        {activeTab === 'appointments' && (
+                            <AppointmentsPanel
+                                token={token}
                                 onAuthFailure={() => {
                                     sessionStorage.removeItem('admin_auth');
                                     navigate('/admin-login');

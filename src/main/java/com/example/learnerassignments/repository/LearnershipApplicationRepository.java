@@ -1,6 +1,7 @@
 package com.example.learnerassignments.repository;
 
 import com.example.learnerassignments.model.ApplicationStatus;
+import com.example.learnerassignments.model.ApplicationType;
 import com.example.learnerassignments.model.LearnershipApplication;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,12 +20,18 @@ public interface LearnershipApplicationRepository extends JpaRepository<Learners
     boolean existsByLearnership_IdAndIdNumberAndStatusIn(Long learnershipId, String idNumber,
                                                           Collection<ApplicationStatus> statuses);
 
+    boolean existsByProgrammeTypeAndIdNumberAndStatusIn(ApplicationType type, String idNumber,
+                                                        Collection<ApplicationStatus> statuses);
+
+    boolean existsByProgrammeTypeAndIdNumberAndPositionTitleIgnoreCaseAndStatusIn(
+            ApplicationType type, String idNumber, String positionTitle, Collection<ApplicationStatus> statuses);
+
     long countByLearnership_Id(Long learnershipId);
 
     // Staff lists, newest first, with the learnership fetched so a list is one query. Two
     // queries rather than one with an optional ":id IS NULL OR" parameter, which PostgreSQL
     // rejects when the parameter is bound as null ("could not determine data type").
-    @Query("SELECT a FROM LearnershipApplication a JOIN FETCH a.learnership LEFT JOIN FETCH a.enrolledLearner ORDER BY a.submittedAt DESC")
+    @Query("SELECT a FROM LearnershipApplication a LEFT JOIN FETCH a.learnership LEFT JOIN FETCH a.enrolledLearner ORDER BY a.submittedAt DESC")
     List<LearnershipApplication> findAllWithLearnership();
 
     @Query("SELECT a FROM LearnershipApplication a JOIN FETCH a.learnership l LEFT JOIN FETCH a.enrolledLearner " +

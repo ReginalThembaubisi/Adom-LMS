@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * One person's application to one learnership, submitted from the public website.
+ * One person's application, submitted from the public website: for a course, a learnership,
+ * an internship, a job, or a university work placement ({@link ApplicationType}). The table
+ * keeps its original name from when learnerships were the only kind.
  *
  * Deliberately separate from {@link Learner}: most applicants are never enrolled, and an
  * applicant has no password, no student number and no access to anything on the LMS. The
@@ -19,6 +21,7 @@ import java.util.List;
 @Entity
 @Table(name = "learnership_applications", indexes = {
         @Index(name = "idx_application_learnership_status", columnList = "learnership_id, status"),
+        @Index(name = "idx_application_type_status", columnList = "programme_type, status"),
         @Index(name = "idx_application_id_number", columnList = "id_number")
 })
 @Data
@@ -37,9 +40,49 @@ public class LearnershipApplication {
     @Column(name = "reference", nullable = false, unique = true, length = 20)
     private String reference;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "learnership_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "programme_type", nullable = false, length = 20)
+    @Builder.Default
+    private ApplicationType programmeType = ApplicationType.LEARNERSHIP;
+
+    /** Set for LEARNERSHIP applications only. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "learnership_id")
     private Learnership learnership;
+
+    // --- What they applied for, by type ---
+
+    /** COURSE: up to three course names in order of preference, separated by "; ". */
+    @Column(name = "course_choices", length = 500)
+    private String courseChoices;
+
+    /** INTERNSHIP or JOB: the opening's title, e.g. "Software Developer". */
+    @Column(name = "position_title", length = 200)
+    private String positionTitle;
+
+    /** PLACEMENT: the student's university. */
+    @Column(name = "university", length = 150)
+    private String university;
+
+    /** PLACEMENT: the qualification the workplace period counts towards. */
+    @Column(name = "qualification", length = 150)
+    private String qualification;
+
+    /** PLACEMENT: when the workplace period must start, e.g. "2027-02". */
+    @Column(name = "placement_start", length = 20)
+    private String placementStart;
+
+    /** PLACEMENT: how long it must be, e.g. "3 months". */
+    @Column(name = "placement_length", length = 30)
+    private String placementLength;
+
+    /** INTERNSHIP or JOB: work experience, e.g. "1–3 years". */
+    @Column(name = "experience", length = 50)
+    private String experience;
+
+    /** INTERNSHIP or PLACEMENT: the company staff placed the applicant with. */
+    @Column(name = "host_company", length = 200)
+    private String hostCompany;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -173,5 +216,29 @@ public class LearnershipApplication {
 
     public String getFullName() {
         return (firstNames + " " + surname).trim();
+    }
+
+    /** What they applied for, for staff lists and exports: "Learnership: IT Systems Support". */
+    public String getAppliedFor() {
+        String what = switch (programmeType) {
+            case LEARNERSHIP -> learnership != null ? learnership.getName() : null;
+            case COURSE -> courseChoices;
+            case INTERNSHIP, JOB -> positionTitle;
+            case PLACEMENT -> qualification != null && university != null ? qualification + " (" + university + ")"
+                    : qualification != null ? qualification : university;
+        };
+        return what == null || what.isBlank() ? programmeType.getLabel() : programmeType.getLabel() + ": " + what;
+    }
+
+    /** How emails to the applicant name what they applied for: "the IT Systems Support learnership". */
+    public String getAppliedForPhrase() {
+        return switch (programmeType) {
+            case LEARNERSHIP -> learnership != null ? "the " + learnership.getName() + " learnership" : "a learnership";
+            case COURSE -> courseChoices != null && !courseChoices.isBlank()
+                    ? "the " + courseChoices.split(";")[0].trim() + " course" : "a course";
+            case INTERNSHIP -> positionTitle != null ? "the " + positionTitle + " internship" : "an internship";
+            case JOB -> positionTitle != null ? "the " + positionTitle + " position" : "a position";
+            case PLACEMENT -> "a university work placement";
+        };
     }
 }

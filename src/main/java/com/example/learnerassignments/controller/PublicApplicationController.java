@@ -3,7 +3,10 @@ package com.example.learnerassignments.controller;
 import com.example.learnerassignments.dto.ApplicationDtos.*;
 import com.example.learnerassignments.dto.LearnershipAdvertDto;
 import com.example.learnerassignments.security.PublicRateLimiter;
+import com.example.learnerassignments.model.PoeDocumentType;
 import com.example.learnerassignments.service.ApplicationService;
+import com.example.learnerassignments.service.ApplicationService.Upload;
+import com.example.learnerassignments.service.AppointmentService;
 import com.example.learnerassignments.service.LearnershipService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -18,8 +21,8 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * What the public website calls: the list of open learnerships, the application form, and
- * the status check. No sign-in on any of it, so each write is rate limited per caller and
+ * What the public website calls: the list of open learnerships, the application form, the
+ * status check and the Services page's appointment requests. No sign-in on any of it, so each write is rate limited per caller and
  * nothing here returns another applicant's data or anything staff-only.
  */
 @RestController
@@ -28,6 +31,7 @@ public class PublicApplicationController {
 
     private final LearnershipService learnershipService;
     private final ApplicationService applicationService;
+    private final AppointmentService appointmentService;
     private final PublicRateLimiter rateLimiter;
 
     /** Learnerships currently taking applications, soonest closing first. */
@@ -44,18 +48,41 @@ public class PublicApplicationController {
 
     /**
      * Submits an application. A multipart form: the fields of {@link SubmitRequest}, plus the
-     * files {@code idCopy} (required), {@code results} and {@code cv}.
+     * files below. {@code idCopy} is required; which of the rest a form sends depends on what
+     * the applicant is applying for.
      */
     @PostMapping(value = "/api/applications", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SubmitResponse> submit(@Valid @ModelAttribute SubmitRequest request,
                                                  @RequestPart(value = "idCopy", required = false) MultipartFile idCopy,
                                                  @RequestPart(value = "results", required = false) MultipartFile results,
                                                  @RequestPart(value = "cv", required = false) MultipartFile cv,
+                                                 @RequestPart(value = "transcript", required = false) MultipartFile transcript,
+                                                 @RequestPart(value = "registration", required = false) MultipartFile registration,
+                                                 @RequestPart(value = "placementLetter", required = false) MultipartFile placementLetter,
+                                                 @RequestPart(value = "qualification", required = false) MultipartFile qualification,
+                                                 @RequestPart(value = "other", required = false) MultipartFile other,
                                                  HttpServletRequest http) {
         rateLimiter.check(http, "apply", 5, Duration.ofHours(1));
-        SubmitResponse response = applicationService.submit(request, idCopy, results, cv,
-                PublicRateLimiter.clientIp(http));
+        List<Upload> uploads = List.of(
+                new Upload(PoeDocumentType.ID_COPY, null, idCopy),
+                new Upload(PoeDocumentType.MATRIC, "School results", results),
+                new Upload(PoeDocumentType.CV, null, cv),
+                new Upload(PoeDocumentType.OTHER, "Academic record", transcript),
+                new Upload(PoeDocumentType.OTHER, "Proof of registration", registration),
+                new Upload(PoeDocumentType.OTHER, "University placement letter", placementLetter),
+                new Upload(PoeDocumentType.OTHER, "Highest qualification", qualification),
+                new Upload(PoeDocumentType.OTHER, "Other document", other));
+        SubmitResponse response = applicationService.submit(request, uploads, PublicRateLimiter.clientIp(http));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** An appointment request from the Services page. */
+    @PostMapping("/api/appointments")
+    public ResponseEntity<Void> requestAppointment(@Valid @RequestBody AppointmentSubmitRequest request,
+                                                   HttpServletRequest http) {
+        rateLimiter.check(http, "appointment", 5, Duration.ofHours(1));
+        appointmentService.submit(request, PublicRateLimiter.clientIp(http));
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     /** An applicant checks their own status with their reference and ID number. */

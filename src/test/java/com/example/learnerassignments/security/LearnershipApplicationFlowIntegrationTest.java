@@ -342,4 +342,127 @@ class LearnershipApplicationFlowIntegrationTest {
         String body = csv.getResponse().getContentAsString();
         assertThat(body).contains(first).contains("\"'=HYPERLINK(\"\"x\"\")\"");
     }
+
+    private MockMultipartHttpServletRequestBuilder typedApplication(String type, String idNumber,
+                                                                    java.util.Map<String, String> fields) {
+        java.util.Map<String, String> all = new java.util.HashMap<>(fields);
+        all.put("programmeType", type);
+        all.put("learnershipSlug", "");
+        // A distinct caller per submission, so this test exercises the pipeline rather than
+        // the per-caller rate limit (which has a test of its own).
+        String ip = "10.1.0." + (++callers);
+        MockMultipartHttpServletRequestBuilder builder = application(null, idNumber, all);
+        builder.with(r -> { r.setRemoteAddr(ip); return r; });
+        return builder;
+    }
+
+    private int callers;
+
+    @Test
+    @DisplayName("Courses, internships, jobs and university placements go through the same pipeline")
+    void otherApplicationTypes() throws Exception {
+        MockMultipartHttpServletRequestBuilder course = typedApplication("COURSE", SA_ID, java.util.Map.of());
+        course.param("courseChoices", "Systems Development", "Software Testing");
+        mockMvc.perform(course).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.programmeType").value("COURSE"))
+                .andExpect(jsonPath("$.appliedFor").value("Course: Systems Development; Software Testing"));
+
+        // A course application with no course chosen is refused.
+        mockMvc.perform(typedApplication("COURSE", "0001015009088", java.util.Map.of()))
+                .andExpect(status().isBadRequest());
+
+        MockMultipartHttpServletRequestBuilder placement = typedApplication("PLACEMENT", SA_ID, java.util.Map.of(
+                "university", "Tshwane University of Technology",
+                "qualification", "Diploma in Information Technology",
+                "placementStart", "2027-02", "placementLength", "3 months"));
+        placement.file(new MockMultipartFile("registration", "reg.pdf", "application/pdf", "%PDF-1.4 reg".getBytes()));
+        String placementRef = objectMapper.readTree(mockMvc.perform(placement).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("reference").asText();
+
+        // Placement needs the university and qualification.
+        mockMvc.perform(typedApplication("PLACEMENT", "0001015009088", java.util.Map.of("university", "DUT")))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(typedApplication("INTERNSHIP", SA_ID, java.util.Map.of(
+                        "positionTitle", "Software Developer", "experience", "None")))
+                .andExpect(status().isCreated());
+        // The same person can apply for a different internship, but not the same one twice.
+        mockMvc.perform(typedApplication("INTERNSHIP", SA_ID, java.util.Map.of("positionTitle", "IT Specialist")))
+                .andExpect(status().isCreated());
+        mockMvc.perform(typedApplication("INTERNSHIP", SA_ID, java.util.Map.of("positionTitle", "software developer")))
+                .andExpect(status().isConflict());
+        mockMvc.perform(typedApplication("JOB", SA_ID, java.util.Map.of("positionTitle", "Project Manager")))
+                .andExpect(status().isCreated());
+
+        // Staff filter by type.
+        mockMvc.perform(get("/api/admin/applications").param("type", "PLACEMENT").header("Authorization", adminAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].appliedFor").value("University placement: Diploma in Information Technology (Tshwane University of Technology)"))
+                .andExpect(jsonPath("$[0].learnershipName").doesNotExist());
+        mockMvc.perform(get("/api/admin/applications").header("Authorization", adminAuth()))
+                .andExpect(jsonPath("$", hasSize(5)));
+
+        Long placementId = applicationRepository.findByReference(placementRef).orElseThrow().getId();
+        mockMvc.perform(get("/api/admin/applications/" + placementId).header("Authorization", adminAuth()))
+                .andExpect(jsonPath("$.documents[*].label", hasItem("Proof of registration")))
+                .andExpect(jsonPath("$.placementLength").value("3 months"));
+
+        // Staff record where the student was placed.
+        mockMvc.perform(put("/api/admin/applications/" + placementId + "/notes").header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"staffNotes\":\"Starts Monday\",\"hostCompany\":\"Mbombela Tech (Pty) Ltd\"}"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/admin/applications/" + placementId + "/status").header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACCEPTED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hostCompany").value("Mbombela Tech (Pty) Ltd"));
+
+        // Only learnership applicants are enrolled on the LMS.
+        mockMvc.perform(post("/api/admin/applications/" + placementId + "/enrol").header("Authorization", adminAuth()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Only learnership applicants")));
+
+        mockMvc.perform(post("/api/applications/status").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reference\":\"" + placementRef + "\",\"idNumber\":\"" + SA_ID + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.programmeType").value("PLACEMENT"))
+                .andExpect(jsonPath("$.message", containsString("workplace")))
+                .andExpect(jsonPath("$.hostCompany").doesNotExist());
+
+        String csv = mockMvc.perform(get("/api/admin/applications/export.csv").param("type", "COURSE")
+                        .header("Authorization", adminAuth()))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(csv).contains("Systems Development; Software Testing").doesNotContain("Tshwane");
+    }
+
+    @Test
+    @DisplayName("Appointment requests from the Services page reach the admin")
+    void appointmentRequests() throws Exception {
+        mockMvc.perform(post("/api/appointments").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"Sipho Nkosi\",\"company\":\"Nkosi Traders\",\"email\":\"sipho@example.com\","
+                                + "\"phone\":\"0712345678\",\"service\":\"Software\",\"preferredDate\":\"2026-10-05\","
+                                + "\"preferredTime\":\"10:00 – 12:00\",\"message\":\"We need a website\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/appointments").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"No Email\",\"phone\":\"071\",\"service\":\"Cloud\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/admin/appointments")).andExpect(status().isUnauthorized());
+        MvcResult list = mockMvc.perform(get("/api/admin/appointments").header("Authorization", adminAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].status").value("NEW"))
+                .andExpect(jsonPath("$[0].company").value("Nkosi Traders"))
+                .andReturn();
+        long id = objectMapper.readTree(list.getResponse().getContentAsString()).get(0).get("id").asLong();
+
+        mockMvc.perform(put("/api/admin/appointments/" + id).header("Authorization", adminAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CONFIRMED\",\"staffNotes\":\"Confirmed by phone for 5 Oct 10:00\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+        mockMvc.perform(get("/api/admin/appointments").param("status", "NEW").header("Authorization", adminAuth()))
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
 }

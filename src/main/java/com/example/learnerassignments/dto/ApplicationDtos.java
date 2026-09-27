@@ -15,14 +15,30 @@ import java.util.List;
 public class ApplicationDtos {
 
     /**
-     * The application form. Bound from multipart form fields (the files travel alongside it as
-     * {@code idCopy}, {@code results} and {@code cv}), so a plain HTML form can post it.
-     * Either {@code learnershipId} or {@code learnershipSlug} names the learnership.
+     * The application form. Bound from multipart form fields (the files travel alongside it,
+     * see PublicApplicationController), so a plain HTML form can post it.
+     *
+     * {@code programmeType} says what they are applying for (COURSE, LEARNERSHIP, INTERNSHIP,
+     * JOB or PLACEMENT). When it is left out, naming a learnership implies LEARNERSHIP. Each
+     * type needs its own fields: a learnership ({@code learnershipId} or
+     * {@code learnershipSlug}), course choices, a position title, or the university and
+     * qualification for a placement.
      */
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class SubmitRequest {
+        @Size(max = 20) private String programmeType;
         private Long learnershipId;
         @Size(max = 160) private String learnershipSlug;
+        /** COURSE: up to three course names, in order of preference. */
+        private List<@Size(max = 150) String> courseChoices;
+        /** INTERNSHIP or JOB. */
+        @Size(max = 200) private String positionTitle;
+        @Size(max = 50) private String experience;
+        /** PLACEMENT. */
+        @Size(max = 150) private String university;
+        @Size(max = 150) private String qualification;
+        @Size(max = 20) private String placementStart;
+        @Size(max = 30) private String placementLength;
 
         @NotBlank(message = "Choose an ID type") @Size(max = 30) private String idType;
         @NotBlank(message = "ID or passport number is required") @Size(max = 30) private String idNumber;
@@ -70,6 +86,10 @@ public class ApplicationDtos {
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class SubmitResponse {
         private String reference;
+        private String programmeType;
+        /** e.g. "Learnership: IT Systems Support". */
+        private String appliedFor;
+        /** Set for learnership applications. */
         private String learnershipName;
         private String status;
         private String statusLabel;
@@ -87,6 +107,9 @@ public class ApplicationDtos {
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class StatusLookupResponse {
         private String reference;
+        private String programmeType;
+        private String appliedFor;
+        /** Set for learnership applications. */
         private String learnershipName;
         private String firstNames;
         private String status;
@@ -114,8 +137,13 @@ public class ApplicationDtos {
         private String idNumber;
         private String email;
         private String phone;
+        private String programmeType;
+        private String programmeLabel;
+        /** e.g. "Course: Systems Development; Software Testing". */
+        private String appliedFor;
         private Long learnershipId;
         private String learnershipName;
+        private String hostCompany;
         private String status;
         private String statusLabel;
         private String town;
@@ -150,6 +178,13 @@ public class ApplicationDtos {
         private String schoolName;
         private Integer matricYear;
         private String subjectsJson;
+        private String courseChoices;
+        private String positionTitle;
+        private String experience;
+        private String university;
+        private String qualification;
+        private String placementStart;
+        private String placementLength;
         private String previousStudy;
         private String motivation;
         private LocalDateTime popiaConsentAt;
@@ -204,6 +239,8 @@ public class ApplicationDtos {
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class NotesRequest {
         @Size(max = 10000) private String staffNotes;
+        /** INTERNSHIP or PLACEMENT: where staff placed the applicant. Null leaves it unchanged. */
+        @Size(max = 200) private String hostCompany;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
@@ -220,5 +257,46 @@ public class ApplicationDtos {
         private String cohort;
         private int documentsCopied;
         private int modulesEnrolled;
+    }
+
+    // --- Services appointment requests ---
+
+    @Data @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class AppointmentSubmitRequest {
+        @NotBlank(message = "Your name is required") @Size(max = 150) private String fullName;
+        @Size(max = 150) private String company;
+        @NotBlank(message = "Email is required") @Email(message = "Enter a valid email address") @Size(max = 150)
+        private String email;
+        @NotBlank(message = "Cellphone number is required") @Size(max = 30) private String phone;
+        @NotBlank(message = "Choose a service") @Size(max = 60) private String service;
+        private LocalDate preferredDate;
+        @Size(max = 30) private String preferredTime;
+        @Size(max = 5000) private String message;
+        /** Honeypot, as on the application form. */
+        private String website;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class AppointmentDto {
+        private Long id;
+        private String fullName;
+        private String company;
+        private String email;
+        private String phone;
+        private String service;
+        private LocalDate preferredDate;
+        private String preferredTime;
+        private String message;
+        private String status;
+        private String staffNotes;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class AppointmentUpdateRequest {
+        /** NEW, CONFIRMED, COMPLETED or CANCELLED. Null leaves it unchanged. */
+        private String status;
+        @Size(max = 10000) private String staffNotes;
     }
 }

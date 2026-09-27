@@ -19,6 +19,13 @@ const APPLICATION_STATUSES = [
     { key: 'WITHDRAWN', label: 'Withdrawn', style: 'bg-slate-200 text-slate-700' },
     { key: 'ENROLLED', label: 'Enrolled', style: 'bg-emerald-600 text-white' }
 ];
+const APPLICATION_TYPES = [
+    { key: 'COURSE', label: 'Courses' },
+    { key: 'LEARNERSHIP', label: 'Learnerships' },
+    { key: 'INTERNSHIP', label: 'Internships' },
+    { key: 'JOB', label: 'Jobs' },
+    { key: 'PLACEMENT', label: 'University placements' }
+];
 const STATUS_BY_KEY = Object.fromEntries(APPLICATION_STATUSES.map(s => [s.key, s]));
 const SETTABLE = APPLICATION_STATUSES.filter(s => s.key !== 'ENROLLED');
 
@@ -39,6 +46,7 @@ const formatDate = (iso) => iso
 const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAuthFailure, onError, onInfo }) => {
     const [learnershipId, setLearnershipId] = useState(initialLearnershipId ? String(initialLearnershipId) : '');
     const [statusFilter, setStatusFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
     const [query, setQuery] = useState('');
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,6 +82,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
         try {
             const params = new URLSearchParams();
             if (learnershipId) params.set('learnershipId', learnershipId);
+            if (typeFilter) params.set('type', typeFilter);
             const res = await request(`/api/admin/applications?${params}`);
             setRows(await res.json());
             setSelected(new Set());
@@ -82,7 +91,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
         } finally {
             setLoading(false);
         }
-    }, [learnershipId, request, report]);
+    }, [learnershipId, typeFilter, request, report]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -98,7 +107,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
     const q = query.trim().toLowerCase();
     const visible = rows.filter(r =>
         (!statusFilter || r.status === statusFilter) &&
-        (!q || [r.reference, r.fullName, r.idNumber, r.email, r.phone, r.town].some(v => (v || '').toLowerCase().includes(q)))
+        (!q || [r.reference, r.fullName, r.idNumber, r.email, r.phone, r.town, r.appliedFor, r.hostCompany].some(v => (v || '').toLowerCase().includes(q)))
     );
     const counts = rows.reduce((m, r) => ({ ...m, [r.status]: (m[r.status] || 0) + 1 }), {});
 
@@ -135,6 +144,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
         try {
             const params = new URLSearchParams();
             if (learnershipId) params.set('learnershipId', learnershipId);
+            if (typeFilter) params.set('type', typeFilter);
             if (statusFilter) params.set('status', statusFilter);
             const res = await request(`/api/admin/applications/export.csv?${params}`);
             const url = URL.createObjectURL(await res.blob());
@@ -174,7 +184,11 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
             </div>
 
             <div className="flex flex-wrap gap-3">
-                <select value={learnershipId} onChange={e => setLearnershipId(e.target.value)} className={inputClass}>
+                <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); if (e.target.value !== 'LEARNERSHIP') setLearnershipId(''); }} className={inputClass} aria-label="Application type">
+                    <option value="">Everything</option>
+                    {APPLICATION_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+                <select value={learnershipId} onChange={e => { setLearnershipId(e.target.value); if (e.target.value) setTypeFilter('LEARNERSHIP'); }} className={inputClass} aria-label="Learnership">
                     <option value="">All learnerships</option>
                     {learnerships.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
@@ -222,7 +236,7 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
                             <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
                                 <th className="p-3 w-8"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Select all" /></th>
                                 <th className="p-3">Applicant</th>
-                                <th className="p-3">Learnership</th>
+                                <th className="p-3">Applied for</th>
                                 <th className="p-3">Location</th>
                                 <th className="p-3">Docs</th>
                                 <th className="p-3">Applied</th>
@@ -239,7 +253,11 @@ const ApplicationsPipeline = ({ token, learnerships, initialLearnershipId, onAut
                                         <div className="font-semibold text-slate-900">{r.fullName}</div>
                                         <div className="text-xs text-slate-500">{r.reference} · {r.phone}</div>
                                     </td>
-                                    <td className="p-3 text-xs text-slate-700">{r.learnershipName}</td>
+                                    <td className="p-3 text-xs text-slate-700">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{r.programmeLabel}</div>
+                                        <div>{r.appliedFor.replace(`${r.programmeLabel}: `, '')}</div>
+                                        {r.hostCompany && <div className="text-[11px] text-slate-500">at {r.hostCompany}</div>}
+                                    </td>
                                     <td className="p-3 text-xs text-slate-700">{[r.town, r.province].filter(Boolean).join(', ') || '—'}</td>
                                     <td className="p-3 text-xs text-slate-700">{r.documentCount}</td>
                                     <td className="p-3 text-xs text-slate-700 whitespace-nowrap">{formatDate(r.submittedAt)}</td>
@@ -279,6 +297,9 @@ const ApplicationDetail = ({ detail, request, report, onInfo, onBack, onReload }
     const [note, setNote] = useState('');
     const [notify, setNotify] = useState(true);
     const [notes, setNotes] = useState(detail.staffNotes || '');
+    const [hostCompany, setHostCompany] = useState(s.hostCompany || '');
+    const isLearnership = s.programmeType === 'LEARNERSHIP';
+    const placesAtCompany = s.programmeType === 'INTERNSHIP' || s.programmeType === 'PLACEMENT';
     const [cohort, setCohort] = useState('');
     const [busy, setBusy] = useState(false);
     const enrolled = s.status === 'ENROLLED';
@@ -304,7 +325,7 @@ const ApplicationDetail = ({ detail, request, report, onInfo, onBack, onReload }
         await request(`/api/admin/applications/${s.id}/notes`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ staffNotes: notes })
+            body: JSON.stringify({ staffNotes: notes, hostCompany: placesAtCompany ? hostCompany : null })
         });
         onInfo('Notes saved.');
     });
@@ -337,11 +358,36 @@ const ApplicationDetail = ({ detail, request, report, onInfo, onBack, onReload }
                     <h2 className="text-lg font-bold text-slate-900">{s.fullName}</h2>
                     <StatusPill status={s.status} />
                 </div>
-                <p className="text-xs text-slate-500">{s.reference} · {s.learnershipName} · applied {formatDateTime(s.submittedAt)}</p>
+                <p className="text-xs text-slate-500">{s.reference} · {s.appliedFor} · applied {formatDateTime(s.submittedAt)}</p>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
+                    <section className="bg-white border border-slate-200 rounded-2xl p-5">
+                        <h3 className="text-sm font-bold text-slate-900 mb-3">Applying for · {s.programmeLabel}</h3>
+                        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {s.programmeType === 'LEARNERSHIP' && <Field label="Learnership" value={s.learnershipName} />}
+                            {s.programmeType === 'COURSE' && (detail.courseChoices || '').split(';').map((c, i) => (
+                                <Field key={i} label={`Choice ${i + 1}`} value={c.trim()} />
+                            ))}
+                            {(s.programmeType === 'INTERNSHIP' || s.programmeType === 'JOB') && (
+                                <>
+                                    <Field label="Position" value={detail.positionTitle} />
+                                    <Field label="Experience" value={detail.experience} />
+                                </>
+                            )}
+                            {s.programmeType === 'PLACEMENT' && (
+                                <>
+                                    <Field label="University" value={detail.university} />
+                                    <Field label="Qualification" value={detail.qualification} />
+                                    <Field label="Must start" value={detail.placementStart} />
+                                    <Field label="Time required" value={detail.placementLength} />
+                                </>
+                            )}
+                            {placesAtCompany && <Field label="Placed at" value={s.hostCompany} />}
+                        </dl>
+                    </section>
+
                     <section className="bg-white border border-slate-200 rounded-2xl p-5">
                         <h3 className="text-sm font-bold text-slate-900 mb-3">Personal details</h3>
                         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -436,7 +482,7 @@ const ApplicationDetail = ({ detail, request, report, onInfo, onBack, onReload }
                         </section>
                     ) : (
                         <>
-                            {s.status === 'ACCEPTED' && (
+                            {s.status === 'ACCEPTED' && isLearnership && (
                                 <section className="bg-white border-2 border-emerald-300 rounded-2xl p-5 space-y-3">
                                     <h3 className="text-sm font-bold text-slate-900">Enrol as learner</h3>
                                     <p className="text-xs text-slate-500">
@@ -470,8 +516,14 @@ const ApplicationDetail = ({ detail, request, report, onInfo, onBack, onReload }
 
                     <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
                         <h3 className="text-sm font-bold text-slate-900">Staff notes</h3>
-                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5} placeholder="Interview notes, missing documents, follow-ups… Never shown to the applicant." className={`${inputClass} w-full`} />
-                        <button type="button" disabled={busy} onClick={saveNotes} className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">Save notes</button>
+                        {placesAtCompany && (
+                            <label className="block text-xs font-semibold text-slate-700 space-y-1">
+                                <span>Placed at (company)</span>
+                                <input value={hostCompany} onChange={e => setHostCompany(e.target.value)} placeholder="Host company name" className={`${inputClass} w-full`} />
+                            </label>
+                        )}
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5} placeholder="Interview notes, missing documents, follow-ups… Never shown to the applicant." className={`${inputClass} w-full`} aria-label="Staff notes" />
+                        <button type="button" disabled={busy} onClick={saveNotes} className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{placesAtCompany ? 'Save' : 'Save notes'}</button>
                     </section>
 
                     <p className="text-[11px] text-slate-400">POPIA consent given {formatDateTime(detail.popiaConsentAt)}.</p>

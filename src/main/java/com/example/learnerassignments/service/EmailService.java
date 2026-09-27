@@ -181,30 +181,35 @@ public class EmailService {
 
     @Async("emailTaskExecutor")
     public void sendApplicationReceivedEmail(String toEmail, String firstName, String reference,
-                                             String learnershipName) {
+                                             String appliedForPhrase) {
         sendApplicantEmail(toEmail, "We've received your application (" + reference + ")", String.format(
-                "Hi %s,\n\nThank you for applying for the %s learnership.\n\n"
+                "Hi %s,\n\nThank you for applying for %s.\n\n"
                         + "Your reference number is: %s\n\n"
                         + "Keep it safe. To check your application status on our website you'll need this "
                         + "reference number and the ID or passport number you applied with.\n\n"
                         + "We'll email you again when your application moves forward.\n\n"
                         + "Kind regards,\nAdom Admissions",
-                firstName, learnershipName, reference), reference);
+                firstName, appliedForPhrase, reference), reference);
     }
 
     @Async("emailTaskExecutor")
     public void sendApplicationStatusEmail(String toEmail, String firstName, String reference,
-                                           String learnershipName, com.example.learnerassignments.model.ApplicationStatus status) {
+                                           String appliedForPhrase,
+                                           com.example.learnerassignments.model.ApplicationType type,
+                                           com.example.learnerassignments.model.ApplicationStatus status) {
+        boolean enrolsOnLms = type == com.example.learnerassignments.model.ApplicationType.LEARNERSHIP;
         String body = switch (status) {
             case SCREENING -> "We're now checking the documents you sent with your application.";
             case SHORTLISTED -> "Good news: you've been shortlisted. We'll be in touch about the next step.";
             case INTERVIEW -> "You're invited to an interview or assessment. We'll contact you with the date, time and venue.";
-            case ACCEPTED -> "Congratulations, you've been accepted! We'll send your student number and "
-                    + "LMS sign-in details once you are enrolled.";
+            case ACCEPTED -> enrolsOnLms
+                    ? "Congratulations, you've been accepted! We'll send your student number and "
+                            + "LMS sign-in details once you are enrolled."
+                    : "Congratulations, you've been accepted! We'll contact you with the next steps.";
             case WAITLISTED -> "All places are currently filled, so you're on the waiting list. "
                     + "If a place opens up, we'll contact you.";
             case DECLINED -> "Unfortunately your application was not successful this time. "
-                    + "Thank you for your interest. Please look out for future learnerships on our website.";
+                    + "Thank you for your interest. Please look out for future opportunities on our website.";
             case WITHDRAWN -> "Your application has been withdrawn as requested.";
             default -> null;
         };
@@ -212,9 +217,9 @@ public class EmailService {
             return;
         }
         sendApplicantEmail(toEmail, "Update on your application (" + reference + ")", String.format(
-                "Hi %s,\n\nAn update on your application for the %s learnership (reference %s):\n\n%s\n\n"
+                "Hi %s,\n\nAn update on your application for %s (reference %s):\n\n%s\n\n"
                         + "Kind regards,\nAdom Admissions",
-                firstName, learnershipName, reference, body), reference);
+                firstName, appliedForPhrase, reference, body), reference);
     }
 
     @Async("emailTaskExecutor")
