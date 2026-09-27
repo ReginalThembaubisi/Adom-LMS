@@ -21,6 +21,7 @@ Settings, read at build time (see `.env.example`):
 |---|---|---|
 | `VITE_LMS_URL` | The LMS the forms send to | `https://adom-lms-portal.onrender.com` |
 | `VITE_SITE_URL` | The website's own address, used in the sitemap and link previews | `https://www.adomtechnologies.co.za` |
+| `SITE_NOINDEX` | `true` hides the build from search engines (every page says `noindex`, `robots.txt` blocks crawling). For test copies only | off |
 
 Building with `VITE_LMS_URL=` (empty) gives **demo mode**: forms show their success screens without sending anything.
 
@@ -37,7 +38,7 @@ This is how the site is hosted now: the **adom-website** static site (https://ad
 | Branch | `main` (every push to `main` rebuilds the site) |
 | Build command | `cd website && npm ci && npm run build` |
 | Publish directory | `website/dist` |
-| Environment | `NODE_VERSION=22`, `VITE_LMS_URL=https://adom-lms-portal.onrender.com`, `VITE_SITE_URL=` the site's address |
+| Environment | `NODE_VERSION=22`, `VITE_LMS_URL=https://adom-lms-portal.onrender.com`, `VITE_SITE_URL=` the site's address, `SITE_NOINDEX=true` while it is only a test copy |
 
 When the custom domain goes live, change `VITE_SITE_URL` on the static site and add the domain to `CORS_ALLOWED_ORIGINS` on the LMS service (comma-separated, keeping the onrender.com address).
 
