@@ -532,14 +532,25 @@ public class SubmissionService {
                     "This submission already has marks made in the app. Uploading replaces them.");
         }
 
-        if (!cloudinaryService.isConfigured()) {
-            throw new IllegalStateException("File storage is not configured.");
-        }
         String markedSha256 = ContentHash.of(file);
         // A marked copy carries the assessor's decision on somebody's work, so it is stored
-        // exactly like the original: authenticated, addressed by public_id.
-        String publicId = cloudinaryService.uploadLearnerFile(file);
-        submission.setMarkedFilePath(publicId);
+        // exactly like the original: authenticated and addressed by public_id on Cloudinary,
+        // or in the private submission directory when Cloudinary is not configured.
+        String storedPath;
+        if (cloudinaryService.isConfigured()) {
+            storedPath = cloudinaryService.uploadLearnerFile(file);
+        } else {
+            // Timestamped, never reusing a name, so a replaced marked copy is not overwritten
+            // on disk while something may still be reading it.
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Files.createDirectories(uploadPath);
+            Path target = uploadPath.resolve(String.format("marked_%d_%d.pdf", submissionId, System.currentTimeMillis()));
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            storedPath = target.toString();
+        }
+        submission.setMarkedFilePath(storedPath);
         submission.setMarkedSha256(markedSha256);
         // Pen strokes take precedence over a marked file everywhere the work is shown, so
         // leaving them would hide the upload the grader just made.
