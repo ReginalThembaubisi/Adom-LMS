@@ -40,6 +40,13 @@ public class SubmittedLearnerDto {
     private boolean hasAnnotations;
 
     /**
+     * Identifies the current marked copy (a content hash, never a location), or null when
+     * there is none. Sent back with an upload so a copy replaced since the grader opened the
+     * submission is reported as a conflict rather than overwritten.
+     */
+    private String markedCopyVersion;
+
+    /**
      * Whether this learner can see the marking yet.
      *
      * The console shows it per row because "everything is marked" and "everything is released"

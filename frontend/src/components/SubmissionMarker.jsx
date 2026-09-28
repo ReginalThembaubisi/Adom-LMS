@@ -2,8 +2,22 @@ import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { GraderBadge } from '../utils/graderBadge';
 import { staffFetch, fetchStaffBlobUrl } from '../utils/staffAuth';
 const PdfAnnotator = lazy(() => import('./PdfAnnotator'));
+const PdfReplay = lazy(() => import('./PdfReplay'));
 
-const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, role }) => {
+const NO_STROKES = {};
+
+/** The server's own sentence for a refused request, falling back to a generic one. */
+const readErrorMessage = async (res, fallback) => {
+    try {
+        const body = await res.json();
+        if (body && body.message) return body.message;
+    } catch { /* not JSON */ }
+    return fallback;
+};
+
+// markedCopyUploadUrl: where a marked copy made outside the system is uploaded back to. When
+// absent, the "mark outside the system" panel is not shown.
+const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, markedCopyUploadUrl, role }) => {
     const [outcome, setOutcome] = useState(submission.status === 'COMPETENT' || submission.status === 'NOT_YET_COMPETENT' ? submission.status : '');
     const [feedback, setFeedback] = useState(submission.feedback || '');
     const [marksAwarded, setMarksAwarded] = useState(submission.marksAwarded ?? '');
@@ -21,6 +35,23 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
     const [documentUrl, setDocumentUrl] = useState(null);
     const [documentType, setDocumentType] = useState(null);
     const [documentError, setDocumentError] = useState('');
+
+    // A submission is marked one way at a time: either pen strokes drawn here (replayed over
+    // the original) or a marked file uploaded from outside. Viewers everywhere show strokes in
+    // preference to a file, so the two are never allowed to coexist — the server enforces it
+    // too, and this state mirrors what it holds so the right one is shown.
+    const [hasUploadedCopy, setHasUploadedCopy] = useState(!!submission.hasMarkedCopy && !submission.hasAnnotations);
+    const [hasPenMarks, setHasPenMarks] = useState(!!submission.hasAnnotations);
+    // The marked copy as this grader last saw it; sent with an upload so a copy someone else
+    // replaced in the meantime is reported instead of overwritten.
+    const [markedVersion, setMarkedVersion] = useState(submission.markedCopyVersion || null);
+    // Chosen explicitly to draw in the app over an uploaded copy (which saving then replaces).
+    const [markingHere, setMarkingHere] = useState(false);
+    const [markedFile, setMarkedFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState('');
+    const [uploadMessage, setUploadMessage] = useState('');
+    const [fileInputKey, setFileInputKey] = useState(0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -56,9 +87,15 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
         setMarkedError('');
         setMarkedSaved(false);
         try {
-            await onSaveMarkedCopy(submission.submissionId, annotationsJson);
+            await onSaveMarkedCopy(submission.submissionId, annotationsJson, { replaceMarkedCopy: hasUploadedCopy });
             setMarkedSaved(true);
             setInitialStrokes(annotationsJson);
+            setHasPenMarks(true);
+            if (hasUploadedCopy) {
+                setHasUploadedCopy(false);
+                setMarkedVersion(null);
+                setMarkingHere(false);
+            }
         } catch (err) {
             setMarkedError(err.message || 'Failed to save marked copy.');
         } finally {
@@ -68,10 +105,10 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
 
     const isDoc = submission.originalFilename?.toLowerCase().endsWith('.doc') || submission.originalFilename?.toLowerCase().endsWith('.docx');
 
-    // When hasAnnotations, load the original and replay strokes client-side via PdfAnnotator.
-    // Only fall back to the rasterized marked copy for legacy submissions that have one but
-    // no annotationsJson (so old marks are still visible while new saves use the JSON path).
-    const hasMarkedCopy = submission.hasMarkedCopy && !submission.hasAnnotations;
+    // When there are pen marks, load the original and replay strokes client-side via
+    // PdfAnnotator. A marked file (uploaded after marking elsewhere, or a legacy raster) is
+    // shown read-only instead — unless the grader chose to mark in the app over it.
+    const hasMarkedCopy = hasUploadedCopy && !markingHere;
 
     // The document is fetched with the staff credential in a header and rendered from an
     // object URL. It used to be an <iframe> pointed at a URL carrying ?authToken=<base64
@@ -101,21 +138,89 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
             cancelled = true;
             if (objectUrl) URL.revokeObjectURL(objectUrl);
         };
-    }, [submission.submissionId, hasMarkedCopy]);
+    }, [submission.submissionId, hasMarkedCopy, markedVersion]);
 
     const isPdf = submission.originalFilename?.toLowerCase().endsWith('.pdf')
         || documentType === 'application/pdf';
+
+    const saveBlobUrl = (url, filename) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    };
 
     // Word files have no in-browser renderer available without sending the file to a third
     // party. Graders save and open them locally instead.
     const saveDocument = () => {
         if (!documentUrl) return;
-        const link = document.createElement('a');
-        link.href = documentUrl;
-        link.download = submission.originalFilename || 'submission';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        saveBlobUrl(documentUrl, submission.originalFilename || 'submission');
+    };
+
+    // Downloads for marking elsewhere are fetched separately from what is on screen, so the
+    // learner's original is what they get even while a marked copy is being displayed.
+    const downloadFile = async (marked) => {
+        setUploadError('');
+        try {
+            const { objectUrl } = await fetchStaffBlobUrl(
+                `/api/submissions/${submission.submissionId}/view` + (marked ? '?marked=true' : ''));
+            const base = (submission.originalFilename || 'submission').replace(/\.[^.]+$/, '');
+            saveBlobUrl(objectUrl, marked ? `marked_${base}.pdf` : (submission.originalFilename || 'submission'));
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+        } catch (err) {
+            setUploadError(err.message || 'Could not download the file.');
+        }
+    };
+
+    const handleUploadMarkedFile = async () => {
+        if (!markedFile) {
+            setUploadError('Choose the marked PDF first.');
+            return;
+        }
+        if (!markedFile.name.toLowerCase().endsWith('.pdf')) {
+            setUploadError('Upload the marked work as a PDF. In Word, use File > Save As > PDF.');
+            return;
+        }
+        if (hasPenMarks && !window.confirm(
+            'This work already has marks made in the app. Uploading your file will replace them. Continue?')) {
+            return;
+        }
+        setUploading(true);
+        setUploadError('');
+        setUploadMessage('');
+        try {
+            const form = new FormData();
+            form.append('file', markedFile);
+            form.append('expectedVersion', markedVersion || '');
+            form.append('replaceAnnotations', hasPenMarks ? 'true' : 'false');
+            const res = await staffFetch(markedCopyUploadUrl, { method: 'POST', body: form });
+            if (!res.ok) {
+                throw new Error(await readErrorMessage(res, 'Could not upload the marked copy.'));
+            }
+            const data = await res.json();
+            setMarkedVersion(data.markedCopyVersion || null);
+            setHasUploadedCopy(true);
+            setHasPenMarks(false);
+            setInitialStrokes(null);
+            setMarkingHere(false);
+            setMarkedSaved(false);
+            setMarkedFile(null);
+            setFileInputKey(k => k + 1);
+            setUploadMessage('Marked copy uploaded. Now record the outcome and marks below and save.');
+        } catch (err) {
+            setUploadError(err.message || 'Could not upload the marked copy.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const startMarkingHere = () => {
+        if (window.confirm('Marking here replaces the uploaded marked copy once you save your marks. Continue?')) {
+            setInitialStrokes(null);
+            setMarkingHere(true);
+        }
     };
 
     // Every past grading action, oldest first, so a grader opening a submission someone else
@@ -183,6 +288,30 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                         {documentError ? (
                             <div className="flex-1 flex items-center justify-center text-xs text-red-400 p-6 text-center">
                                 {documentError}
+                            </div>
+                        ) : hasMarkedCopy ? (
+                            // A marked file is shown as it is — drawing over it here would save
+                            // strokes against the original instead, so it is read-only.
+                            <div className="flex-1 flex flex-col min-h-0 gap-2">
+                                <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                                    <span>Showing the marked copy uploaded after marking outside the system.</span>
+                                    {submission.originalFilename?.toLowerCase().endsWith('.pdf') && (
+                                        <button
+                                            type="button"
+                                            onClick={startMarkingHere}
+                                            className="flex-shrink-0 bg-slate-800 hover:bg-slate-700 text-[#f8fafc] font-semibold py-1 px-3 rounded-lg cursor-pointer"
+                                        >
+                                            Mark in the app instead
+                                        </button>
+                                    )}
+                                </div>
+                                {!documentUrl ? (
+                                    <div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading document...</div>
+                                ) : (
+                                    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-500">Loading PDF viewer...</div>}>
+                                        <PdfReplay documentUrl={documentUrl} strokes={NO_STROKES} />
+                                    </Suspense>
+                                )}
                             </div>
                         ) : isPdf ? (
                             // Custom canvas-based viewer + annotation layer, replacing the
@@ -259,11 +388,56 @@ const SubmissionMarker = ({ submission, onClose, onSaveGrade, onSaveMarkedCopy, 
                                     </div>
                                 )}
                                 {markedSaved ? (
-                                    <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to the student and other graders.</p>
-                                ) : submission.hasMarkedCopy ? (
-                                    <p className="text-[10px] text-slate-500 pt-1">Showing a previously marked-up copy — any new marks you add and save will be added on top of it.</p>
+                                    <p className="text-[10px] text-emerald-400 pt-1">✓ Marked-up copy saved — visible to other graders, and to the student once marking is released.</p>
                                 ) : null}
                             </div>
+
+                            {markedCopyUploadUrl && (
+                                <div className="space-y-3 border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+                                    <div className="space-y-0.5">
+                                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mark outside the system</h5>
+                                        <p className="text-[11px] text-slate-500">
+                                            Download the work, mark it in Word, a PDF editor or a marking helper, save it as a PDF and upload it back here.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => downloadFile(false)}
+                                            className="bg-slate-800 hover:bg-slate-700 text-[#f8fafc] font-semibold text-[11px] py-1.5 px-3 rounded-lg cursor-pointer"
+                                        >
+                                            Download learner&apos;s work
+                                        </button>
+                                        {hasUploadedCopy && (
+                                            <button
+                                                type="button"
+                                                onClick={() => downloadFile(true)}
+                                                className="bg-slate-800 hover:bg-slate-700 text-[#f8fafc] font-semibold text-[11px] py-1.5 px-3 rounded-lg cursor-pointer"
+                                            >
+                                                Download marked copy
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        key={fileInputKey}
+                                        type="file"
+                                        accept="application/pdf,.pdf"
+                                        onChange={(e) => { setMarkedFile(e.target.files?.[0] || null); setUploadError(''); setUploadMessage(''); }}
+                                        disabled={uploading}
+                                        className="block w-full text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-slate-800 file:text-[#f8fafc]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleUploadMarkedFile}
+                                        disabled={uploading || !markedFile}
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-[#f8fafc] font-semibold text-[11px] py-2 rounded-lg cursor-pointer"
+                                    >
+                                        {uploading ? 'Uploading...' : hasUploadedCopy ? 'Upload new marked copy' : 'Upload marked copy'}
+                                    </button>
+                                    {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
+                                    {uploadMessage && <p className="text-[11px] text-emerald-400">{uploadMessage}</p>}
+                                </div>
+                            )}
 
                             {!historyLoading && gradingHistory.length > 0 && (
                                 <div className="space-y-2 border border-slate-800 rounded-xl p-3 bg-slate-950/60">

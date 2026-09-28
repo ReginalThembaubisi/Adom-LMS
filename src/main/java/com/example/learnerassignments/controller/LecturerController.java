@@ -351,7 +351,10 @@ public class LecturerController {
     }
 
     @PostMapping(value = "/submissions/{id}/marked-copy", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file, Authentication auth) throws IOException {
+    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file,
+                                              @RequestParam(value = "expectedVersion", required = false) String expectedVersion,
+                                              @RequestParam(value = "replaceAnnotations", required = false, defaultValue = "false") boolean replaceAnnotations,
+                                              Authentication auth) throws IOException {
         Lecturer lecturer = getAuthenticatedLecturer(auth);
         Submission submission = submissionRepository.findById(id)
                 .orElseThrow(() -> new com.example.learnerassignments.exception.ResourceNotFoundException("Submission not found"));
@@ -365,8 +368,10 @@ public class LecturerController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        String url = submissionService.uploadMarkedCopy(id, file);
-        return ResponseEntity.ok(java.util.Map.of("markedFilePath", url));
+        // The version, not the storage reference: a client is told a marked copy changed,
+        // never where it lives.
+        String version = submissionService.uploadMarkedCopy(id, file, expectedVersion, replaceAnnotations);
+        return ResponseEntity.ok(java.util.Map.of("markedCopyVersion", version));
     }
 
     @GetMapping("/categories")

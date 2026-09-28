@@ -12,6 +12,7 @@ import com.example.learnerassignments.repository.SubmissionSessionRepository;
 import com.example.learnerassignments.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -19,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -269,6 +271,7 @@ public class SubmissionService {
                     .marksAwarded(latestSubmission.getMarksAwarded())
                     .hasMarkedCopy(latestSubmission.getMarkedFilePath() != null)
                     .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
+                    .markedCopyVersion(latestSubmission.markedCopyVersion())
                     .feedbackReleased(latestSubmission.isMarkingVisibleToLearner())
                     .build());
         }
@@ -386,6 +389,7 @@ public class SubmissionService {
                         .marksAwarded(latestSubmission.getMarksAwarded())
                         .hasMarkedCopy(latestSubmission.getMarkedFilePath() != null)
                         .hasAnnotations(latestSubmission.getAnnotationsJson() != null)
+                        .markedCopyVersion(latestSubmission.markedCopyVersion())
                         .build());
             } else {
                 unsubmittedList.add(UnsubmittedLearnerDto.builder()
@@ -477,25 +481,100 @@ public class SubmissionService {
                 .build();
     }
 
-    // Uploads the flattened, annotated copy of a submission's document (drawn client-side)
-    // alongside the original — the original filePath is never overwritten, so the learner's
-    // untouched submission is always still there.
+    /**
+     * Stores a marked copy a grader made outside the system — downloaded, marked in Word, a
+     * PDF editor or an AI marking helper, and uploaded back — alongside the original. The
+     * original filePath is never overwritten, so the learner's untouched work is always there.
+     *
+     * The file went offline for a while, so the submission may have moved on without it.
+     * Each way that can happen is refused with a 409 rather than resolved silently:
+     * <ul>
+     *   <li>the learner resubmitted, so this row is no longer the work being assessed;</li>
+     *   <li>someone replaced the marked copy since the grader opened it
+     *       ({@code expectedVersion} is the {@link Submission#markedCopyVersion()} they saw);</li>
+     *   <li>the submission carries in-app pen marks, which the viewer shows in preference to a
+     *       marked file — the upload replaces them only when {@code replaceAnnotations} says the
+     *       grader agreed to that.</li>
+     * </ul>
+     *
+     * Only PDF is accepted: every viewer, the learner portal and the portfolio export treat a
+     * marked copy as a PDF, and Word or a PDF editor can both save one.
+     *
+     * @return the new marked-copy version
+     */
     @Transactional
-    public String uploadMarkedCopy(Long submissionId, MultipartFile file) throws IOException {
+    public String uploadMarkedCopy(Long submissionId, MultipartFile file,
+                                   String expectedVersion, boolean replaceAnnotations) throws IOException {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
 
-        if (!cloudinaryService.isConfigured()) {
-            throw new IllegalStateException("File storage is not configured.");
+        if (file == null || file.isEmpty()) {
+            throw new InvalidFileException("Choose the marked file to upload.");
         }
+        if (!isPdf(file)) {
+            throw new InvalidFileException("The marked copy must be a PDF. In Word, use File > Save As > PDF.");
+        }
+
+        if (isSuperseded(submission)) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,
+                    "The learner has resubmitted since this work was downloaded. Mark the new submission instead.");
+        }
+        String currentVersion = submission.markedCopyVersion();
+        String expected = (expectedVersion == null || expectedVersion.isBlank()) ? null : expectedVersion;
+        if (!Objects.equals(currentVersion, expected)) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,
+                    "Someone else uploaded a marked copy for this submission after you opened it. "
+                            + "Close and reopen it to see their version before uploading yours.");
+        }
+        boolean hasPenMarks = submission.getAnnotationsJson() != null && !submission.getAnnotationsJson().isBlank();
+        if (hasPenMarks && !replaceAnnotations) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,
+                    "This submission already has marks made in the app. Uploading replaces them.");
+        }
+
         String markedSha256 = ContentHash.of(file);
         // A marked copy carries the assessor's decision on somebody's work, so it is stored
-        // exactly like the original: authenticated, addressed by public_id.
-        String publicId = cloudinaryService.uploadLearnerFile(file);
-        submission.setMarkedFilePath(publicId);
+        // exactly like the original: authenticated and addressed by public_id on Cloudinary,
+        // or in the private submission directory when Cloudinary is not configured.
+        String storedPath;
+        if (cloudinaryService.isConfigured()) {
+            storedPath = cloudinaryService.uploadLearnerFile(file);
+        } else {
+            // Timestamped, never reusing a name, so a replaced marked copy is not overwritten
+            // on disk while something may still be reading it.
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Files.createDirectories(uploadPath);
+            Path target = uploadPath.resolve(String.format("marked_%d_%d.pdf", submissionId, System.currentTimeMillis()));
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            storedPath = target.toString();
+        }
+        submission.setMarkedFilePath(storedPath);
         submission.setMarkedSha256(markedSha256);
+        // Pen strokes take precedence over a marked file everywhere the work is shown, so
+        // leaving them would hide the upload the grader just made.
+        submission.setAnnotationsJson(null);
         submissionRepository.save(submission);
-        return publicId;
+        return submission.markedCopyVersion();
+    }
+
+    /** Whether a later submission from the same learner to the same session exists. */
+    private boolean isSuperseded(Submission submission) {
+        if (submission.getLearner() == null || submission.getSession() == null) {
+            return false;
+        }
+        List<Submission> rows = submissionRepository.findByLearner_IdAndSession_IdOrderBySubmittedAtDesc(
+                submission.getLearner().getId(), submission.getSession().getId());
+        return !rows.isEmpty() && !rows.get(0).getId().equals(submission.getId());
+    }
+
+    /** Checks the content, not the name: a renamed Word file would otherwise pass as a PDF. */
+    private static boolean isPdf(MultipartFile file) throws IOException {
+        try (java.io.InputStream in = file.getInputStream()) {
+            byte[] head = in.readNBytes(5);
+            return head.length == 5 && new String(head, StandardCharsets.US_ASCII).equals("%PDF-");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -540,10 +619,27 @@ public class SubmissionService {
         return filename.substring(filename.lastIndexOf(".") + 1);
     }
 
+    /**
+     * Saves in-app pen strokes. Strokes are replayed over the original file, and they take
+     * precedence over a marked copy wherever the work is shown — so saving them onto a
+     * submission that has a marked copy would hide that copy. That only happens when the
+     * grader has agreed to it ({@code replaceMarkedCopy}); otherwise it is a 409.
+     */
     @Transactional
-    public void saveAnnotations(Long id, String json) {
+    public void saveAnnotations(Long id, String json, boolean replaceMarkedCopy) {
         Submission s = submissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found: " + id));
+        // Only when the marked copy is what is currently shown. A legacy row carrying both
+        // already shows its strokes, so adding to them hides nothing that was visible.
+        boolean hasStrokes = s.getAnnotationsJson() != null && !s.getAnnotationsJson().isBlank();
+        if (s.getMarkedFilePath() != null && !hasStrokes) {
+            if (!replaceMarkedCopy) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,
+                        "This submission has an uploaded marked copy. Saving marks made in the app replaces it.");
+            }
+            s.setMarkedFilePath(null);
+            s.setMarkedSha256(null);
+        }
         s.setAnnotationsJson(json);
         submissionRepository.save(s);
     }

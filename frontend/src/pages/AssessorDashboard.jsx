@@ -114,8 +114,8 @@ const AssessorDashboard = () => {
         fetchSubmissions(selectedSessionId);
     };
 
-    const handleSaveMarkedCopy = async (submissionId, annotationsJson) => {
-        const res = await fetch(`/api/submissions/${submissionId}/annotations`, {
+    const handleSaveMarkedCopy = async (submissionId, annotationsJson, { replaceMarkedCopy = false } = {}) => {
+        const res = await fetch(`/api/submissions/${submissionId}/annotations?replaceMarkedCopy=${replaceMarkedCopy}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -124,7 +124,8 @@ const AssessorDashboard = () => {
             body: JSON.stringify(annotationsJson),
         });
         if (!res.ok) {
-            throw new Error('Failed to save annotations.');
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.message || 'Failed to save annotations.');
         }
     };
 
