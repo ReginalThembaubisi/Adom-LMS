@@ -150,6 +150,19 @@ public class Submission {
     @Column(name = "marked_sha256", length = 64)
     private String markedSha256;
 
+    /**
+     * A token for the marked copy as it stands, compared on upload so that a grader who
+     * downloaded the work while somebody else replaced the marked copy is told so instead of
+     * silently overwriting it. Null when there is no marked copy. A legacy copy uploaded before
+     * hashes were recorded has no hash, so it gets a fixed token that still differs from null.
+     */
+    public String markedCopyVersion() {
+        if (markedFilePath == null) {
+            return null;
+        }
+        return markedSha256 != null ? markedSha256 : "legacy";
+    }
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

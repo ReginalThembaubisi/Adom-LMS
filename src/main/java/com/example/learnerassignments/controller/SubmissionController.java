@@ -129,13 +129,20 @@ public class SubmissionController {
                 ? "marked_" + submission.getOriginalFilename()
                 : submission.getOriginalFilename();
 
-        // Original files never change after upload; marked rasters are replaced atomically.
-        // Both qualify for long-lived private caching keyed by submission id + variant.
-        String etag = "\"sub-" + id + "-" + (marked ? "m" : "o") + "\"";
+        // Original files never change after upload, so they are cached for good. A marked copy
+        // can be replaced — a grader uploads a new version after marking it elsewhere — so it
+        // is revalidated every time, under an ETag that changes with its content; an immutable
+        // cache would keep showing the version it replaced.
+        boolean servingMarked = marked && submission.getMarkedFilePath() != null;
+        String etag = servingMarked
+                ? "\"sub-" + id + "-m-" + submission.markedCopyVersion() + "\""
+                : "\"sub-" + id + "-o\"";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .header(HttpHeaders.CACHE_CONTROL, "private, immutable, max-age=31536000")
+                .header(HttpHeaders.CACHE_CONTROL, servingMarked
+                        ? "private, no-cache"
+                        : "private, immutable, max-age=31536000")
                 .header(HttpHeaders.ETAG, etag)
                 .body(body);
     }
@@ -146,6 +153,7 @@ public class SubmissionController {
     public ResponseEntity<Void> saveAnnotations(
             @PathVariable Long id,
             @RequestBody String json,
+            @RequestParam(value = "replaceMarkedCopy", required = false, defaultValue = "false") boolean replaceMarkedCopy,
             Authentication auth) {
 
         // Writing marks onto a submission is scoped exactly as reading it is: a grader who
@@ -157,7 +165,7 @@ public class SubmissionController {
         if (!graderAuth) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        submissionService.saveAnnotations(id, json);
+        submissionService.saveAnnotations(id, json, replaceMarkedCopy);
         return ResponseEntity.ok().build();
     }
 

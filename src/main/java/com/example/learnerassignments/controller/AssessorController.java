@@ -102,10 +102,13 @@ public class AssessorController {
     }
 
     @PostMapping(value = "/submissions/{id}/marked-copy", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file, Authentication auth) throws IOException {
+    public ResponseEntity<?> uploadMarkedCopy(@PathVariable Long id, @RequestParam("file") MultipartFile file,
+                                              @RequestParam(value = "expectedVersion", required = false) String expectedVersion,
+                                              @RequestParam(value = "replaceAnnotations", required = false, defaultValue = "false") boolean replaceAnnotations,
+                                              Authentication auth) throws IOException {
         requireScope(scopeService.canAccessSubmission(scope(auth), submissionService.getSubmission(id)), "Submission");
-        String url = submissionService.uploadMarkedCopy(id, file);
-        return ResponseEntity.ok(java.util.Map.of("markedFilePath", url));
+        String version = submissionService.uploadMarkedCopy(id, file, expectedVersion, replaceAnnotations);
+        return ResponseEntity.ok(java.util.Map.of("markedCopyVersion", version));
     }
 
     @GetMapping("/sessions")
